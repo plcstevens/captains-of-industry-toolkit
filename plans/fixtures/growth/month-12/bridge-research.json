@@ -1,0 +1,23 @@
+{
+ "current": {
+  "id": "ResearchCp2",
+  "progressPerc": 30000,
+  "stepsDone": 24,
+  "remainingSteps": 56,
+  "scienceCost": 80
+ },
+ "queue": [],
+ "researchedCount": 9,
+ "hasActiveLab": true,
+ "researched": [
+  "ResearchCp1Production",
+  "ResearchPowerAndMaintenance",
+  "ResearchTradeDock",
+  "ResearchVehicleAndMining",
+  "ResearchBeacon",
+  "ResearchTools",
+  "ResearchBasicDiesel",
+  "ResearchRubber",
+  "ResearchCopperRefinement"
+ ]
+}

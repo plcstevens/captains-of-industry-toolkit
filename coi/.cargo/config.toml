@@ -1,0 +1,5 @@
+[target.x86_64-pc-windows-gnu]
+# Home-prefix mingw (~/opt/mingw-w64), extracted from .debs — NOT the
+# apt system install. /usr dies with every VM replacement; ~ persists.
+# See ~/workspace/coi-companion/tools/ensure-toolchain.sh.
+linker = "/home/hatch/opt/mingw-w64/usr/bin/x86_64-w64-mingw32-gcc"

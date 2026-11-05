@@ -1,0 +1,9 @@
+{
+ "population": 100,
+ "totalHousingCapacity": 160,
+ "freeHousingCapacity": 60,
+ "numberOfHomeless": 0,
+ "monthsOfFood": 3,
+ "arePeopleStarving": false,
+ "settlements": 1
+}

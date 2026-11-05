@@ -1,0 +1,44 @@
+{
+ "storages": [
+  {
+   "id": 101,
+   "proto": "StorageLoose",
+   "product": "Product_IronScrap",
+   "quantity": 830,
+   "capacity": 1000,
+   "percentFullRaw": 83000,
+   "logisticsInDisabled": false,
+   "logisticsOutDisabled": false
+  },
+  {
+   "id": 102,
+   "proto": "StorageUnit",
+   "product": "Product_Iron",
+   "quantity": 115,
+   "capacity": 200,
+   "percentFullRaw": 57500,
+   "logisticsInDisabled": false,
+   "logisticsOutDisabled": false
+  },
+  {
+   "id": 103,
+   "proto": "StorageFluid",
+   "product": "Product_Diesel",
+   "quantity": 170,
+   "capacity": 250,
+   "percentFullRaw": 68000,
+   "logisticsInDisabled": false,
+   "logisticsOutDisabled": false
+  },
+  {
+   "id": 104,
+   "proto": "StorageLoose",
+   "product": "Product_Wood",
+   "quantity": 226,
+   "capacity": 500,
+   "percentFullRaw": 45200,
+   "logisticsInDisabled": false,
+   "logisticsOutDisabled": false
+  }
+ ]
+}

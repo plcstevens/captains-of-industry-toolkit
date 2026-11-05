@@ -1,0 +1,24 @@
+{
+ "current": {
+  "id": "ResearchCopperRefinement",
+  "progressPerc": 55000,
+  "stepsDone": 44,
+  "remainingSteps": 36,
+  "scienceCost": 80
+ },
+ "queue": [
+  "ResearchCp2"
+ ],
+ "researchedCount": 8,
+ "hasActiveLab": true,
+ "researched": [
+  "ResearchCp1Production",
+  "ResearchPowerAndMaintenance",
+  "ResearchTradeDock",
+  "ResearchVehicleAndMining",
+  "ResearchBeacon",
+  "ResearchTools",
+  "ResearchBasicDiesel",
+  "ResearchRubber"
+ ]
+}

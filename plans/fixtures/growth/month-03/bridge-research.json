@@ -1,0 +1,17 @@
+{
+ "current": {
+  "id": "ResearchPowerAndMaintenance",
+  "progressPerc": 86250,
+  "stepsDone": 69,
+  "remainingSteps": 11,
+  "scienceCost": 80
+ },
+ "queue": [
+  "ResearchTradeDock"
+ ],
+ "researchedCount": 1,
+ "hasActiveLab": true,
+ "researched": [
+  "ResearchCp1Production"
+ ]
+}

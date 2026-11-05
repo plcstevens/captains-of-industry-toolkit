@@ -1,0 +1,64 @@
+{
+ "date": "1-4-15",
+ "tick": 302400,
+ "products": {
+  "Product_Diesel": {
+   "quantity": 170,
+   "stored": 150,
+   "storageCapacity": 250,
+   "produced": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "consumed": [
+    10,
+    20,
+    130,
+    0,
+    130
+   ]
+  },
+  "Product_IronScrap": {
+   "quantity": 840,
+   "stored": 790,
+   "storageCapacity": 1000,
+   "produced": [
+    60,
+    220,
+    1830,
+    0,
+    1830
+   ],
+   "consumed": [
+    90,
+    240,
+    990,
+    0,
+    990
+   ]
+  },
+  "Product_ConstructionParts": {
+   "quantity": 19,
+   "stored": 16,
+   "storageCapacity": 200,
+   "produced": [
+    17,
+    25,
+    42,
+    0,
+    42
+   ],
+   "consumed": [
+    15,
+    20,
+    81,
+    0,
+    81
+   ]
+  }
+ },
+ "unknownIds": []
+}

@@ -1,0 +1,330 @@
+{
+ "date": "1-10-15",
+ "tick": 820800,
+ "products": {
+  "Product_IronScrap": {
+   "quantity": 730,
+   "stored": 680,
+   "storageCapacity": 1000,
+   "produced": [
+    0,
+    0,
+    1930,
+    0,
+    1930
+   ],
+   "consumed": [
+    0,
+    0,
+    1200,
+    0,
+    1200
+   ]
+  },
+  "Product_Iron": {
+   "quantity": 418,
+   "stored": 410,
+   "storageCapacity": 800,
+   "produced": [
+    62,
+    120,
+    825,
+    0,
+    825
+   ],
+   "consumed": [
+    35,
+    65,
+    407,
+    0,
+    407
+   ]
+  },
+  "Product_Steel": {
+   "quantity": 10,
+   "stored": 10,
+   "storageCapacity": 200,
+   "produced": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "consumed": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "Product_Coal": {
+   "quantity": 473,
+   "stored": 468,
+   "storageCapacity": 1000,
+   "produced": [
+    82,
+    160,
+    1152,
+    0,
+    1152
+   ],
+   "consumed": [
+    50,
+    95,
+    679,
+    0,
+    679
+   ]
+  },
+  "Product_Wood": {
+   "quantity": 602,
+   "stored": 587,
+   "storageCapacity": 1000,
+   "produced": [
+    32,
+    70,
+    1177,
+    0,
+    1177
+   ],
+   "consumed": [
+    12,
+    26,
+    575,
+    0,
+    575
+   ]
+  },
+  "Product_Diesel": {
+   "quantity": 69,
+   "stored": 49,
+   "storageCapacity": 500,
+   "produced": [
+    28,
+    0,
+    28,
+    0,
+    28
+   ],
+   "consumed": [
+    13,
+    22,
+    259,
+    0,
+    259
+   ]
+  },
+  "Product_Copper": {
+   "quantity": 261,
+   "stored": 241,
+   "storageCapacity": 500,
+   "produced": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "consumed": [
+    3,
+    6,
+    39,
+    0,
+    39
+   ]
+  },
+  "Product_ConcreteSlab": {
+   "quantity": 152,
+   "stored": 142,
+   "storageCapacity": 1000,
+   "produced": [
+    35,
+    55,
+    90,
+    0,
+    90
+   ],
+   "consumed": [
+    18,
+    30,
+    238,
+    0,
+    238
+   ]
+  },
+  "Product_ConstructionParts": {
+   "quantity": 43,
+   "stored": 40,
+   "storageCapacity": 200,
+   "produced": [
+    29,
+    54,
+    318,
+    0,
+    318
+   ],
+   "consumed": [
+    27,
+    50,
+    333,
+    0,
+    333
+   ]
+  },
+  "Product_MechanicalParts": {
+   "quantity": 19,
+   "stored": 19,
+   "storageCapacity": 200,
+   "produced": [
+    9,
+    17,
+    106,
+    0,
+    106
+   ],
+   "consumed": [
+    8,
+    15,
+    102,
+    0,
+    102
+   ]
+  },
+  "Product_Potato": {
+   "quantity": 293,
+   "stored": 273,
+   "storageCapacity": 1000,
+   "produced": [
+    55,
+    105,
+    555,
+    0,
+    555
+   ],
+   "consumed": [
+    35,
+    66,
+    562,
+    0,
+    562
+   ]
+  },
+  "Product_Vegetables": {
+   "quantity": 39,
+   "stored": 34,
+   "storageCapacity": 500,
+   "produced": [
+    16,
+    30,
+    145,
+    0,
+    145
+   ],
+   "consumed": [
+    12,
+    23,
+    186,
+    0,
+    186
+   ]
+  },
+  "Product_Water": {
+   "quantity": 1625,
+   "stored": 1000,
+   "storageCapacity": 1000,
+   "produced": [
+    260,
+    490,
+    3740,
+    0,
+    3740
+   ],
+   "consumed": [
+    155,
+    290,
+    2115,
+    0,
+    2115
+   ]
+  },
+  "Product_IronOre": {
+   "quantity": 86,
+   "stored": 81,
+   "storageCapacity": 500,
+   "produced": [
+    75,
+    145,
+    475,
+    0,
+    475
+   ],
+   "consumed": [
+    61,
+    118,
+    389,
+    0,
+    389
+   ]
+  },
+  "Product_Electronics": {
+   "quantity": 14,
+   "stored": 14,
+   "storageCapacity": 200,
+   "produced": [
+    6,
+    10,
+    60,
+    0,
+    60
+   ],
+   "consumed": [
+    4,
+    8,
+    46,
+    0,
+    46
+   ]
+  },
+  "Product_Limestone": {
+   "quantity": 20,
+   "stored": 15,
+   "storageCapacity": 500,
+   "produced": [
+    45,
+    85,
+    130,
+    0,
+    130
+   ],
+   "consumed": [
+    38,
+    72,
+    110,
+    0,
+    110
+   ]
+  },
+  "Product_CrudeOil": {
+   "quantity": 6,
+   "stored": 1,
+   "storageCapacity": 500,
+   "produced": [
+    65,
+    0,
+    65,
+    0,
+    65
+   ],
+   "consumed": [
+    59,
+    0,
+    59,
+    0,
+    59
+   ]
+  }
+ },
+ "unknownIds": []
+}

@@ -1,0 +1,368 @@
+{
+ "date": "1-12-15",
+ "tick": 993600,
+ "products": {
+  "Product_IronScrap": {
+   "quantity": 730,
+   "stored": 680,
+   "storageCapacity": 1000,
+   "produced": [
+    0,
+    0,
+    1930,
+    0,
+    1930
+   ],
+   "consumed": [
+    0,
+    0,
+    1200,
+    0,
+    1200
+   ]
+  },
+  "Product_Iron": {
+   "quantity": 534,
+   "stored": 526,
+   "storageCapacity": 800,
+   "produced": [
+    68,
+    130,
+    1086,
+    0,
+    1086
+   ],
+   "consumed": [
+    38,
+    72,
+    552,
+    0,
+    552
+   ]
+  },
+  "Product_Steel": {
+   "quantity": 10,
+   "stored": 10,
+   "storageCapacity": 200,
+   "produced": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "consumed": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "Product_Coal": {
+   "quantity": 604,
+   "stored": 599,
+   "storageCapacity": 1000,
+   "produced": [
+    88,
+    170,
+    1493,
+    0,
+    1493
+   ],
+   "consumed": [
+    55,
+    105,
+    889,
+    0,
+    889
+   ]
+  },
+  "Product_Wood": {
+   "quantity": 675,
+   "stored": 660,
+   "storageCapacity": 1000,
+   "produced": [
+    28,
+    60,
+    1298,
+    0,
+    1298
+   ],
+   "consumed": [
+    11,
+    24,
+    623,
+    0,
+    623
+   ]
+  },
+  "Product_Diesel": {
+   "quantity": 220,
+   "stored": 200,
+   "storageCapacity": 500,
+   "produced": [
+    70,
+    110,
+    235,
+    0,
+    235
+   ],
+   "consumed": [
+    15,
+    28,
+    315,
+    0,
+    315
+   ]
+  },
+  "Product_Copper": {
+   "quantity": 255,
+   "stored": 235,
+   "storageCapacity": 500,
+   "produced": [
+    7,
+    0,
+    7,
+    0,
+    7
+   ],
+   "consumed": [
+    4,
+    6,
+    52,
+    0,
+    52
+   ]
+  },
+  "Product_ConcreteSlab": {
+   "quantity": 226,
+   "stored": 216,
+   "storageCapacity": 1000,
+   "produced": [
+    40,
+    75,
+    240,
+    0,
+    240
+   ],
+   "consumed": [
+    20,
+    38,
+    314,
+    0,
+    314
+   ]
+  },
+  "Product_ConstructionParts": {
+   "quantity": 51,
+   "stored": 48,
+   "storageCapacity": 200,
+   "produced": [
+    33,
+    62,
+    442,
+    0,
+    442
+   ],
+   "consumed": [
+    31,
+    58,
+    449,
+    0,
+    449
+   ]
+  },
+  "Product_MechanicalParts": {
+   "quantity": 23,
+   "stored": 23,
+   "storageCapacity": 200,
+   "produced": [
+    10,
+    19,
+    144,
+    0,
+    144
+   ],
+   "consumed": [
+    9,
+    17,
+    136,
+    0,
+    136
+   ]
+  },
+  "Product_Potato": {
+   "quantity": 379,
+   "stored": 359,
+   "storageCapacity": 1000,
+   "produced": [
+    60,
+    115,
+    785,
+    0,
+    785
+   ],
+   "consumed": [
+    37,
+    72,
+    706,
+    0,
+    706
+   ]
+  },
+  "Product_Vegetables": {
+   "quantity": 57,
+   "stored": 52,
+   "storageCapacity": 500,
+   "produced": [
+    18,
+    34,
+    213,
+    0,
+    213
+   ],
+   "consumed": [
+    13,
+    25,
+    236,
+    0,
+    236
+   ]
+  },
+  "Product_Water": {
+   "quantity": 2065,
+   "stored": 1000,
+   "storageCapacity": 1000,
+   "produced": [
+    290,
+    550,
+    4840,
+    0,
+    4840
+   ],
+   "consumed": [
+    175,
+    330,
+    2775,
+    0,
+    2775
+   ]
+  },
+  "Product_IronOre": {
+   "quantity": 144,
+   "stored": 139,
+   "storageCapacity": 500,
+   "produced": [
+    80,
+    155,
+    785,
+    0,
+    785
+   ],
+   "consumed": [
+    65,
+    126,
+    641,
+    0,
+    641
+   ]
+  },
+  "Product_Electronics": {
+   "quantity": 17,
+   "stored": 17,
+   "storageCapacity": 200,
+   "produced": [
+    6,
+    11,
+    82,
+    0,
+    82
+   ],
+   "consumed": [
+    5,
+    9,
+    65,
+    0,
+    65
+   ]
+  },
+  "Product_Limestone": {
+   "quantity": 50,
+   "stored": 45,
+   "storageCapacity": 500,
+   "produced": [
+    50,
+    95,
+    320,
+    0,
+    320
+   ],
+   "consumed": [
+    42,
+    80,
+    270,
+    0,
+    270
+   ]
+  },
+  "Product_CrudeOil": {
+   "quantity": 34,
+   "stored": 29,
+   "storageCapacity": 500,
+   "produced": [
+    75,
+    140,
+    345,
+    0,
+    345
+   ],
+   "consumed": [
+    67,
+    126,
+    311,
+    0,
+    311
+   ]
+  },
+  "Product_Rubber": {
+   "quantity": 17,
+   "stored": 17,
+   "storageCapacity": 200,
+   "produced": [
+    13,
+    16,
+    29,
+    0,
+    29
+   ],
+   "consumed": [
+    6,
+    6,
+    12,
+    0,
+    12
+   ]
+  },
+  "Product_CopperOre": {
+   "quantity": 4,
+   "stored": 4,
+   "storageCapacity": 500,
+   "produced": [
+    22,
+    0,
+    22,
+    0,
+    22
+   ],
+   "consumed": [
+    18,
+    0,
+    18,
+    0,
+    18
+   ]
+  }
+ },
+ "unknownIds": []
+}

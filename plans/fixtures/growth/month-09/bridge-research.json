@@ -1,0 +1,22 @@
+{
+ "current": {
+  "id": "ResearchBasicDiesel",
+  "progressPerc": 87500,
+  "stepsDone": 70,
+  "remainingSteps": 10,
+  "scienceCost": 80
+ },
+ "queue": [
+  "ResearchRubber"
+ ],
+ "researchedCount": 6,
+ "hasActiveLab": true,
+ "researched": [
+  "ResearchCp1Production",
+  "ResearchPowerAndMaintenance",
+  "ResearchTradeDock",
+  "ResearchVehicleAndMining",
+  "ResearchBeacon",
+  "ResearchTools"
+ ]
+}

@@ -1,0 +1,1752 @@
+{
+  "globals": {
+    "autonomy": {
+      "construction": "manual-only",
+      "deconstruction": "banned",
+      "entity-settings": "confirm",
+      "global-priority": "confirm",
+      "manual": "manual-only",
+      "pins-alerts": "auto",
+      "research": "confirm",
+      "sim-control": "confirm",
+      "storage": "confirm",
+      "trade-contracts-loans": "confirm",
+      "trains": "manual-only",
+      "vehicles-logistics": "confirm"
+    },
+    "banned_commands": [
+      "GameConsoleCmd"
+    ],
+    "checks": [
+      {
+        "action": "pause-and-report",
+        "every": {
+          "minutes": 5
+        },
+        "id": "global-food-floor",
+        "note": "Capture value is 26 months — this floor is far away today and exists so the phase-5 farm transition can never silently eat the buffer.",
+        "severity": "critical",
+        "when": {
+          "metric": "settlement.months_of_food",
+          "op": "<",
+          "value": 2
+        }
+      }
+    ],
+    "crisis_protocol": {
+      "orders": [
+        {
+          "args": {},
+          "class": "research",
+          "do": "ResearchStopCmd",
+          "id": "crisis-pause-research",
+          "note": "Frees Unity and lab capacity while the human triages. ResearchStopCmd takes no args in the catalogue."
+        },
+        {
+          "args": {
+            "isPaused": true
+          },
+          "class": "sim-control",
+          "do": "SetSimPauseStateCmd",
+          "id": "crisis-pause-game",
+          "note": "Stop the clock while the human assesses; unpausing is a human decision."
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "crisis-human-triage",
+          "step": "In the UI: (1) confirm the hydrocrackers' DieselReforming assignment first — it is the single largest diesel consumer (112 of 161 this month) and the phase-0 open question; (2) pause non-essential steel consumers (mechanical parts last — it feeds maintenance); (3) Unity-boost the maintenance depots (manual only — no catalogue command spends Unity, format G5); (4) confirm diesel generators sit on the OUTPUT side of fuel storage so a fuel hiccup cannot kill power.",
+          "why": "Crisis levers for this run's proven faults; several have no command-channel equivalent."
+        }
+      ],
+      "trigger_note": "Existential threats for THIS run: diesel exhaustion (fleet + hydrocracker draw against a deficit chain), steel exhaustion (the phase-0 wound), and the fuel/maintenance/electricity death-spiral trio. Crisis beats plan — phase progression suspends while this runs."
+    },
+    "invariants": [
+      {
+        "metric": "settlement.starving",
+        "op": "==",
+        "value": false
+      },
+      {
+        "metric": "settlement.homeless",
+        "note": "TRUE at capture (0 homeless). Housing is exactly full (free 0), so any population gain without housing breaches this — that is the point of arming it.",
+        "op": "==",
+        "value": 0
+      },
+      {
+        "metric": "product.quantity",
+        "note": "TRUE at capture (5,992). Diesel never hits zero while the fleet and the hydrocracker consume it.",
+        "op": ">",
+        "product": "Product_Diesel",
+        "value": 0
+      },
+      {
+        "metric": "product.quantity",
+        "note": "TRUE at capture (1,108 and falling 20-46/month). Steel is this run's bleeding wound; zero steel = construction and maintenance cascade.",
+        "op": ">",
+        "product": "Product_Steel",
+        "value": 0
+      }
+    ]
+  },
+  "phases": [
+    {
+      "checks": [
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 5
+          },
+          "id": "p0-steel-still-falling",
+          "note": "TRUE at capture (8 produced vs 20 consumed). This check is expected to fire until phase 4 — it is the wound monitor, not a surprise.",
+          "severity": "warning",
+          "when": {
+            "metric": "product.net_flow",
+            "op": "<",
+            "product": "Product_Steel",
+            "value": 0,
+            "window": "thisMonth"
+          }
+        },
+        {
+          "action": "crisis-protocol",
+          "every": {
+            "minutes": 5
+          },
+          "id": "p0-diesel-floor",
+          "note": "Plan-set floor: at the capture deficit (~-77/month net) 2,500 is ~30 months of runway, but a phase-2 excavation surge changes the draw — the floor, not the projection, is the guard.",
+          "severity": "critical",
+          "when": {
+            "metric": "product.quantity",
+            "op": "<",
+            "product": "Product_Diesel",
+            "value": 2500
+          }
+        },
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 5
+          },
+          "id": "p0-power-balance",
+          "note": "v0.6.2 power route (format G2 resolved: balanceKw = generated - consumed, exact kW). No capture exists (route postdates the captures), so until bridge v0.6.2 is installed and the executor supports the field this check is UNEVALUABLE and reports 'check blind' (§4.4) — a blind check is reported, never counted as a pass.",
+          "severity": "warning",
+          "when": {
+            "flags": [
+              "bridge-v0.6.2-field",
+              "executor-support-pending"
+            ],
+            "metric": "power.balance_kw",
+            "op": "<",
+            "value": 0
+          }
+        }
+      ],
+      "entry_gate": [],
+      "exit_gate": [
+        {
+          "metric": "product.quantity",
+          "note": "Buffer floor for entering the relocation phases: capture 1,108. The phase's real deliverables are the two human-confirmed investigations above; this gate only proves the wound has not bled out meanwhile.",
+          "op": ">=",
+          "product": "Product_Steel",
+          "value": 800
+        },
+        {
+          "metric": "product.quantity",
+          "note": "Plan-set floor (capture 5,992). See the minutes-of-draw conversion caveat, assumption A10.",
+          "op": ">=",
+          "product": "Product_Diesel",
+          "value": 4000
+        }
+      ],
+      "fallbacks": {
+        "on_check_fail": "crisis-protocol",
+        "on_gate_stall": "pause-and-report",
+        "stall_after": {
+          "months": 2
+        }
+      },
+      "id": "phase-0-stop-the-bleeding",
+      "intent": "NEW phase (not in the relocation plan; forced by the live data). Two proven structural faults get diagnosed and decided BEFORE any relocation build spends the buffers they drain: (1) steel production ~0 for ~6 months, stock 1,108 falling 20-46/month; (2) the diesel deficit, whose largest single consumer is the hydrocracker DieselReforming loop (112 of 161 consumed this month). The diesel loop is carried as an investigate/DECIDE order with the open question explicit — this plan does not assume it is a leftover.",
+      "name": "Stop the bleeding — steel stall + diesel loop",
+      "orders": [
+        {
+          "class": "manual",
+          "do": "observe-only",
+          "id": "p0-record-baseline",
+          "observe": "Record the opening snapshot as the run baseline: steel quantity 1,108 / produced-consumed windows, diesel quantity 5,992 / windows, the src-steel and src-diesel recipe breakdowns, census machine states for CasterCooledT2, OxygenFurnaceT2, SmeltingFurnaceT2, Crusher, HydroCrackerT1, and researchedCount 127 (the G1 anchor until bridge v0.6.2's researched list is live). Every later phase's gates are read against this baseline, not against memory."
+        },
+        {
+          "class": "manual",
+          "do": "observe-only",
+          "id": "p0-verify-vitals-pinned",
+          "observe": "Confirm Product_Steel and Product_Diesel are in the pinned set (the capture's pinned view lists both). Do NOT issue PinToggleCmd for either: toggles are not idempotent (§6.1) and toggling a pinned product would UNPIN it. If a future capture shows either missing from the pinned set, a human adds a bracketed PinToggleCmd order via a plan amendment."
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "p0-investigate-steel-stall",
+          "step": "Trace the steel chain in the UI, upstream-first, and record which link binds: (a) casters — CasterCooledT2 3/4 NotEnoughInput (starved of molten steel, capture-proven); (b) oxygen furnaces — OxygenFurnaceT2 2/4 NotEnoughInput (molten iron or oxygen?); (c) smelting furnaces — SmeltingFurnaceT2 ×6 states; (d) crushed ore — Crusher 8/8 OutputFull while IronOreCrushed storage reads 3/3 and iron ore flows net-negative (produced 42 vs consumed 192 this month). Write the binding link into the run report; phase 4's sizing depends on it.",
+          "why": "The captures prove starvation, not which upstream link causes it (assumption A6). Guessing here would mis-size the phase-4 plant."
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "flags": [
+            "open-question"
+          ],
+          "id": "p0-decide-diesel-reforming",
+          "step": "DECIDE the DieselReforming question — do not skip it and do not let this plan decide it for you. Evidence for 'leftover': diesel is in deficit every month for 7 months while 112/month of it is reformed into naphtha + fuel gas. Evidence for 'deliberate': HydroCrackerT1 runs three recipes over 19 machines (15 Working), and relocation §8.5 treats fuel gas as a budgeted currency (reformer feed, gas kilns). In the UI: (1) count how many hydrocrackers carry DieselReforming vs HeavyOilCrackingToNaphtha; (2) check naphtha and fuel-gas consumers — is anything actually starved of them?; (3) then choose ONE: (a) disable DieselReforming on the surplus machines in the UI (MachineToggleRecipeActiveCmd with recipe id DieselReforming — sourced from live/src-diesel.json — may be prepared per-machine in-session once entity ids are resolved, entity-settings/confirm); (b) keep the loop and record WHY (the demand it serves) in the run report, in which case the diesel fix moves wholly to production (distillation capacity) and phase 1's diesel floor becomes the guard; or (c) rebalance — some machines reformed, some cracking. Record the decision and its evidence either way.",
+          "why": "The tasking for this plan is explicit: the loop is an open question to investigate and decide, NOT a leftover to silently assume. 112 of 161 monthly diesel consumption rides on the answer."
+        },
+        {
+          "args": {
+            "isAbove": false,
+            "isEnabled": true,
+            "storageId": {
+              "$entity": {
+                "match": "first",
+                "product": "Product_Diesel",
+                "proto": "StorageFluidT3"
+              }
+            }
+          },
+          "class": "pins-alerts",
+          "do": "StorageAlertSetEnabledCmd",
+          "flags": [
+            "args-recheck-at-prepare"
+          ],
+          "id": "p0-diesel-storage-alert",
+          "note": "Arm the game's own below-threshold alert on a bulk diesel tank (capture shows two StorageFluidT3 diesel tanks, 1,873/3,000 and 1,770/3,000). Verified command; arg names checked against live/commands.json. StorageAlertSetThresholdCmd (wired) may set the level in-session."
+        }
+      ],
+      "skippable": false
+    },
+    {
+      "checks": [
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 15
+          },
+          "id": "p1-chest-not-draining",
+          "note": "The chest was full at capture; if relocation builds start draining it below 90% the phase-0 gate discipline (nothing starts on a partial chest) is being violated in spirit.",
+          "severity": "warning",
+          "when": {
+            "any": [
+              {
+                "metric": "storage.percent_full",
+                "op": "<",
+                "product": "Product_ConstructionParts",
+                "value": 90
+              },
+              {
+                "metric": "storage.percent_full",
+                "op": "<",
+                "product": "Product_ConstructionParts2",
+                "value": 90
+              }
+            ]
+          }
+        },
+        {
+          "action": "crisis-protocol",
+          "every": {
+            "minutes": 5
+          },
+          "id": "p1-diesel-floor",
+          "severity": "critical",
+          "when": {
+            "metric": "product.quantity",
+            "op": "<",
+            "product": "Product_Diesel",
+            "value": 2500
+          }
+        }
+      ],
+      "entry_gate": [
+        {
+          "metric": "storage.percent_full",
+          "note": "TRUE at capture: 741/741 = 100% (diagnosis-v1 §4).",
+          "op": ">=",
+          "product": "Product_ConstructionParts",
+          "value": 99
+        },
+        {
+          "metric": "storage.percent_full",
+          "note": "TRUE at capture: 507/507 = 100% (diagnosis-v1 §4).",
+          "op": ">=",
+          "product": "Product_ConstructionParts2",
+          "value": 99
+        },
+        {
+          "metric": "product.stored",
+          "note": "TRUE at capture: stored 7,205. Threshold is the relocation §4 row: >=120 min of one Assembly Electrified II's 24 slab/min draw (~2,900) — a dataset-rate conversion, not a fleet measurement.",
+          "op": ">=",
+          "product": "Product_ConcreteSlab",
+          "value": 2900
+        },
+        {
+          "metric": "product.quantity",
+          "note": "TRUE at capture: 19,811. Relocation §4 coal row (~4,000 while one caster pair + coal kilns run), evaluated early because coal is import-only from now on (Philip's 30-Oct priorities).",
+          "op": ">=",
+          "product": "Product_Coal",
+          "value": 4000
+        }
+      ],
+      "exit_gate": [
+        {
+          "for": {
+            "evaluations": 5
+          },
+          "metric": "census.transports_fully_connected_ratio",
+          "note": "Capture: 1,015/1,025 = 0.9902 — passes by a hair. The 10 not-fully-connected segments (diagnosis-v1 §1, incl. 5 single-tile dead ends) are the spine audit's fix list; if this gate will not hold, those segments are why.",
+          "op": ">=",
+          "value": 0.99
+        },
+        {
+          "for": {
+            "months": 1
+          },
+          "metric": "storage.percent_full",
+          "op": ">=",
+          "product": "Product_ConstructionParts",
+          "value": 99
+        },
+        {
+          "for": {
+            "months": 1
+          },
+          "metric": "storage.percent_full",
+          "op": ">=",
+          "product": "Product_ConstructionParts2",
+          "value": 99
+        },
+        {
+          "metric": "product.quantity",
+          "op": ">=",
+          "product": "Product_Steel",
+          "value": 1000
+        },
+        {
+          "metric": "product.quantity",
+          "op": ">=",
+          "product": "Product_Diesel",
+          "value": 4000
+        },
+        {
+          "metric": "product.stored",
+          "op": ">=",
+          "product": "Product_ConcreteSlab",
+          "value": 2900
+        }
+      ],
+      "fallbacks": {
+        "on_check_fail": "crisis-protocol",
+        "on_gate_stall": "pause-and-report",
+        "stall_after": {
+          "months": 2
+        }
+      },
+      "id": "phase-1-war-chest-spine",
+      "intent": "Relocation Phase 0: confirm the war chest (§4) and formalise the N-S rail spine (sidings + district junctions stubbed, central fuel station on its own siding). NO demolitions. The chest's CP rows are already satisfied by live state — the entry gate below evaluates TRUE against the captures, and says so.",
+      "name": "War chest + spine skeleton (relocation Phase 0)",
+      "orders": [
+        {
+          "class": "manual",
+          "do": "observe-only",
+          "id": "p1-war-chest-audit",
+          "observe": "Audit the remaining §4 rows against live state and record each as MET / NOT MET / UNEVALUABLE: steel >=120 min of total downstream draw (UNEVALUABLE as minutes — the quantity proxy is phase 0's exit floor, already gated); diesel and maintenance >=120 min of fleet+plant draw (UNEVALUABLE — maintenance has no product, format G6; diesel draw is not a recipe rate); fertilizer row belongs to phase 5, not here; food row is [pop]-marked in the source plan and the capture now supplies the figure (population 2,320, monthsOfFood 26 — record MET with that evidence). Do not start phase 2 builds on a chest this audit calls NOT MET without a human decision recorded in the run report."
+        },
+        {
+          "asset_status": "not-yet-authored",
+          "blueprint_ref": "spine/north-south-trunk-with-district-sidings",
+          "class": "construction",
+          "completion": "human-confirm",
+          "district": "spine",
+          "do": "place-blueprint",
+          "id": "p1-formalise-spine",
+          "note": "Degrades to a manual build: formalise the N-S spine in the west coastal plain (trunk + parallel rail gap), sidings and junction stubs for districts 1-5, NO industry on the trunk, districts set back behind the gap (Dragon Isle layout doctrine + relocation §2/§6 audit: stations on sidings never the through route, no reversing through junctions, crossings out of no-stop zones)."
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "p1-central-fuel-station",
+          "step": "Stand up the central fuel station ON the spine, on its own siding, with the train depot co-located on the same siding (relocation §8.2): fuel in at the fuel station, nothing loaded where it is unloaded, depot moves never occupy the through route. Census evidence: FuelStationHydrogenT1 ×6 and TrainDepot ×1 already exist — verify in the UI whether they already meet this spec before building anything new.",
+          "why": "Relocation Phase 0 build list + §6 blockage audit: trains detouring across the network to refuel are phantom traffic."
+        },
+        {
+          "args": {
+            "importStep": 10,
+            "storageId": {
+              "$entity": {
+                "match": "first",
+                "product": "Product_Steel",
+                "proto": "StorageUnitT2"
+              }
+            }
+          },
+          "class": "storage",
+          "do": "StorageSetSliderStepCmd",
+          "flags": [
+            "wired-command",
+            "args-recheck-at-prepare"
+          ],
+          "id": "p1-steel-buffer-keep-full",
+          "note": "Set the steel buffer's import slider to full (step 10 = 100%; slider steps are Percent/10000 per the v0.6.1 recon). Wired command — first live use is human-confirmed. Before/after slider values ARE readable once bridge v0.6.1+ is installed (format G7 resolved: storage rows carry importStep), so the executor verifies by re-reading the storages route, not by this predicate list."
+        }
+      ],
+      "skippable": false
+    },
+    {
+      "checks": [
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 15
+          },
+          "id": "p2-slab-buffer-falling",
+          "note": "Slabs are the relocation's petrol (§4): a falling buffer mid-relocation starves every later phase.",
+          "severity": "warning",
+          "when": {
+            "metric": "product.net_flow",
+            "op": "<",
+            "product": "Product_ConcreteSlab",
+            "value": 0,
+            "window": "thisMonth"
+          }
+        },
+        {
+          "action": "crisis-protocol",
+          "every": {
+            "minutes": 5
+          },
+          "id": "p2-diesel-floor",
+          "severity": "critical",
+          "when": {
+            "metric": "product.quantity",
+            "op": "<",
+            "product": "Product_Diesel",
+            "value": 2500
+          }
+        }
+      ],
+      "entry_gate": [
+        {
+          "metric": "product.stored",
+          "note": "TRUE at capture (7,205): the slab reserve exists; what is missing is FLOW, which is this phase's job.",
+          "op": ">=",
+          "product": "Product_ConcreteSlab",
+          "value": 2900
+        },
+        {
+          "metric": "census.transports_fully_connected_ratio",
+          "op": ">=",
+          "value": 0.99
+        }
+      ],
+      "exit_gate": [
+        {
+          "metric": "census.proto_count",
+          "op": ">=",
+          "proto": "ConcreteMixerT2",
+          "value": 5
+        },
+        {
+          "metric": "census.proto_count",
+          "op": ">=",
+          "proto": "RotaryKiln",
+          "value": 3
+        },
+        {
+          "all": [
+            {
+              "any": [
+                {
+                  "metric": "product.produced",
+                  "op": ">",
+                  "product": "Product_ConcreteSlab",
+                  "value": 0,
+                  "window": "lastMonth"
+                },
+                {
+                  "metric": "product.consumed",
+                  "op": ">",
+                  "product": "Product_ConcreteSlab",
+                  "value": 0,
+                  "window": "lastMonth"
+                }
+              ]
+            },
+            {
+              "metric": "product.net_flow",
+              "op": ">=",
+              "product": "Product_ConcreteSlab",
+              "value": 0,
+              "window": "lastMonth"
+            }
+          ],
+          "for": {
+            "months": 1
+          },
+          "note": "Sustained non-negative slab balance — the §5 plant at 48+ slab/min against current draw (~0-4/month at capture) should pass easily ONCE flow restarts; if it does not, the stall diagnosis was wrong and the phase holds. Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+        }
+      ],
+      "fallbacks": {
+        "on_check_fail": "crisis-protocol",
+        "on_gate_stall": "pause-and-report",
+        "stall_after": {
+          "months": 2
+        }
+      },
+      "id": "phase-2-concrete-scale-up",
+      "intent": "Relocation Phase 1: the concrete district at §5 sizing (2 blocks = 2 kiln + 2 Mixer II = 48 slab/min, slag-aggregate route). Live state complicates the naive read: 4 Mixer II and 2 kilns ALREADY exist, but at capture 2 mixers are Paused and 2 OutputFull and slab production is 0 this month — so this phase is first a restart/diagnosis of what exists, then ONE additional block, then cutover. Starter concrete is demolished only after the checkpoint (human act; deconstruction is banned for the agent).",
+      "name": "Concrete scale-up (relocation Phase 1)",
+      "orders": [
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "p2-diagnose-paused-mixers",
+          "step": "In the UI, establish why the existing concrete line is idle: ConcreteMixerT2 ×4 read OutputFull ×2 / Paused ×2 at capture and RotaryKiln ×2 produced ~nothing (slab produced 0 this month, 8 last month). OutputFull against a slab storage at 7,205/7,526 suggests a downstream/full-buffer stall, NOT a capacity shortage — if so, the fix is unpausing + draw management, and the additional block below is sized by the phase 3-5 build draw, not by today's flow. Record the finding; do not build the new block until this is answered.",
+          "why": "Diagnosis-v1 §5 (blocked clusters) + stats: building capacity on top of an undiagnosed stall is the overbuilding trap."
+        },
+        {
+          "asset_status": "authored",
+          "blueprint_ref": "concrete-district/kiln-plus-mixer2-block",
+          "class": "construction",
+          "completion": "verify-predicates",
+          "count": 1,
+          "district": "concrete-district",
+          "do": "place-blueprint",
+          "id": "p2-build-one-concrete-block",
+          "note": "ONE §5 block (1 Rotary Kiln + 1 Concrete Mixer II = 24 slab/min) in district 3 (mid-spine, between steel and settlement), bringing the island to kiln ×3 / Mixer II ×5. Slag-aggregate route prepared: mixers feed on crushed slag from steel (one caster pair yields 36 slag/min = the concrete block's full-rate draw, §5 symmetry). A second new block is NOT in this plan version — the existing 4 mixers plus this block exceed the §5 two-block sizing once unpaused; revisit by plan amendment if draw proves otherwise.",
+          "pack_slug": "concrete-v1",
+          "verify": [
+            {
+              "metric": "census.proto_count",
+              "op": ">=",
+              "proto": "ConcreteMixerT2",
+              "value": 5
+            },
+            {
+              "metric": "census.proto_count",
+              "op": ">=",
+              "proto": "RotaryKiln",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "p2-slag-route-and-cutover",
+          "step": "Connect crushed-slag aggregate to the mixers (Crusher reads 8/8 OutputFull on SlagCrushing/RockCrushing at capture — the slag is there; the route is the work), restart the paused mixers, and watch one full session: only when the new units sustain flow with the slab buffer RISING is starter concrete retired — retirement (demolition) is a human in-UI act after that checkpoint, never an agent order.",
+          "why": "Relocation Phase 1 checkpoint + replacement-live-before-demolition doctrine."
+        }
+      ],
+      "skippable": false
+    },
+    {
+      "checks": [
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 15
+          },
+          "id": "p3-ore-still-negative",
+          "note": "TRUE at capture (42 vs 192). Expected to fire until the new mines + shuttle land; a rising deficit after they land means logistics, not geology.",
+          "severity": "warning",
+          "when": {
+            "metric": "product.net_flow",
+            "op": "<",
+            "product": "Product_IronOre",
+            "value": 0,
+            "window": "thisMonth"
+          }
+        },
+        {
+          "action": "crisis-protocol",
+          "every": {
+            "minutes": 5
+          },
+          "id": "p3-diesel-excavation-draw",
+          "note": "Excavation is the phase that eats the diesel reserve (relocation Phase 2 risk) — this floor is the phase's hard guard.",
+          "severity": "critical",
+          "when": {
+            "metric": "product.quantity",
+            "op": "<",
+            "product": "Product_Diesel",
+            "value": 2500
+          }
+        },
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 15
+          },
+          "id": "p3-spine-blockage-proxy",
+          "note": "Coarse proxy only: a visible queue on the through route (relocation risk 5, single-spine dependency) has no direct API signal; a falling connectivity ratio during shuttle construction is the capturable correlate. The real audit is visual, in the UI.",
+          "severity": "warning",
+          "when": {
+            "metric": "census.transports_fully_connected_ratio",
+            "op": "<",
+            "value": 0.98
+          }
+        }
+      ],
+      "entry_gate": [
+        {
+          "metric": "census.proto_count",
+          "note": "TRUE at capture (×1): rail infrastructure exists; what is unproven is the line state (see the trains-route assumption).",
+          "op": ">=",
+          "proto": "TrainDepot",
+          "value": 1
+        },
+        {
+          "metric": "census.proto_count",
+          "note": "TRUE at capture (×30 hydrogen locos — the §8.5 hydrogen-traction policy is already the fleet's reality).",
+          "op": ">=",
+          "proto": "LocomotiveT1Hydrogen",
+          "value": 1
+        },
+        {
+          "metric": "product.quantity",
+          "note": "Excavation burns diesel while producing nothing (relocation Phase 2 risk); the war-chest diesel reserve is this phase's entry condition.",
+          "op": ">=",
+          "product": "Product_Diesel",
+          "value": 4000
+        }
+      ],
+      "exit_gate": [
+        {
+          "flags": [
+            "trains-route-unverified"
+          ],
+          "metric": "trains.line_count",
+          "note": "UNEVALUABLE-or-false risk is flagged, not hidden: the capture's trains route read {\"lines\": []} despite 30 locos in service. If the route under-reports on the live bridge too, this gate holds the phase at pause-and-report until a human confirms line state in the UI and the plan is amended — it is never waived silently.",
+          "op": ">=",
+          "value": 1
+        },
+        {
+          "all": [
+            {
+              "any": [
+                {
+                  "metric": "product.produced",
+                  "op": ">",
+                  "product": "Product_IronOre",
+                  "value": 0,
+                  "window": "lastMonth"
+                },
+                {
+                  "metric": "product.consumed",
+                  "op": ">",
+                  "product": "Product_IronOre",
+                  "value": 0,
+                  "window": "lastMonth"
+                }
+              ]
+            },
+            {
+              "metric": "product.net_flow",
+              "op": ">=",
+              "product": "Product_IronOre",
+              "value": 0,
+              "window": "lastMonth"
+            }
+          ],
+          "for": {
+            "months": 1
+          },
+          "note": "Shuttle + new mines deliver ore faster than consumption — the relocation Phase 2 checkpoint ('delivers faster than the old mines' remaining output'), expressed in the only capturable form: a sustained non-negative island ore balance. Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+        }
+      ],
+      "fallbacks": {
+        "on_check_fail": "crisis-protocol",
+        "on_gate_stall": "pause-and-report",
+        "stall_after": {
+          "months": 3
+        }
+      },
+      "id": "phase-3-iron-mines-ore-shuttle",
+      "intent": "Relocation Phase 2: excavation at the new NE ore body, a dedicated load-only/unload-only iron-ore shuttle to the steel site (district 1 → 2), starter mines left to run out (no demolition — abandonment). Iron ore is net-negative at capture (produced 42 vs consumed 192 this month) — the dying mines are already failing, which is why this phase precedes big steel.",
+      "name": "New iron mines + ore shuttle (relocation Phase 2)",
+      "orders": [
+        {
+          "asset_status": "not-yet-authored",
+          "blueprint_ref": "mining/ne-iron-excavation",
+          "class": "construction",
+          "completion": "human-confirm",
+          "district": "iron-mines",
+          "do": "place-blueprint",
+          "id": "p3-build-new-iron-mines",
+          "note": "Excavation at the new ore body (NE, ridge-foot flat spot per the island survey), mega-excavator working faces planned (fleet arrives in phase 7 — faces are worked by the current ExcavatorT2 fleet, ×23 at capture, until then). Keep starter mines producing as a top-up, not a dependency; they are abandoned, never demolished, when they run out."
+        },
+        {
+          "class": "manual",
+          "completion": "verify-predicates",
+          "do": "manual-step",
+          "id": "p3-build-ore-shuttle-manual",
+          "step": "Build the dedicated ore shuttle BY HAND in the UI, to the relocation §6 station spec: load-only station at the mine, unload-only station at the steel site (a station cannot load and unload the same product), both on sidings off the spine — never on the through route; buffer storage >= 1 full trainload at EACH end, linked to its station; hydrogen fuel available on the route (the phase-1 central fuel station). This shuttle is a dedicated consist, NOT general freight.",
+          "verify": [
+            {
+              "flags": [
+                "trains-route-unverified"
+              ],
+              "metric": "trains.line_count",
+              "op": ">=",
+              "value": 1
+            }
+          ],
+          "why": "Track/station construction semantics are untested (format G3/G10); manual laying is the honest path. The command primitives are recorded below as sandbox-only."
+        },
+        {
+          "args": {},
+          "class": "trains",
+          "do": "CreateNewTrainNetworkCmd",
+          "flags": [
+            "wired-command",
+            "sandbox-only"
+          ],
+          "id": "p3-create-network-command-sandbox-only",
+          "note": "Catalogue primitive (wired, no args), recorded so the plan names the real command — MUST NOT be applied to this run until sandbox validation is recorded (format §6.1/G10). The in-UI equivalent in p3-build-ore-shuttle-manual is this plan's path.",
+          "requires_sandbox_validation": true
+        },
+        {
+          "args": {},
+          "class": "trains",
+          "do": "CreateNewTrainLineCmd",
+          "flags": [
+            "wired-command",
+            "sandbox-only"
+          ],
+          "id": "p3-create-line-command-sandbox-only",
+          "note": "Same status as the network command: real catalogue primitive, wired, untested semantics. Sandbox-only in this plan version.",
+          "requires_sandbox_validation": true
+        }
+      ],
+      "skippable": false
+    },
+    {
+      "checks": [
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 5
+          },
+          "id": "p4-steel-buffer-falling-in-trial",
+          "note": "Relocation risk 1's warning sign, verbatim: steel buffer falling while starter steel is paused for the trial = cutover not ready. Report includes the buffer trend; unpausing starter steel is the human's call from this report.",
+          "severity": "critical",
+          "when": {
+            "metric": "product.net_flow",
+            "op": "<",
+            "product": "Product_Steel",
+            "value": 0,
+            "window": "thisMonth"
+          }
+        },
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 15
+          },
+          "id": "p4-coal-buffer-trend",
+          "note": "Relocation risk 3: coal is import-only now; verified draw is 15/min per steel line (30/pair) + 3/min kilns until the gas-kiln swap. A dock buffer trending down across ship cycles is the warning — if it appears, prioritise the gas kilns (§5 coal-free swap) by plan amendment.",
+          "severity": "warning",
+          "when": {
+            "metric": "product.net_flow",
+            "op": "<",
+            "product": "Product_Coal",
+            "value": 0,
+            "window": "thisMonth"
+          }
+        }
+      ],
+      "entry_gate": [
+        {
+          "flags": [
+            "trains-route-unverified"
+          ],
+          "metric": "trains.line_count",
+          "op": ">=",
+          "value": 1
+        },
+        {
+          "all": [
+            {
+              "any": [
+                {
+                  "metric": "product.produced",
+                  "op": ">",
+                  "product": "Product_IronOre",
+                  "value": 0,
+                  "window": "lastMonth"
+                },
+                {
+                  "metric": "product.consumed",
+                  "op": ">",
+                  "product": "Product_IronOre",
+                  "value": 0,
+                  "window": "lastMonth"
+                }
+              ]
+            },
+            {
+              "metric": "product.net_flow",
+              "op": ">=",
+              "product": "Product_IronOre",
+              "value": 0,
+              "window": "lastMonth"
+            }
+          ],
+          "note": "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+        },
+        {
+          "metric": "product.quantity",
+          "note": "The §4 steel trial reserve (120 min of total downstream draw, as a quantity proxy): the trial below is covered by this buffer or it does not start.",
+          "op": ">=",
+          "product": "Product_Steel",
+          "value": 800
+        }
+      ],
+      "exit_gate": [
+        {
+          "metric": "census.proto_count",
+          "note": "One new caster pair built (capture: ×4).",
+          "op": ">=",
+          "proto": "CasterCooledT2",
+          "value": 6
+        },
+        {
+          "all": [
+            {
+              "any": [
+                {
+                  "metric": "product.produced",
+                  "op": ">",
+                  "product": "Product_Steel",
+                  "value": 0,
+                  "window": "lastMonth"
+                },
+                {
+                  "metric": "product.consumed",
+                  "op": ">",
+                  "product": "Product_Steel",
+                  "value": 0,
+                  "window": "lastMonth"
+                }
+              ]
+            },
+            {
+              "metric": "product.net_flow",
+              "op": ">",
+              "product": "Product_Steel",
+              "value": 0,
+              "window": "lastMonth"
+            }
+          ],
+          "for": {
+            "months": 1
+          },
+          "note": "Sustained positive steel balance with starter steel paused — the trial's pass condition in capturable form. At capture this reads -46/month; it is the single most important predicate in this plan. Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+        },
+        {
+          "metric": "product.quantity",
+          "note": "Buffer rebuilt above the capture level (1,108) and rising per the flow predicate above — plan-set target.",
+          "op": ">=",
+          "product": "Product_Steel",
+          "value": 1500
+        }
+      ],
+      "fallbacks": {
+        "on_check_fail": "crisis-protocol",
+        "on_gate_stall": "pause-and-report",
+        "stall_after": {
+          "months": 3
+        }
+      },
+      "id": "phase-4-big-steel-cutover",
+      "intent": "Relocation Phase 3 — the highest-risk phase, and the definitive fix for the phase-0 wound IF the wound is capacity/input at the starter site: big steel at district 2 (adjacent to the new mines), built in caster pairs (§5/§8.1: casters are the unit, molten steel + oxygen are the constraints), cut over under a pause-don't-demolish trial of the starter steel.",
+      "name": "Big steel plant + cutover trial (relocation Phase 3)",
+      "orders": [
+        {
+          "asset_status": "authored",
+          "blueprint_ref": "steel-district/caster-pair-block",
+          "class": "construction",
+          "completion": "verify-predicates",
+          "count": 1,
+          "district": "steel-district",
+          "do": "place-blueprint",
+          "id": "p4-build-big-steel",
+          "note": "ONE caster pair (§5 block: 2× Smelting Furnace II + 2× Oxygen Furnace II + 2× Caster (Cooled) II = 48 steel/min at full feed; coal 30/min per pair on the ore route; slag 36/min to concrete) at district 2, immediately south of/adjacent to the new mines. Size backwards per §8.1: casters = target/24, molten steel and oxygen (18/min per line) sized to feed exactly that — a third pair without the molten/oxygen feed is decoration. Iron/steel buffers at both ends. The phase-0 investigation's binding link is an input to this sizing, not an afterthought.",
+          "pack_slug": "steel-v1",
+          "pack_slug_overlay": "steel-v2",
+          "verify": [
+            {
+              "metric": "census.proto_count",
+              "op": ">=",
+              "proto": "CasterCooledT2",
+              "value": 6
+            }
+          ]
+        },
+        {
+          "args": {
+            "isAbove": false,
+            "isEnabled": true,
+            "storageId": {
+              "$entity": {
+                "match": "first",
+                "product": "Product_Steel",
+                "proto": "StorageUnitT2"
+              }
+            }
+          },
+          "class": "pins-alerts",
+          "do": "StorageAlertSetEnabledCmd",
+          "flags": [
+            "args-recheck-at-prepare"
+          ],
+          "id": "p4-steel-buffer-alert",
+          "note": "Below-threshold alert on a steel buffer: the trial below is judged on this buffer's behaviour, so the game's own alert watches it continuously. Verified command."
+        },
+        {
+          "class": "manual",
+          "do": "observe-only",
+          "duration": "until the exit gate's sustained-flow predicates hold or the trial is aborted by the human",
+          "id": "p4-pause-dont-demolish-trial",
+          "observe": "THE TRIAL (relocation Phase 3 checkpoint): a human PAUSES the starter steel line in the UI (never demolishes). The executor observes for the duration: the new plant must hold output with the steel buffer FULL AND RISING while starter steel is paused. If the buffer falls during the trial, the cutover is not ready — starter steel is unpaused, the shortfall is diagnosed (per §8.1: molten steel supply and oxygen feed first), and the trial repeats. Cut over one caster line at a time if output wobbles."
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "p4-retire-starter-steel",
+          "step": "ONLY after the trial checkpoint passes (exit gate holding): demolish the starter steel builds in the UI. This is a human act — deconstruction is banned for the agent in this plan, and the relocation doctrine is replacement-live-before- demolition with the trial in between.",
+          "why": "Relocation Phase 3 replaces ALL starter steel — but the demolition is the last step of the phase, not the first."
+        }
+      ],
+      "skippable": false
+    },
+    {
+      "checks": [
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 15
+          },
+          "id": "p5-fertilizer-before-farms-guard",
+          "note": "Risk 2's tripwire: farm count above the starter 8 while the fertilizer buffer is below the planting gate means someone planted ahead of fertilizer — the failure that masquerades as 'not enough farms'. Never answer it by building farms.",
+          "severity": "critical",
+          "when": {
+            "all": [
+              {
+                "flags": [
+                  "proto-assumption"
+                ],
+                "metric": "census.proto_count",
+                "op": ">",
+                "proto": "FarmT2",
+                "value": 8
+              },
+              {
+                "metric": "product.stored",
+                "op": "<",
+                "product": "Product_Fertilizer",
+                "value": 1500
+              }
+            ]
+          }
+        },
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 5
+          },
+          "id": "p5-food-floor-transition",
+          "note": "Stricter than the global floor while the farm transition is live (capture: 26 — a long way to fall, which is the margin this phase spends).",
+          "severity": "critical",
+          "when": {
+            "metric": "settlement.months_of_food",
+            "op": "<",
+            "value": 6
+          }
+        },
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 15
+          },
+          "id": "p5-soya-margin",
+          "note": "Capture: soybean quantity 28, FoodProcessor starved — the tofu line is ALREADY on its thin margin (§5: 9.6 grown vs 9 drawn at full build-out). Weak evidence in harvest months (seasonal rhythm); read with the trend, not alone.",
+          "severity": "warning",
+          "when": {
+            "metric": "product.quantity",
+            "op": "<",
+            "product": "Product_Soybean",
+            "value": 50
+          }
+        }
+      ],
+      "entry_gate": [
+        {
+          "metric": "settlement.months_of_food",
+          "note": "TRUE at capture (26). Food production never gaps: the farm transition starts only with a deep food buffer, because starter farms retire inside this phase.",
+          "op": ">=",
+          "value": 6
+        },
+        {
+          "all": [
+            {
+              "any": [
+                {
+                  "metric": "product.produced",
+                  "op": ">",
+                  "product": "Product_Steel",
+                  "value": 0,
+                  "window": "lastMonth"
+                },
+                {
+                  "metric": "product.consumed",
+                  "op": ">",
+                  "product": "Product_Steel",
+                  "value": 0,
+                  "window": "lastMonth"
+                }
+              ]
+            },
+            {
+              "metric": "product.net_flow",
+              "op": ">=",
+              "product": "Product_Steel",
+              "value": 0,
+              "window": "lastMonth"
+            }
+          ],
+          "note": "Do not stack the farm transition on top of an unresolved steel bleed — one district at a time (relocation doctrine). Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+        }
+      ],
+      "exit_gate": [
+        {
+          "metric": "product.storage_capacity",
+          "op": ">=",
+          "product": "Product_Fertilizer",
+          "value": 2000
+        },
+        {
+          "metric": "product.stored",
+          "op": ">=",
+          "product": "Product_Fertilizer",
+          "value": 1500
+        },
+        {
+          "flags": [
+            "proto-assumption"
+          ],
+          "metric": "census.proto_count",
+          "note": "Capture: ×8. The count is the capturable proxy for 'the §5 district exists'; the crop MIX (7/5/2/3/3) is verified by the human at placement, not by any route.",
+          "op": ">=",
+          "proto": "FarmT2",
+          "value": 20
+        },
+        {
+          "metric": "settlement.months_of_food",
+          "op": ">=",
+          "value": 6
+        },
+        {
+          "all": [
+            {
+              "any": [
+                {
+                  "metric": "product.produced",
+                  "op": ">",
+                  "product": "Product_Fertilizer",
+                  "value": 0,
+                  "window": "lastMonth"
+                },
+                {
+                  "metric": "product.consumed",
+                  "op": ">",
+                  "product": "Product_Fertilizer",
+                  "value": 0,
+                  "window": "lastMonth"
+                }
+              ]
+            },
+            {
+              "metric": "product.net_flow",
+              "op": ">=",
+              "product": "Product_Fertilizer",
+              "value": 0,
+              "window": "lastMonth"
+            }
+          ],
+          "for": {
+            "months": 1
+          },
+          "note": "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+        }
+      ],
+      "fallbacks": {
+        "on_check_fail": "crisis-protocol",
+        "on_gate_stall": "pause-and-report",
+        "stall_after": {
+          "months": 3
+        }
+      },
+      "id": "phase-5-fertilizer-then-farms",
+      "intent": "Relocation Phase 4, order enforced by preconditions, not by hope: Air Separators → Hydrogen Reformer (fuel gas) → ammonia → Fertilizer I at §5 sizing (60/min capacity against a ~37/min full-district draw), fertilizer buffer FULL, and only then the 20-farm district (7 soya / 5 wheat / 2 potato / 3 veg / 3 corn + tofu processor + half-rate bakery) with its seawater supply. Live state: the chemical seed exists (ChemicalPlant ×4 incl. FertilizerProduction recipe, AirSeparator ×3, HydrogenReformer ×14) but Product_Fertilizer quantity is 10 with ZERO stored and only 500 storage capacity — the chain is built-ish and the buffer/flow are not. Farms: FarmT2 ×8 exist (the starter farms, retired LAST, after new output flows).",
+      "name": "Fertilizer chain, THEN farm district (relocation Phase 4)",
+      "orders": [
+        {
+          "args": {
+            "nodeId": "ResearchFertilizers"
+          },
+          "class": "research",
+          "do": "ResearchStartCmd",
+          "id": "p5-research-fertilizers",
+          "note": "Sourced id (research_ids.txt). Whether it is already complete cannot be proven from the captures (no completed-node list pre-v0.6.2, format G1): with bridge >=0.6.2 the verify below reads the researched list directly; on an older bridge this order's completion is human-confirmed against the research screen. If already complete, the order is skipped by its verify.",
+          "verify": [
+            {
+              "any": [
+                {
+                  "metric": "research.current",
+                  "op": "==",
+                  "value": "ResearchFertilizers"
+                },
+                {
+                  "metric": "research.queue_contains",
+                  "node": "ResearchFertilizers",
+                  "op": "==",
+                  "value": true
+                },
+                {
+                  "metric": "research.completed",
+                  "node": "ResearchFertilizers"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "p5-audit-chemical-chain",
+          "step": "Audit the existing chemical plant recipe assignments in the UI against the §5 sizing: Fertilizer I needs 2 Chemical Plants (30/min each), ammonia needs 4 (6/min each = 24/min, exactly the fertilizer draw), fed by 2 Air Separators (nitrogen is the binding constraint: 48 N2/min needed, one separator gives 36) and hydrogen from the reformer backbone. Capture state to reconcile: ChemicalPlant ×4 with FIVE recipes spread across them (incl. PaperProduction and DisinfectantProduction), AirSeparator ×3 with 2 OutputFull, HydrogenReformer ×14 (backbone oversized vs §8.5's 2 — do not build more). Reassign recipes in the UI as needed; MachineToggleRecipeActiveCmd may be prepared per-machine in-session (entity-settings/confirm) once entity ids are resolved.",
+          "why": "The plants largely exist; the ASSIGNMENT is the gap between census counts and zero stored fertilizer."
+        },
+        {
+          "asset_status": "not-yet-authored",
+          "blueprint_ref": "chemical-district/fertilizer-60-block",
+          "class": "construction",
+          "completion": "verify-predicates",
+          "district": "chemical-district",
+          "do": "place-blueprint",
+          "id": "p5-build-fertilizer-capacity",
+          "note": "Fill whatever the audit finds missing toward §5 capacity (60 Fertilizer I/min), in district 4 (mid-spine, near the oil/refinery side — fuel gas → reformer → ammonia). Includes the fertilizer BUFFER EXPANSION: Product_Fertilizer storage capacity is 500 at capture against the §4 hard gate of a full buffer >= ~2,200 (60 min of full-district draw). Storage designation is a UI act (StorageSetProductCmd may be prepared in-session against a resolved empty-storage entity, storage/confirm).",
+          "verify": [
+            {
+              "metric": "product.storage_capacity",
+              "op": ">=",
+              "product": "Product_Fertilizer",
+              "value": 2000
+            }
+          ]
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "p5-farm-district-water-first",
+          "step": "Land the farm district's seawater supply WITH the earthworks, before planting: district draw is ~168/min (relocation §8.4 — the island's biggest single water decision), supplied by seawater pumping scaled to the district with storage buffers AT the district. Groundwater stays for the settlement/ industrial core. A farm district at partial water is the farms-before-fertilizer trap, wetter (risk 4).",
+          "why": "Relocation §8.4 sequencing: water lands before planting, not as an afterthought pipe."
+        },
+        {
+          "asset_status": "not-yet-authored",
+          "blueprint_ref": "farm-district/20-farm-mix-with-tofu-bread",
+          "class": "construction",
+          "completion": "verify-predicates",
+          "district": "farm-district",
+          "do": "place-blueprint",
+          "id": "p5-build-farm-district",
+          "note": "The §5 mix: 20 farms (soya 7 — the 7th is NOT optional, 9.6 grown vs 9 drawn; wheat 5; potato 2; vegetables 3; corn 3) + 1 Food Processor (tofu) + Food Mill + half-rate Baking Unit, at district 5 (west-plain flat ground within reach of the settlement; cleared southern forest is the fallback — and its wood reserve is NOT cleared for farms that fit on the plain). Crop assignment is manual (crop proto ids unsourced). The fertilizer precondition below is the phase's whole point: it must hold before this order is due.",
+          "preconditions": [
+            {
+              "metric": "product.stored",
+              "note": "HARD GATE (relocation §3 Phase 4 checkpoint + §7 risk 2): fertilizer buffer substantially full BEFORE the first new farm is planted. Threshold is plan-set against the expanded >=2,000 capacity (the §4 row's ~2,200 assumes the full buffer; 1,500 is the planting threshold, 2,200 the full mark — tune in play, never downward without a human decision).",
+              "op": ">=",
+              "product": "Product_Fertilizer",
+              "value": 1500
+            }
+          ],
+          "verify": [
+            {
+              "flags": [
+                "proto-assumption"
+              ],
+              "metric": "census.proto_count",
+              "op": ">=",
+              "proto": "FarmT2",
+              "value": 20
+            }
+          ]
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "p5-retire-starter-farms",
+          "step": "Only after the new district's first tofu and bread have actually been produced (watch Product_Tofu / Product_Bread flow turn positive): retire the starter farms in the UI. Food production never gaps — the old farms are the last of the old industry to move (relocation Phase 4).",
+          "why": "Retirement order is doctrine; the demolition itself is a human act (deconstruction banned for the agent)."
+        }
+      ],
+      "skippable": false
+    },
+    {
+      "checks": [
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 15
+          },
+          "id": "p6-supply-before-upgrades-guard",
+          "note": "Phase 5-risk tripwire (relocation numbering): more HousingT3 than the capture's 5 while either supply buffer is below its wave threshold = upgrades running ahead of supply.",
+          "severity": "warning",
+          "when": {
+            "all": [
+              {
+                "metric": "census.proto_count",
+                "op": ">",
+                "proto": "HousingT3",
+                "value": 5
+              },
+              {
+                "any": [
+                  {
+                    "metric": "product.quantity",
+                    "op": "<",
+                    "product": "Product_HouseholdGoods",
+                    "value": 100
+                  },
+                  {
+                    "metric": "product.quantity",
+                    "op": "<",
+                    "product": "Product_MedicalSupplies",
+                    "value": 50
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 15
+          },
+          "id": "p6-coal-import-buffer",
+          "note": "Capture: 19,811 falling ~200/month with zero domestic production this year — at that draw this fires in ~6-7 years of game time, but phase 4's new caster pair roughly doubles steel's coal draw. The §4 import-buffer floor, watched.",
+          "severity": "warning",
+          "when": {
+            "metric": "product.quantity",
+            "op": "<",
+            "product": "Product_Coal",
+            "value": 4000
+          }
+        }
+      ],
+      "entry_gate": [
+        {
+          "all": [
+            {
+              "any": [
+                {
+                  "metric": "product.produced",
+                  "op": ">",
+                  "product": "Product_Steel",
+                  "value": 0,
+                  "window": "lastMonth"
+                },
+                {
+                  "metric": "product.consumed",
+                  "op": ">",
+                  "product": "Product_Steel",
+                  "value": 0,
+                  "window": "lastMonth"
+                }
+              ]
+            },
+            {
+              "metric": "product.net_flow",
+              "op": ">=",
+              "product": "Product_Steel",
+              "value": 0,
+              "window": "lastMonth"
+            }
+          ],
+          "note": "Household goods draw steel (4/min per line) and medical equipment draws 6/min (§5): do not open two steel fronts at once. Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+        },
+        {
+          "metric": "settlement.months_of_food",
+          "op": ">=",
+          "value": 6
+        },
+        {
+          "metric": "settlement.homeless",
+          "op": "==",
+          "value": 0
+        }
+      ],
+      "exit_gate": [
+        {
+          "metric": "product.quantity",
+          "op": ">=",
+          "product": "Product_HouseholdGoods",
+          "value": 100
+        },
+        {
+          "metric": "product.quantity",
+          "op": ">=",
+          "product": "Product_MedicalSupplies",
+          "value": 50
+        },
+        {
+          "all": [
+            {
+              "any": [
+                {
+                  "metric": "product.produced",
+                  "op": ">",
+                  "product": "Product_HouseholdGoods",
+                  "value": 0,
+                  "window": "lastMonth"
+                },
+                {
+                  "metric": "product.consumed",
+                  "op": ">",
+                  "product": "Product_HouseholdGoods",
+                  "value": 0,
+                  "window": "lastMonth"
+                }
+              ]
+            },
+            {
+              "metric": "product.net_flow",
+              "op": ">=",
+              "product": "Product_HouseholdGoods",
+              "value": 0,
+              "window": "lastMonth"
+            }
+          ],
+          "for": {
+            "months": 1
+          },
+          "note": "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+        },
+        {
+          "metric": "census.proto_count",
+          "note": "At least one wave beyond the capture's 5 blocks, with the supply predicates above holding — plan-set wave target; further waves continue under the same discipline beyond this plan's exit.",
+          "op": ">=",
+          "proto": "HousingT3",
+          "value": 6
+        },
+        {
+          "metric": "settlement.homeless",
+          "op": "==",
+          "value": 0
+        }
+      ],
+      "fallbacks": {
+        "on_check_fail": "crisis-protocol",
+        "on_gate_stall": "pause-and-report",
+        "stall_after": {
+          "months": 3
+        }
+      },
+      "id": "phase-6-housing3-waves",
+      "intent": "Relocation Phase 5: supply chains FIRST, housing upgrades in waves. Live state: HousingT3 ×5 already stand beside HousingT2 ×8, but the Housing III supply chains DO NOT EXIST — HouseholdGoods, MedicalSupplies, MedicalEquipment and Disinfectant all read quantity 0 with lifetime production 0. This phase builds the household-goods line (glass + steel + wood → 16/min per Assembly Electrified II) and the medical chain (medical equipment + disinfectant → Medical Supplies, 24/min per unit), fills both buffers, and only then rolls upgrade waves. Coal import is stood up/confirmed here if not already (import buffer doctrine from §4/Phase 5).",
+      "name": "Settlement solidification — Housing III waves (relocation Phase 5)",
+      "orders": [
+        {
+          "args": {
+            "nodeId": "ResearchHousing3"
+          },
+          "class": "research",
+          "do": "ResearchStartCmd",
+          "id": "p6-research-housing3",
+          "note": "Sourced id (research_ids.txt). HousingT3 ×5 already stand, so this node is very likely already complete — the captures cannot prove it (G1, pre-v0.6.2): with bridge >=0.6.2 the verify reads the researched list; otherwise human-confirm against the research screen and skip. Note the live queue at capture (MoltenMaterialTrains current; ArcFurnaceT1, PolySiliconProduction, GoldSmelting, LuxuryGoods, Edicts4, ThermalStorage queued) — queue this node by amendment if the queue's order matters more; do not silently dequeue (ResearchQueueDequeueCmd exists but reordering Philip's queue is a human call).",
+          "verify": [
+            {
+              "any": [
+                {
+                  "metric": "research.current",
+                  "op": "==",
+                  "value": "ResearchHousing3"
+                },
+                {
+                  "metric": "research.queue_contains",
+                  "node": "ResearchHousing3",
+                  "op": "==",
+                  "value": true
+                },
+                {
+                  "metric": "research.completed",
+                  "node": "ResearchHousing3"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "asset_status": "authored",
+          "blueprint_ref": "settlement-supply/household-goods-line",
+          "class": "construction",
+          "completion": "human-confirm",
+          "district": "settlement",
+          "do": "place-blueprint",
+          "id": "p6-build-household-goods-line",
+          "note": "Household-goods line: Assembly Electrified II, glass + steel + wood → 16/min per unit (§3 Phase 5 rates). Feedstock evidence at capture: glass quantity 5,559 (backed up — supply is not the constraint), wood 5,174, steel gated by phase 4. AssemblyElectrifiedT2 ×33 exist with 18 starved — recipe assignment in-session may beat new construction; the human decides at placement.",
+          "pack_slug": "household-goods-v1"
+        },
+        {
+          "asset_status": "not-yet-authored",
+          "blueprint_ref": "settlement-supply/medical-chain",
+          "class": "construction",
+          "completion": "human-confirm",
+          "district": "settlement",
+          "do": "place-blueprint",
+          "id": "p6-build-medical-chain",
+          "note": "Medical chain: medical equipment + disinfectant → Medical Supplies (24/min per Assembly Electrified II, §3 Phase 5). Disinfectant production already appears among the ChemicalPlant recipes at capture, yet Disinfectant quantity is 0 — assignment/flow first, new builds second (same lesson as phase 5's fertilizer audit). Antibiotics fermenters (tier II supplies) are explicitly LATER, not this phase."
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "flags": [
+            "contract-id-not-in-captures"
+          ],
+          "id": "p6-coal-import-standing",
+          "step": "Confirm the coal import is stood up as a standing supply: dock buffer sized to total draw × ship round-trip with margin (§4: ~4,000 at one caster pair + kilns, more after phase 4's pair), and the import contract active. Coal produced NOTHING this year at capture (produced thisYear 0) while 19,811 drains at ~200/month — the import is already the de facto supply; this step makes it deliberate. Contract toggling via ToggleContractCmd needs a contract id from the v0.6 contracts route, which is NOT in the captures — read it live in-session; until then this step is manual.",
+          "why": "Philip's 30-Oct priorities (coal by import from now on) + relocation Phase 5's coal note: blast furnaces must never see an empty coal buffer once starter coal routes are gone."
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "p6-housing-upgrade-waves",
+          "preconditions": [
+            {
+              "metric": "product.quantity",
+              "note": "Plan-set buffer threshold (capture: 0 — this precondition is FALSE today, which is correct: no wave may start until the line produces).",
+              "op": ">=",
+              "product": "Product_HouseholdGoods",
+              "value": 100
+            },
+            {
+              "metric": "product.quantity",
+              "note": "Plan-set buffer threshold (capture: 0 — FALSE today, by design).",
+              "op": ">=",
+              "product": "Product_MedicalSupplies",
+              "value": 50
+            }
+          ],
+          "step": "Roll Housing III upgrades block by block in the UI, one wave at a time, ONLY while both supply buffers read full/stable (the preconditions below): upgrading ahead of supply LOWERS effective tier satisfaction and unity (relocation Phase 5 risk). Housing capacity is exactly full at capture (free 0) — an upgrade wave that temporarily displaces residents breaches the homeless invariant and pauses the run; sequence waves so it cannot.",
+          "why": "Upgrades are UI placement (format G3) and the wave discipline is the phase's checkpoint, applied repeatedly."
+        },
+        {
+          "class": "manual",
+          "do": "observe-only",
+          "flags": [
+            "unsourced-ids"
+          ],
+          "id": "p6-electronics2-scoping",
+          "observe": "Scope Electronics II (relocation §8.3) WITHOUT gating on it: per Assembly Electrified II it draws PCB 6 + Electronics I 12 + poly silicon 3 → 6/min; the pinch is poly silicon, whose Silicon Reactor draws 4 hydrogen/min — Electronics II queues for the same hydrogen backbone as fertilizer (phase 5) and trains. Live evidence: ResearchPolySiliconProduction is ALREADY in the research queue at capture. But there is no Electronics II product id in the catalogue and no sourced research id (plan assumption A13), so this plan records the scoping and the queue state and builds NO gate and NO order on it. It feeds Office Supplies (a Housing III-era draw) — schedule it with the next plan once its ids are sourced."
+        }
+      ],
+      "skippable": false
+    },
+    {
+      "checks": [
+        {
+          "action": "pause-and-report",
+          "every": {
+            "minutes": 15
+          },
+          "id": "p7-vehicle-parts-strain",
+          "note": "Fleet swap-out spikes vehicle-part demand (relocation Phase 6 risk). Capture: VehicleParts2 quantity 196 with ~zero monthly flow — the buffer exists; this check watches the swap consume it faster than production replaces it.",
+          "severity": "warning",
+          "when": {
+            "metric": "product.quantity",
+            "op": "<",
+            "product": "Product_VehicleParts2",
+            "value": 20
+          }
+        },
+        {
+          "action": "crisis-protocol",
+          "every": {
+            "minutes": 5
+          },
+          "id": "p7-diesel-floor",
+          "note": "Mega vehicles change the fleet's diesel draw in ways no capture can predict — the floor stays armed through the swap. (Hydrogen has no truck/excavator option per relocation §8.5 — flagged there as depot-UI-confirmable, not dataset-verified.)",
+          "severity": "critical",
+          "when": {
+            "metric": "product.quantity",
+            "op": "<",
+            "product": "Product_Diesel",
+            "value": 2500
+          }
+        }
+      ],
+      "entry_gate": [
+        {
+          "metric": "product.quantity",
+          "note": "Settlement solidification (phase 6) is producing before the fleet programme opens a vehicle-parts front.",
+          "op": ">",
+          "product": "Product_HouseholdGoods",
+          "value": 0
+        },
+        {
+          "all": [
+            {
+              "any": [
+                {
+                  "metric": "product.produced",
+                  "op": ">",
+                  "product": "Product_Steel",
+                  "value": 0,
+                  "window": "lastMonth"
+                },
+                {
+                  "metric": "product.consumed",
+                  "op": ">",
+                  "product": "Product_Steel",
+                  "value": 0,
+                  "window": "lastMonth"
+                }
+              ]
+            },
+            {
+              "metric": "product.net_flow",
+              "op": ">=",
+              "product": "Product_Steel",
+              "value": 0,
+              "window": "lastMonth"
+            }
+          ],
+          "note": "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+        }
+      ],
+      "exit_gate": [
+        {
+          "metric": "research.completed",
+          "node": {
+            "confirm": "Same placeholder as p7-research-mega-vehicles; resolves when that order's id is sourced. Until then this predicate is human-confirmed against the research screen (§4.5), never auto-evaluated.",
+            "display_name": "Mega Vehicles",
+            "placeholder": "Research<MegaVehicles>",
+            "status": "unsourced-id"
+          }
+        },
+        {
+          "all": [
+            {
+              "any": [
+                {
+                  "metric": "product.produced",
+                  "op": ">",
+                  "product": "Product_VehicleParts2",
+                  "value": 0,
+                  "window": "lastMonth"
+                },
+                {
+                  "metric": "product.consumed",
+                  "op": ">",
+                  "product": "Product_VehicleParts2",
+                  "value": 0,
+                  "window": "lastMonth"
+                }
+              ]
+            },
+            {
+              "metric": "product.net_flow",
+              "op": ">=",
+              "product": "Product_VehicleParts2",
+              "value": 0,
+              "window": "lastMonth"
+            }
+          ],
+          "note": "The fleet programme is not eating the vehicle-parts buffer — the phase's capturable sustainability condition. Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+        },
+        {
+          "metric": "settlement.homeless",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "settlement.months_of_food",
+          "op": ">=",
+          "value": 6
+        }
+      ],
+      "fallbacks": {
+        "on_check_fail": "crisis-protocol",
+        "on_gate_stall": "pause-and-report",
+        "stall_after": {
+          "months": 3
+        }
+      },
+      "id": "phase-7-mega-vehicles-starter-cleared",
+      "intent": "Relocation Phase 6: research Mega Vehicles (late tree — the source plan places it just before Nuclear Reactor, exact prerequisites unpublished), replace the mine/construction fleets progressively (oldest first, never a whole fleet at once), backfill the two worked-out pits (iron + coal) with spoil from the phase-3 excavation, and clear the starter space — which the island survey shows sits INSIDE the only flat corridor band, so clearing it removes the spine's pinch point, not just a leftover.",
+      "name": "Mega Vehicles + starter-space cleanup (relocation Phase 6)",
+      "orders": [
+        {
+          "args": {
+            "nodeId": {
+              "candidates": [],
+              "confirm": "No id resembling Mega Vehicles exists in coi/data/research_ids.txt (verified 2026-11-03). The relocation plan sources only its tree POSITION (late, just before Nuclear Reactor) from a community sequence. Read the real node id off the in-game research screen, then amend this plan (version bump) — until then this order is manual-only (§4.5). The run-up nodes ARE the practical gate: keep research fed through them.",
+              "display_name": "Mega Vehicles",
+              "placeholder": "Research<MegaVehicles>",
+              "status": "unsourced-id"
+            }
+          },
+          "class": "research",
+          "do": "ResearchStartCmd",
+          "flags": [
+            "placeholder-id"
+          ],
+          "id": "p7-research-mega-vehicles",
+          "note": "Placeholder by the §4.5 convention — never invent an id that parses. Executors must refuse to auto-apply this order."
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "flags": [
+            "proto-ids-unsourced"
+          ],
+          "id": "p7-fleet-replacement-waves",
+          "step": "Replace mine/construction vehicles progressively with mega vehicles as research + vehicle parts allow: oldest vehicles first, never a whole fleet at once (the swap spikes vehicle-part + maintenance demand — relocation Phase 6 risk). First mega excavator goes to the NEW mines (phase 3). Vehicle build commands exist (AddVehicleToBuildQueueCmd, wired) but the mega-vehicle proto ids are unsourced — no command order is written; the depot UI is the path.",
+          "why": "Proto-id honesty (same discipline as fresh-start's truck order) + phased-replacement doctrine."
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "p7-backfill-old-pits",
+          "step": "Backfill the two worked-out pits (iron first or coal first by proximity to the expansion band — the nearer pit's flats become district land soonest) with spoil from the phase-3 excavation: trucks on dumping duty via loose-material dumping designations over the pit footprints, filled in lifts as spoil arrives (dump once, at the pit — no staging pile). Raw slag is the alternative fill; do NOT divert CRUSHED slag — it is the concrete block's preferred aggregate (phase 2). End state: flat land where roads, rail and power already reach (relocation §8.6).",
+          "why": "The dig-out pays for its own cleanup: one problem's waste is the other problem's fill, and flat land is the scarcest thing on this ridge-cut island."
+        },
+        {
+          "class": "manual",
+          "completion": "human-confirm",
+          "do": "manual-step",
+          "id": "p7-clear-starter-space",
+          "step": "Finally clear the starter space: by now the old inland cluster should be empty or pure storage (every function has a live replacement in districts 1-6). Demolitions are human in-UI acts, function by function, each verified replaced before it is removed. The reclaimed flats (with the phase's backfilled pits) are the island-centre land package by existing infrastructure.",
+          "why": "Relocation Phase 6 checkpoint + the survey's finding: the starter sits inside the only flat corridor band — clearing it clears the spine's pinch point."
+        }
+      ],
+      "skippable": false
+    }
+  ],
+  "plan": {
+    "assumptions": [
+      {
+        "claim": "Start state is the 2026-11-02 capture set: in-game 388-2-27, paused, population 2,320, housing capacity 2,320 (free 0, homeless 0), monthsOfFood 26, researchedCount 127, current research ResearchMoltenMaterialTrains at ~48.4%.",
+        "source": "live/bridge-status.json + live/bridge-research.json + live/game-info.json — captured live 2026-11-02",
+        "status": "sourced"
+      },
+      {
+        "claim": "The relocation plan's war-chest CP gate is ALREADY SATISFIED at capture: Construction Parts I stored 741 of 741 capacity and Construction Parts II stored 507 of 507 (both 100% full); concrete slabs stored 7,205; coal quantity 19,811.",
+        "source": "live/stats.json (Product_ConstructionParts / Product_ConstructionParts2 / Product_ConcreteSlab / Product_Coal) + live/diagnosis-v1.md §4",
+        "status": "sourced"
+      },
+      {
+        "claim": "Steel production has been ~zero for ~6 months: monthly history (387-8 → 388-2) produced 0, 32, 0, 0, 0, 0, 8 against consumed 36, 32, 36, 20, 36, 46, 20; quantity fell 1,347 → 1,108 over the same window. This month: produced 8 (one CasterCooledT2 recipe row), consumed 20.",
+        "source": "live/hist-keys.json (Product_Steel series) + live/src-steel.json + live/stats.json",
+        "status": "sourced"
+      },
+      {
+        "claim": "Diesel runs a structural deficit: this month produced 84 vs consumed 161, of which 112 is the DieselReforming recipe in HydroCrackerT1 (Diesel + Steam (high) → Naphtha + Fuel gas) and only 49 is vehicle fuel. The 7-month history shows produced < consumed every month.",
+        "source": "live/src-diesel.json (recipe breakdown) + live/hist-keys.json (Product_Diesel series)",
+        "status": "sourced"
+      },
+      {
+        "claim": "OPEN QUESTION — the DieselReforming loop is a leftover recipe assignment that should simply be switched off.",
+        "source": "hypothesis only. Counter-evidence in the captures: HydroCrackerT1 runs THREE recipes across 19 machines (DieselReforming, NaphthaReformingToGas, HeavyOilCrackingToNaphtha; 15 Working / 4 OutputFull), and relocation-plan §8.5 budgets fuel gas as a currency with reformer feed as a claim on it — a deliberate naphtha/fuel-gas demand would look exactly like this. Per-machine recipe assignment is not in any capture, so the split cannot be read. Phase 0 carries this as an explicit investigate/decide order; NO order in this plan assumes the answer.",
+        "status": "hypothesis"
+      },
+      {
+        "claim": "Steel stall root cause is upstream starvation, not caster capacity: CasterCooledT2 3/4 NotEnoughInput, OxygenFurnaceT2 2/4 NotEnoughInput, Crusher 8/8 OutputFull, IronOreCrushed stored 3 of 3 capacity (quantity 236, mostly in machine buffers).",
+        "source": "live/bridge-census.json machines block + live/stats.json — the pattern is sourced; WHICH upstream link binds (molten iron, oxygen, crushed ore) is not separable from the captures",
+        "status": "hypothesis"
+      },
+      {
+        "claim": "Game version is 0.8.7d.",
+        "source": "relocation-plan.md header (save Expanding_0_4a1v, game 0.8.7d) — CONFLICTS with the SPEC/ACCESS baseline of Update 4.3 v0.8.8. The executor refuses a version mismatch (§3.1), so a human must confirm the live version and bump this plan's game_version before the first run if the game is in fact 0.8.8.",
+        "status": "single-source"
+      },
+      {
+        "claim": "Map name is 'Dragon Isle'.",
+        "source": "Philip's run naming (2026-10-17). The relocation plan's header says 'Dragontail Isle' for the same run — naming variance flagged, not resolved; the executor's map check (§3.1) uses the save, not this string.",
+        "status": "single-source"
+      },
+      {
+        "claim": "The trains route reported ZERO lines at capture ({\"lines\": []}) while the census shows TrainDepot ×1 and LocomotiveT1Hydrogen ×30 in service.",
+        "source": "live/bridge-trains.json vs live/bridge-census.json — the two captures disagree in implication. Either the v0.5-era trains route under-reports, or locos/depot exist with no formal lines. Phase 3's trains.line_count predicates are therefore flagged trains-route-unverified: if the route is the broken side, they read UNEVALUABLE/false until re-captured on v0.6.2, and the phase holds rather than 'fixing' a phantom.",
+        "status": "single-source"
+      },
+      {
+        "claim": "Relocation-plan war-chest targets stated in minutes of draw (diesel, maintenance, steel) are converted in this plan to quantity floors. The conversion is a plan-author judgement: the fleet's actual per-minute draw is not capturable from any §2 source (maintenance has no product at all, format G6).",
+        "source": "relocation-plan.md §4 (targets) + format §11 G6 — conversion method is the plan author's, flagged wherever used",
+        "status": "hypothesis"
+      },
+      {
+        "claim": "The hydrogen backbone the relocation plan sizes at 2 reformers (56 H2/min) already exists beyond that sizing: census counts HydrogenReformer ×14, hydrogen quantity 27,716. The §8.5 POLICY (backbone for fertilizer + electronics + trains; diesel shrinks to vehicle/ship duty; never run the reformer in reverse as a loop) is adopted unchanged — the build-out it imagined is largely done, so phases 5-6 treat hydrogen as available infrastructure, not a build target.",
+        "source": "live/bridge-census.json (byProto HydrogenReformer) + live/stats.json (Product_Hydrogen) + relocation-plan.md §8.5",
+        "status": "sourced"
+      },
+      {
+        "claim": "New farm-district farms will be FarmT2, the tier of all 8 existing farms.",
+        "source": "live/bridge-census.json byProto (FarmT2 ×8, no other farm proto) — inference from the existing base, flagged on every predicate that counts farms",
+        "status": "hypothesis"
+      },
+      {
+        "claim": "No Electronics II product exists in the live catalogue (only Product_Electronics), and no Electronics II research id exists in research_ids.txt (only ResearchConsumerElectronics / ResearchElectronics4).",
+        "source": "live/products.json + coi/data/research_ids.txt, verified 2026-11-03 — consequence: Electronics II (relocation §8.3) is carried as an observe-only scoping order in phase 6, NEVER as a gate. Any plan element claiming an Electronics II stock or completion would be laundering an unsourced id.",
+        "status": "sourced"
+      }
+    ],
+    "author": "Claudius (round-3 build, 2026-11-03)",
+    "created": "2026-11-03",
+    "dlc": [
+      "trains-expansion"
+    ],
+    "end_state": "Phase 7 exit gate met: the Mega Vehicles research is complete (human-confirmed against the research screen while its id is a placeholder), the fleet replacement is under way oldest-first, the old pits are being backfilled with new-excavation spoil, and the starter space is cleared or pure storage. The plan then halts and hands the run back with a run report. Nuclear and beyond (the run's stated long-term goal) is the next plan's job, not this one's.",
+    "game_version": "0.8.7d",
+    "id": "dragon-isle-continuation",
+    "map": {
+      "difficulty": "captain",
+      "name": "Dragon Isle"
+    },
+    "requires": {
+      "bridge": ">=0.6.2",
+      "companion": ">= website build with generic command flow (13 verified / 226 wired / 1 excluded)"
+    },
+    "target_run": {
+      "gameId": "5583213724730880438",
+      "save_name": "Expanding",
+      "start_date": "388-2-27",
+      "start_tick": 2787522
+    },
+    "title": "Dragon Isle continuation — stop the bleeding, then the relocation plan (Expanding run)",
+    "version": "1.1.1"
+  }
+}

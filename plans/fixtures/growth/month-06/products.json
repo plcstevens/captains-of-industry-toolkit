@@ -1,0 +1,97 @@
+{
+ "date": "1-6-15",
+ "tick": 475200,
+ "products": [
+  {
+   "id": "Product_IronScrap",
+   "name": "Iron scrap",
+   "kind": "loose",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_Iron",
+   "name": "Iron",
+   "kind": "countable",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_Steel",
+   "name": "Steel",
+   "kind": "countable",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_Coal",
+   "name": "Coal",
+   "kind": "loose",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_Wood",
+   "name": "Wood",
+   "kind": "countable",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_Diesel",
+   "name": "Diesel",
+   "kind": "fluid",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_Copper",
+   "name": "Copper",
+   "kind": "countable",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_ConcreteSlab",
+   "name": "Concrete slab",
+   "kind": "countable",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_ConstructionParts",
+   "name": "Construction Parts",
+   "kind": "countable",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_MechanicalParts",
+   "name": "Mechanical Parts",
+   "kind": "countable",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_Potato",
+   "name": "Potato",
+   "kind": "loose",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_Vegetables",
+   "name": "Vegetables",
+   "kind": "countable",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_Water",
+   "name": "Water",
+   "kind": "fluid",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_Electronics",
+   "name": "Electronics",
+   "kind": "countable",
+   "isUnlocked": true
+  },
+  {
+   "id": "Product_ConstructionParts2",
+   "name": "Construction Parts II",
+   "kind": "countable",
+   "isUnlocked": false
+  }
+ ],
+ "unknownIds": []
+}

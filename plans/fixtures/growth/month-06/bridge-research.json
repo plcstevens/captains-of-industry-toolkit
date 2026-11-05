@@ -1,0 +1,20 @@
+{
+ "current": {
+  "id": "ResearchBeacon",
+  "progressPerc": 62500,
+  "stepsDone": 25,
+  "remainingSteps": 15,
+  "scienceCost": 40
+ },
+ "queue": [
+  "ResearchTools"
+ ],
+ "researchedCount": 4,
+ "hasActiveLab": true,
+ "researched": [
+  "ResearchCp1Production",
+  "ResearchPowerAndMaintenance",
+  "ResearchTradeDock",
+  "ResearchVehicleAndMining"
+ ]
+}

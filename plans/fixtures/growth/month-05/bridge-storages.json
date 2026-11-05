@@ -1,0 +1,64 @@
+{
+ "storages": [
+  {
+   "id": 101,
+   "proto": "StorageLoose",
+   "product": "Product_IronScrap",
+   "quantity": 735,
+   "capacity": 1000,
+   "percentFullRaw": 73500,
+   "logisticsInDisabled": false,
+   "logisticsOutDisabled": false
+  },
+  {
+   "id": 102,
+   "proto": "StorageUnit",
+   "product": "Product_Iron",
+   "quantity": 179,
+   "capacity": 400,
+   "percentFullRaw": 44750,
+   "logisticsInDisabled": false,
+   "logisticsOutDisabled": false
+  },
+  {
+   "id": 103,
+   "proto": "StorageFluid",
+   "product": "Product_Diesel",
+   "quantity": 130,
+   "capacity": 250,
+   "percentFullRaw": 52000,
+   "logisticsInDisabled": false,
+   "logisticsOutDisabled": false
+  },
+  {
+   "id": 104,
+   "proto": "StorageLoose",
+   "product": "Product_Wood",
+   "quantity": 341,
+   "capacity": 500,
+   "percentFullRaw": 68200,
+   "logisticsInDisabled": false,
+   "logisticsOutDisabled": false
+  },
+  {
+   "id": 105,
+   "proto": "StorageUnit",
+   "product": "Product_ConstructionParts",
+   "quantity": 20,
+   "capacity": 200,
+   "percentFullRaw": 10000,
+   "logisticsInDisabled": false,
+   "logisticsOutDisabled": false
+  },
+  {
+   "id": 106,
+   "proto": "StorageLoose",
+   "product": "Product_Coal",
+   "quantity": 154,
+   "capacity": 500,
+   "percentFullRaw": 30800,
+   "logisticsInDisabled": false,
+   "logisticsOutDisabled": false
+  }
+ ]
+}

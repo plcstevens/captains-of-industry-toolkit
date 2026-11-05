@@ -1,0 +1,15 @@
+{
+ "current": {
+  "id": "ResearchCp1Production",
+  "progressPerc": 43750,
+  "stepsDone": 35,
+  "remainingSteps": 45,
+  "scienceCost": 80
+ },
+ "queue": [
+  "ResearchPowerAndMaintenance"
+ ],
+ "researchedCount": 0,
+ "hasActiveLab": true,
+ "researched": []
+}

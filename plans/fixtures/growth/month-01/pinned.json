@@ -1,0 +1,45 @@
+{
+ "date": "1-1-18",
+ "tick": 51840,
+ "products": {
+  "Product_Diesel": {
+   "quantity": 220,
+   "stored": 200,
+   "storageCapacity": 250,
+   "produced": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "consumed": [
+    30,
+    0,
+    80,
+    0,
+    80
+   ]
+  },
+  "Product_IronScrap": {
+   "quantity": 850,
+   "stored": 800,
+   "storageCapacity": 1000,
+   "produced": [
+    420,
+    0,
+    1250,
+    0,
+    1250
+   ],
+   "consumed": [
+    150,
+    0,
+    400,
+    0,
+    400
+   ]
+  }
+ },
+ "unknownIds": []
+}

@@ -1,0 +1,1216 @@
+# NIGHT-LOG — overnight build session 2026-11-02 → 2026-11-03
+
+Philip's mandate (2026-11-02 21:07 Paris): build all night, do not stop,
+write self-LLM skills/context rules as you go, for (1) the Rust companion,
+(2) the C# CoiBridge mod, (3) playing the game as an agent.
+
+HARD CONSTRAINTS for the whole night:
+- NO file uploads of any kind. Deliverables stage in dist/ only.
+- NO command applies to Philip's live game. Read-only GETs + prepare-only
+  tests via the tailnet recipe are allowed. Never POST /actions/apply.
+- No messages to Philip. All work stays in the workspace.
+
+Queue: (1) three skills · (2) bridge recon round 2 + possible v0.6.1 ·
+(3) game-plan format + fresh-start plan · (4) design-diagnosis v1 ·
+(5) README/SPEC polish if time.
+
+---
+
+## [21:10 Paris] Session start — context loaded
+- Read SPEC.md Addenda V–VIII, local-coi-starter skill shape.
+- Coordinator plan: fan out three subagents in parallel — (A) the three
+  skills, (B) bridge recon round 2, (C) game-plan format + fresh-start
+  plan. Diagnosis v1 and polish after, in the coordinator.
+
+## [21:08 Paris] Skills written
+- `~/workspace/custom-skills/local-coi-companion-dev/` (SKILL.md + skill.yaml) — building/extending the Rust companion: architecture, catalogue generation, generic vs curated prepares, §12 discipline, status semantics, Linux/Windows build recipes, scratch live-test recipe, seasonal detectors, delivery/no-upload rule.
+- `~/workspace/custom-skills/local-coi-bridge-dev/` (SKILL.md + skill.yaml) — building CoiBridge: Tier-1 read-only posture, DI/route patterns, isolated route classes, verified manager surfaces, manifest/version discipline, VM net48 build, recon workflow (harness + ilspycmd env), origin/chat-link traps, leak rule.
+- `~/workspace/custom-skills/local-coi-playing/` (SKILL.md + skill.yaml) — playing through the companion: observe→plan→act→verify loop, vanilla + bridge route reading (incl. Product_-prefix vs display-name trap), Dragon Isle doctrine, relocation-plan phase gates, hydrogen backbone policy, snapshot habits, live-state caveats, game-plan format pointer.
+- Flagged as unverified in the skills: ⚠️ LoansManager.CreditScore Fix32 /65536 decoding is an assumption (bridge skill); ⚠️ ToggleEdictEnabledCmd and CreateStaticEntityCmd actuation/semantics untested, sandbox only (playing + bridge skills); ⚠️ GAME-PLAN-FORMAT.md and plans/ did not exist yet when the playing skill was written — it points at them as the contract being written tonight and falls back to the relocation plan's phase structure.
+- No uploads made; no commands applied to the live save; files only, per the overnight constraints.
+
+## [21:14 Paris] Design-diagnosis v1 (coordinator, offline)
+- Built tools/diagnose_live.py — pure offline analysis over the
+  2026-11-02 captures in live/ (bridge census/topology/storages +
+  vanilla stats). Output: live/diagnosis-v1.md (194 lines).
+- Headline findings (strong evidence only):
+  * 10 of 1,025 transports flagged not-fully-connected by the game
+    itself; 5 of them are single-tile dead ends.
+  * Crude oil is the one cross-validated storage fault: stored
+    9,713 vs capacity 9,000 (+713 surplus in machine buffers), with
+    two 3,000/3,000 crude tanks output-disabled.
+  * Construction Parts I (741/741) and II (507/507) at capacity —
+    matches the relocation plan's war-chest gate state.
+  * Starved clusters corroborate the known steel stall
+    (CasterCooledT2 3/4, OxygenFurnaceT2 2/4 NotEnoughInput) and
+    AssemblyElectrifiedT2 at 18/33 starved.
+  * Blocked: Crusher 8/8 OutputFull, MaintenanceDepotT1 4/4.
+- Honesty fixes made during the pass: single-tile transports
+  (from == to) are NORMAL per-tile construction, not stubs — the
+  script now says so and only counts the unconnected overlap;
+  full+output-disabled storages are labelled proven faults only
+  where the product is also backed up product-level (crude only);
+  §4 splits stored>capacity (1) from stored==capacity (30, mostly
+  low-capacity intermediates = weak evidence).
+
+## [21:20 Paris] README + SPEC polish (chunk 5, coordinator)
+- coi/README.md: Trade page added to the page list; Catalogue copy
+  now verified/wired/excluded with Prepare buttons; new "Generic
+  prepare" paragraph (all 239 non-excluded commands executable);
+  writes-policy paragraph updated from the old allowlist wording;
+  exe size corrected to ~4.9 MB; Verified section gained the generic
+  flow proof + Trade degradation notes.
+- SPEC.md: Addendum VIII results subsection appended (skills, recon
+  round 2 pointer, game-plan format, diagnosis v1 headlines).
+- Status: skills DONE (21:08), diagnosis v1 DONE (21:14), polish
+  DONE. Still running: bridge recon round 2, game-plan format.
+
+## [21:12 Paris] Game-plan format + fresh-start plan
+- Files written: `GAME-PLAN-FORMAT.md` (format v1: closed predicate
+  vocabulary over vanilla stats/history/game-info + bridge
+  status/research/census/storages/trains + v0.6 contracts/loans/edicts;
+  three-valued TRUE/FALSE/UNEVALUABLE evaluation; order objects for
+  catalogue commands + honest place-blueprint / manual-step /
+  observe-only / wait kinds; entity selectors instead of raw ids;
+  phase object with entry/exit gates, cadenced checks, closed fallback
+  set incl. crisis protocol; autonomy levels per action class, phases
+  may only tighten; supervised play loop + lint rules; worked phase
+  example) and `plans/fresh-start-v1.yaml` (8 phases, 0–7: scout →
+  scrap starter → assembly/power/maintenance → mining → concrete/
+  diesel/rubber → copper/Construction II/food security → automation/
+  expansion → rail introduction, DLC; 53 orders total).
+- Validation (scripted, python3 + PyYAML 6.0.1 — already installed, no
+  pip needed): YAML parses clean; 9 distinct catalogue commands used
+  across 26 command orders, EVERY name found in live/commands.json and
+  every arg name checked against that command's constructor schema —
+  zero errors; GameConsoleCmd absent (banned in globals); every bare
+  research node id (11 distinct) found in coi/data/research_ids.txt;
+  every product id (12 distinct) found in live/products.json; every
+  phase has entry gate, exit gate, checks and fallbacks.
+- Uncertainty carried, not laundered (23 flagged elements, 5 distinct
+  placeholder research nodes): Construction, Concrete Production,
+  Synthetic Rubber, Construction II, Groundwater Pump have NO sourced
+  game id in research_ids.txt (candidates listed per placeholder —
+  e.g. ResearchConcreteAdvanced explicitly rejected as a substitute for
+  Concrete Production). Id-ambiguity flags on ResearchPowerAndMaintenance
+  (vs ResearchPowerMaintenance), ConveyorBelts, ShipDockRepair;
+  TradeDock/VehicleAndMining id-vs-display spelling flagged; starter
+  [single-source] items flagged (Basic Diesel form, Power & Maintenance
+  order variant, Cargo Depot ship-discovery gate). Starting-area
+  details kept as plan assumptions with status: hypothesis.
+- Known gaps listed in the format doc (§11, G1–G10): no completed-node
+  list in /coi/v1/research (research.completed = executor-observed
+  only); no power route (no MW predicates — census proxies only); no
+  Product_Maintenance (maintenance proxied); construction placement
+  semantics untested (all builds are place-blueprint/manual-step;
+  CreateNewTrain{Network,Line}Cmd orders carry
+  requires_sandbox_validation); edicts read-only (ToggleEdictEnabledCmd
+  not in the web catalogue); no Unity read/spend; priority/slider
+  values write-only; quick-trade providers unenumerated; refugee
+  acceptance manual-only.
+- Nothing run against any game; files only, per the overnight mandate.
+
+## [21:13 Paris] Bridge recon round 2
+- (a) Per-entity priorities — RESOLVED. General priority lives on
+  `LayoutEntity.GeneralPriority` behind `IEntityWithGeneralPriority`
+  (default = `Prototype.Costs.DefaultPriority`, per-proto); the census
+  now carries a non-default-only `"priorities"` map and storage rows
+  carry `generalPriority`. Custom priorities have no id-enumeration
+  surface (Storage's `GetCustomPriority` Assert.Fails on unknown ids),
+  so only Storage's typed `ImportPriority`/`ExportPriority` are read,
+  onto storage rows. Full trail in bridge/MODDING-NOTES.md.
+- (b) Storage sliders — RESOLVED. No stored step integers exist; the
+  concrete `Storage` class exposes `ImportUntilPercent` /
+  `ExportFromPercent` / `TransportFromPercent` / `TransportUntilPercent`
+  and each step is exactly 10% (`step = RawValue / 10000`). Storage rows
+  gain `importStep`/`exportStep`/`transportFrom`/`transportUntil` plus
+  the four `*PercentRaw` values. (`StorageBase`, which the scan walked
+  before, has none of this — the cmd processor also resolves concrete
+  `Storage`.)
+- (c) Quick trades — RESOLVED. `WorldMapManager.AllQuickTrades`
+  (`IIndexable<QuickTradeProvider>`, manager is a global dependency)
+  is the owner; new Guard-wrapped read-only route
+  `GET /coi/v1/quick-trades` in BridgeRoutesV6 (WorldMapManager
+  constructor-injected) returns id, live buy/pay product+quantity,
+  `upointsCostRaw` (`UpointsCost.Value.RawValue`, Fix32 raw verified),
+  currentStep, maxSteps, isSoldOut, hasPriceIncreased. CanAfford not
+  called (out-param signature in this build; not needed).
+- v0.6.1 BUILT AND STAGED: `bash bridge/vm-build/build.sh` finished
+  0 errors / 0 warnings; `dist/CoiBridge-mod-0.6.1.zip` contains
+  CoiBridge/{CoiBridge.dll, manifest.json (version 0.6.1), readme.txt
+  with WHAT'S NEW IN v0.6.1}; new route/field strings verified present
+  in the compiled DLL. ModVersion const + manifest + readme all bumped
+  to 0.6.1; route table lists /coi/v1/quick-trades. NOT uploaded
+  anywhere; nothing run against the live game (offline recon + compile
+  only). All bridge code remains read-only and Guard-wrapped.
+
+## [21:16 Paris] Final reconciliation (coordinator)
+- Verification pass over ALL deliverables: PASS on every check —
+  3 skills present with valid skill.yaml (names + include_in_prompt);
+  fresh-start-v1.yaml parses (8 phases, command references valid,
+  no GameConsoleCmd); GAME-PLAN-FORMAT.md 38.9 KB;
+  dist/CoiBridge-mod-0.6.1.zip staged with manifest version 0.6.1;
+  live/diagnosis-v1.md present; coi.exe in dist/ untouched tonight
+  (no companion rebuild was in the queue).
+- Cross-chunk unblocking: recon round 2 resolved TWO of the
+  game-plan format's known gaps. G7 (priority/slider values
+  write-only) and G8 (quick-trade providers unenumerated) are now
+  marked RESOLVED in GAME-PLAN-FORMAT.md with the v0.6.1 routes
+  named. Remaining executor work when Philip returns: companion
+  predicate support for the new bridge fields.
+- Still genuinely open (nothing more tonight can close them):
+  construction placement semantics + edict actuation (both need a
+  sandbox save and Philip awake); G1 completed-research list (a
+  small bridge addition — ResearchedNodes enumeration — candidate
+  for v0.6.2 with Philip's say-so); G2 power route (same).
+- NO uploads made. NO applies to the live game. Deliverables staged:
+  dist/CoiBridge-mod-0.6.1.zip (new), plans/, GAME-PLAN-FORMAT.md,
+  live/diagnosis-v1.md, three skills in ~/workspace/custom-skills/.
+  Upload window opens ~2026-11-03 21:07 Paris or on Philip's word.
+
+## [06:52 Paris] CoiBridge v0.6.2 — G1 + G2 closed (post-overnight follow-up)
+- G1 completed-research list: `/coi/v1/research` now also returns
+  `"researched":[...]` — the completed node ids enumerated from
+  `ResearchManager.ResearchedNodes` (`IIndexable<ResearchNode>`,
+  harness-verified; same element type the route already iterates
+  for the queue). `researchedCount` unchanged.
+- G2 power route: NEW `GET /coi/v1/power` in BridgeRoutesV6
+  (Guard-wrapped, read-only, resolves in the same own-try/catch V6
+  isolation). Backing surface `ElectricityManager`
+  (Mafi.Core.Factory.ElectricPower, [GlobalDependency AsEverything],
+  constructor-injected). Fields (this-tick, exact kW —
+  `Electricity.Value` is kW by construction: `OneKw = new
+  Electricity(1)`, ilspy-verified): generatedKw, consumedKw,
+  demandedKw, surplusDemandedKw, generationCapacityKw,
+  maxGenerationCapacityKw, wastedKw, balanceKw (generated −
+  consumed), generators, consumers.
+- Battery/storage: NO surface exists — name recon over both
+  assemblies found no Battery/ElectricityStorage type; thermal
+  storage is a product buffer (already visible via product stats).
+  Route omits it; documented in MODDING-NOTES recon round 3.
+  ElectricityAvgStats averages deliberately not decoded (same
+  discipline as the v0.5 train counters).
+- Version discipline: manifest.json + ModVersion const + readme
+  all at 0.6.2 (readme gained a WHAT'S NEW IN v0.6.2 section, the
+  /coi/v1/power route line, and the research completed-ids note).
+  Route table (debug/services) now lists GET /coi/v1/power.
+- Build: ensure-toolchain TOOLCHAIN_OK; `bash bridge/vm-build/
+  build.sh` finished 0 errors / 0 warnings; staged
+  dist/CoiBridge-mod-0.6.2.zip (18,535 B) with root layout
+  CoiBridge/{CoiBridge.dll, manifest.json (0.6.2), readme.txt}.
+  Compiled-DLL string check (UTF-16): `/coi/v1/power`,
+  `"researched":[`, generatedKw, balanceKw, surplusDemandedKw,
+  maxGenerationCapacityKw, `0.6.2` all present.
+- GAME-PLAN-FORMAT.md: G1 and G2 rows now carry RESOLVED
+  blockquotes in the G7/G8 style. MODDING-NOTES.md gained the
+  recon round 3 section (surfaces, kW calibration, battery
+  finding, undecoded-averages note).
+- Constraints kept: NO upload (zip staged in dist/ only, window
+  runs to ~21:07 Paris today); nothing run against Philip's live
+  game (offline recon + compile only); no messages sent.
+  Remaining companion-side work when Philip returns: predicate
+  support for `researched` + the power fields in the executor.
+
+## [15:55 Paris] Round 3 kicked off (Philip in London, no PC — "do much more")
+- New mandate ~15:54 Paris: much more building, PC still unavailable.
+  Constraints unchanged: NO uploads (window to ~21:07 Paris), NO live
+  applies (PC off — tailnet GETs expected to fail; work from live/
+  captures).
+- Queue: (1) companion UI for all bridge data — power panel, quick-
+  trades panel, storage sliders/priorities, researched list — + exe
+  rebuild; (2) supervised play-loop engine, dry-run only (after 3a);
+  (3a) dragon-isle-continuation-v1.yaml; (3b) diagnosis-v1 fixes;
+  (4) SANDBOX-PROTOCOLS.md; (5) playing-skill update + SPEC addendum.
+- Wave 1 fanned out to four subagents (chunks 1, 3a, 3b, 4). Chunk 2
+  sequenced after 3a so it can dry-run BOTH plans; it also avoids
+  coi-crate contention with chunk 1.
+
+## [16:00 Paris] Round 3 chunk 1 DONE — companion UI for all bridge data
+- serve.rs: Overview power panel (/coi/v1/power, exact kW fields);
+  Trade quick-trades panel with QuickTradeCmd Prepare buttons
+  (arg "tradeId" verified in commands.json; upointsCostRaw shown
+  raw, no speculative Fix32 decoding); Entities storage rows gain
+  conditional slider steps (importStep/exportStep/transportFrom/
+  transportUntil + *PercentRaw) and priorities (keys are camelCase
+  importPriority/exportPriority per the C# emitter); new Non-default
+  priorities panel (census priorities map = entityId -> general
+  priority, resolved via topology); Research page shows the
+  v0.6.2 "researched" list via pretty_research().
+- Degradation fix: Overview/Entities/Issues now return 200 with a
+  notice when the game API is down (was 502) — verified live in the
+  scratch test: /, /trade, /entities, /research all 200, /issue?x=
+  303->200, no panics (fresh-DB login is mode=setup + password2).
+- Builds: Linux debug 0 errors/0 warnings; Windows release staged
+  dist/coi.exe = 4,972,701 B (was 4,946,629). TOOLCHAIN_OK.
+- Caveat: populated rendering against a live v0.6.2 bridge is NOT
+  yet exercised (PC off) — eyeball on the next live session.
+
+## [16:01 Paris] Round 3 chunk 4 DONE — SANDBOX-PROTOCOLS.md
+- 1,099 lines / ~54 KB, documentation only; nothing fired anywhere.
+- Protocol A (CreateStaticEntityCmd, 447 lines): test proto
+  StorageUnit (id verified by 8 placed instances in the topology
+  capture; cheapest tier, no research gate, observable on census +
+  topology + storages). Distinguishes centre-tile vs footprint-
+  origin and both transform rotation forms from the commands.json
+  union schema; charging split into placement vs delivery reads;
+  suppression tested as a false/true pair on a guaranteed overlap;
+  revert via StartDeconstructionOfStaticEntityCmd (fallback
+  QuickRemoveEntityRefundCmd) — names copied from commands.json.
+- Protocol B (ToggleEdictEnabledCmd, 323 lines): runtime selection
+  rule (isEnabled=false AND canBeEnabled=true, lowest Unity cost
+  read in-game — the v0.6 edicts route has no cost field); a control
+  send first captures the canonical success envelope so rejection
+  vs execution is distinguishable; hypothesis body labelled, with a
+  pre-committed arg-name variant ladder and readbacks between rungs
+  (never double-toggle); revert = identical re-send.
+- Both protocols abort if game-info.gameId == 5583213724730880438
+  (the Expanding guard). Unresolvable-by-design unknowns listed in
+  the doc's appendix (rotation effect via API, non-overlap
+  validation classes, Unity balance has no route, transport
+  placement, isActive lag, per-type generality).
+
+## [16:01 Paris] Round 3 chunk 3b DONE — diagnosis-v1-fixes.md
+- 1,115 lines / ~54.6 KB; diagnosis-v1.md untouched. Every id,
+  quantity and layout name copied from the 2026-11-02 captures.
+- 13 fault sections, classed: COMPANION ACTION x2 (F2 crude —
+  StorageDisableLogisticsToggleCmd re-enable output on tanks 23639
+  + 23640, input left disabled by design; F4 glass store 23447,
+  causal step labelled [inference]); BLUEPRINT REPLACEMENT x1 (F5
+  steel — steel-v1 from the pack, pause-don't-demolish, gated on a
+  manual furnace input-buffer pre-check; pack layouts are untested
+  in-game, caveat carried); MANUAL x2 (F1 demolish/inspect the 10
+  unconnected transports by id+coords; F6 mixer states not mappable
+  to ids from captures — blind toggles explicitly rejected);
+  OBSERVE x7 with named watch fields + escalation triggers.
+- F3 diesel/DieselReforming stays Philip's open decision: in-game
+  recipe check across the 19 HydroCrackerT1 positions, then branch
+  A (disable recipe per machine via verified commands) or branch B.
+- No honest fix path from captures: F10 MaintenanceDepotT1 (no
+  maintenance product exists in the vanilla data at all) and the
+  oxygen branch of F5. Closing section lists what deliberately gets
+  NO fix (112 single-tile transports, 36 other full output-disabled
+  storages — unproven, 38 empty input-disabled, war-chest stores,
+  seasonal corn, 9 unexplained pauses).
+
+## [16:01 Paris] Round 3 chunk 3a DONE — dragon-isle-continuation-v1.yaml
+- 8 phases, 36 orders, mirroring the relocation plan's phases but
+  continuing from live state; new Phase 0 "stop the bleeding" for
+  the steel stall + the DieselReforming DECIDE order (both cases
+  evidenced, never assumed). Phase 1 war-chest entry gate evaluates
+  TRUE against the captures (CP I 741/741, CP II 507/507, slabs
+  7,205, coal 19,811) and says so in-line. Steel/diesel got NO
+  PinToggle orders — both already pinned in the capture; toggling
+  would unpin them.
+- Validation: NEW tools/validate_plan.py; continuation PASS 0
+  errors (10 command orders / 7 distinct commands, args vs
+  commands.json schemas, 2 research ids, 12 product ids, no
+  GameConsoleCmd); fresh-start re-validated PASS 0 errors (1 lint
+  advisory on its AddVehicleToBuildQueueCmd sandbox flag).
+- 21 uncertainty flags + 1 placeholder research id; top opens:
+  DieselReforming decision; steel's binding link; save version
+  0.8.7d (relocation plan) vs 0.8.8 (SPEC) conflict — executor
+  refuses mismatch, human confirms; trains route-vs-census
+  mismatch flagged (lines [] vs TrainDepot x1 + 30 H2 locos);
+  Mega Vehicles research id does not exist (placeholder, manual);
+  v0.6.2-only predicates (research.completed, power) UNEVALUABLE
+  until the mod is installed — phases hold by design.
+
+## [16:05 Paris] Round 3 chunk 2 DONE — play-loop engine (dry-run)
+- Implementation: tools/plan_check.py (Python fallback — the coi
+  crate has no YAML dependency and serde_yaml is NOT in the local
+  cargo cache, so a Rust `coi plan-check` cannot be built offline;
+  PyYAML 6.0.1 used). Imports are argparse/json/pathlib/sys/yaml
+  only — no HTTP/socket/subprocess path exists. Reports carry the
+  DRY RUN banner head and foot.
+- Semantics per GAME-PLAN-FORMAT.md: state view assembled from the
+  individual captures (the bundled snapshot lacks bridge routes);
+  field mapping documented in-script (stats windows, percent
+  raw/1000, net_flow = produced - consumed, etc.); three-valued
+  Kleene logic; active phase per S9; next orders rendered as exact
+  command + args (would-prepare) or kind + description, with held
+  orders shown with reasons.
+- Continuation dry-run: Phase 0 COMPLETE (exit TRUE — steel 1,108,
+  diesel 5,992); ACTIVE = phase-1-war-chest-spine; next orders
+  include StorageSetSliderStepCmd keep-full on the steel buffer.
+  Fresh-start vs the mature state: coherent, Phase 1 ACTIVE with
+  orders held on S4.5 placeholders — no panics, as expected.
+- Sanity: war-chest entry TRUE (CP I/II 100%, slabs 7,205, coal
+  19,811 — with a noted nuance: bridge storage rows aggregate
+  500/500 per product while stats totals read 741/741 + 507/507;
+  both 100%, gate unaffected). ALL research.completed predicates
+  UNEVALUABLE (captures predate v0.6.2) and the power.balance_kw
+  check UNEVALUABLE — correct blindness, not errors. Negative test
+  (bogus metric/product/field) -> clean UNEVALUABLE lines, exit 0.
+- Interpretations recorded in both reports: `for:` durations make
+  an instantaneous TRUE read UNEVALUABLE on a single snapshot;
+  phase COMPLETE is purely exit-gate TRUE (S7/S9 re-derivation);
+  out-of-vocabulary metrics -> UNEVALUABLE + lint note.
+- Reports: plans/dragon-isle-continuation-v1.dryrun.md,
+  plans/fresh-start-v1.dryrun.md. validate_plan.py still passes
+  both plans (files unmodified). The CLI addition rides the next
+  exe build — dist/coi.exe (chunk 1) does not contain plan_check
+  (it is a tools/ script, run on the VM).
+
+## [16:10 Paris] Round 3 chunk 5 DONE + final reconciliation (coordinator)
+- local-coi-playing skill updated: bridge route list gains
+  quick-trades + power (+ researched note + website coverage);
+  Game Plans section now documents both plan instances,
+  tools/validate_plan.py, the plan_check.py dry-run engine (usage,
+  UNEVALUABLE discipline, the three recorded interpretations), the
+  diagnosis assets, and SANDBOX-PROTOCOLS.md; Operating Rule 3
+  points at the protocols.
+- SPEC.md gained Addendum IX (Round 3 summary).
+- FINAL VERIFICATION: all Round-3 deliverables on disk —
+  dist/coi.exe 4,972,701 B; plans/dragon-isle-continuation-v1.yaml
+  + both .dryrun.md reports; tools/plan_check.py +
+  tools/validate_plan.py; live/diagnosis-v1-fixes.md (diagnosis-v1
+  untouched); SANDBOX-PROTOCOLS.md (54,319 B).
+- ROUND 3 COMPLETE: chunks 1, 2, 3a, 3b, 4, 5 all done, nothing
+  blocked. Standing opens unchanged: populated-UI eyeball + mod
+  v0.6.2 install + sandbox protocols all need Philip's PC;
+  DieselReforming decision is Philip's; uploads wait for ~21:07
+  Paris or his word.
+
+## [16:52 Paris] Round 4 kicked off (Philip in London, PC off — "keep going")
+- Queue: (1) Rust plan engine `coi plan-check` + parity gate ·
+  (2) website /plans page · (3) early-game fixture + fresh-start gate
+  tests on BOTH engines · (4) decoder recon pack (docs only) ·
+  (5) blueprint reference audit · (6) SPEC addendum X + playing-skill
+  update. Constraints unchanged: NO uploads (window to ~21:07 Paris),
+  NO live contact (PC off), NO applies ever this round.
+- Fan-out: three subagents (decoder recon, blueprint audit, fixture);
+  the Rust engine + /plans page stayed with the coordinator (parity-
+  sensitive, same-crate files).
+
+## [16:56 Paris] Round 4 chunk 1 DONE — Rust plan engine + PARITY PASS
+- tools/plan_to_json.py (new): canonical JSON form of a plan —
+  PyYAML safe_load (the same parser both Python tools use) -> sorted
+  keys, 2-space indent; dates -> ISO strings, non-string keys
+  stringified. Emitted plans/fresh-start-v1.json (65,045 B) +
+  plans/dragon-isle-continuation-v1.json (75,492 B).
+- coi/src/plan.rs (new, ~1,050 lines) + main.rs wiring:
+  `coi plan-check <plan.json> [--state-dir DIR] [--out report.md]`,
+  default state dir ./live; .yaml input refused with a converter
+  hint. A faithful port of tools/plan_check.py: same State sources,
+  same three-valued Kleene semantics, same `for:` handling, same
+  counting rules, same active-phase derivation, same would-prepare
+  rendering. Python's numeric tower is honoured (100 == 100.0) —
+  serde_json's raw Number equality would have diverged there.
+- PARITY GATE: new tools/check_plan_parity.py extracts the verdict
+  skeleton (phase statuses, combined + per-item gate verdicts, phase
+  and global check verdicts, invariants, summary counts, next-order
+  statuses) from the stored Python reports and a fresh Rust run.
+  Result: PARITY PASS on both plans — fresh-start 44 gate items,
+  counts (30 T / 21 F / 14 U); continuation 49 gate items, counts
+  (32 / 33 / 8). Zero divergences, so nothing to document beyond two
+  cosmetic ones: plan meta maps render as JSON (Python: dict repr)
+  and the generator footer names `coi plan-check` instead of
+  tools/plan_check.py. Verdicts are unaffected by both.
+
+## [16:58 Paris] Round 4 chunk 2 DONE — website /plans page
+- coi/src/serve.rs: GET /plans (+ nav link). The two canonical plan
+  JSONs and plans/verdicts.json are baked in via include_str! — no
+  runtime file dependencies in the single-file exe. New generator
+  tools/gen_verdicts.py computes the verdicts with plan_check.py's
+  own machinery (imported as a module): per-plan phase statuses,
+  active phase, and its orders with held reasons + args split into
+  concrete vs §6.2 selector args.
+- The page renders each plan's phase table + plan status and, for
+  the active phase's WOULD-PREPARE command orders, a form posting
+  to the EXISTING generic prepare flow (POST /actions/prepare-
+  generic): concrete args as hidden fields, selector args as
+  labelled text inputs (selector shown; human types the entity id
+  from Entities — selectors are NOT auto-resolved, and the page
+  says so), then the usual exact-JSON confirm step. Both plans
+  have exactly one preparable order each: fresh-start p1-resume-
+  time (GameSpeedChangeCmd, speed 1) and continuation
+  p1-steel-buffer-keep-full (StorageSetSliderStepCmd, importStep
+  10 + storageId selector). HELD orders render with reasons, no form.
+- The verdict panel states its provenance: verdicts are as of the
+  2026-11-02 captures, not live state.
+- Verified on a scratch server (port 8486, scratch DB, game
+  unreachable): /plans 200 (11,605 B), both forms present, selector
+  input + hidden importStep=10 present; submitting the slider form
+  reached the Confirm-command page with the exact JSON and the
+  "could not read current game state" warning — finish_prepare's
+  unreachable-game tolerance holds. Nothing was applied (no game).
+
+## [17:00 Paris] Round 4 chunk 3 DONE — early-game fixture, both engines
+- plans/fixtures/early-game/ (subagent): 9 capture-shaped files +
+  README. A plausible month-1 New Haven game at date 1-1-18:
+  population 100 / housing 160, monthsOfFood 4 (300 food vs 80/mo
+  burn), researchedCount 0 with a v0.6.2-style `researched: []`
+  (so research.completed reads FALSE honestly, not UNEVALUABLE),
+  starter census only (smelter/casters/coal maker/generator/labs,
+  no maintenance depot or assemblies yet — phase-2 builds correctly
+  absent), iron 42 as the deliberate phase-1 blocker, diesel 220,
+  trains {"lines": []}, 4 storage rows, internally consistent
+  (stored <= capacity; lifetime produced-consumed = quantity).
+- Python verdict (plans/fresh-start-v1.early-game.dryrun.md, exit
+  0, DRY RUN banner): phase 0 COMPLETE, phase 1 ACTIVE, phases 2-7
+  NOT REACHED with every late exit gate FALSE — no nonsense TRUEs,
+  no crashes. Counts (21 T / 34 F / 10 U).
+- Rust verdict (plans/fresh-start-v1.early-game.rust.dryrun.md):
+  FULL parity with the Python report on every extracted category
+  (statuses, combined + item gates, checks, invariants, orders,
+  counts) — a third parity surface beyond the two live/ plans.
+- Findings (documented, semantics left as-is — changing gate
+  semantics is a format decision, not an engine fix):
+  (1) phase-4's p4-diesel-net-flow check reads WOULD FIRE in month
+  1: the predicate has no "diesel chain exists" guard, so ordinary
+  starting-stock drawdown (-30 thisMonth) trips it. Checks only run
+  in their own phase per §7.1, so in a real run this is report
+  noise, not a false action — noted for plan authoring.
+  (2) `net_flow lastMonth >= 0` predicates read TRUE on 0-0 empty
+  history (phases 3/4/5 gates). No composite gate passed because of
+  it (research/stock siblings block; phase-5 entry reads
+  UNEVALUABLE via a sibling, not FALSE) — a zero-history caveat
+  plan authors must know: lastMonth windows are vacuous in month 1.
+  (3) REAL engine bug found + fixed in BOTH engines: the reports'
+  hardcoded state-mapping note claimed research.completed is
+  UNEVALUABLE (pre-v0.6.2 wording) even when the capture HAS a
+  `researched` list. The note is now conditional (names the list
+  and its length when present). Prose-only: all verdicts/counts
+  re-verified unchanged after the fix (live parity PASS, fixture
+  counts still 21/34/10, validate_plan still PASS 0 errors).
+- Both plans re-validated (tools/validate_plan.py): PASS, 0 errors.
+
+## [17:00 Paris] Round 4 chunk 5 DONE — blueprint reference audit
+- tools/audit_blueprints.py (new sibling; validate_plan.py
+  untouched): extracts every blueprint_ref from both plans and
+  checks it against the pack's id set (79 ids: layout file stems +
+  PACK_MANIFEST/module ids; "exists" defined in the docstring).
+- Result: 20 refs audited — ALL 20 are logical district names with
+  asset_status: not-yet-authored (MISSING-DECLARED, the honest
+  expected state: the plans' place-blueprint orders degrade to
+  manual steps until assets are authored). ZERO missing-undeclared,
+  zero exact/leaf matches, exit 0. No plan edits were needed or
+  made — there was no unambiguous wrong reference to fix.
+
+## [17:02 Paris] Round 4 chunk 4 DONE — decoder recon pack
+- bridge/MODDING-NOTES.md gained "Recon round 4" (~13.4 KB), header
+  states PREPARATION ONLY — NOT VERIFIED DECODING; every claim
+  marked VERIFIED-FROM-ASSEMBLY or INFERRED. Offline recon only.
+- (a) ElectricityAvgStats (real home: Mafi.Core.Stats): sealed,
+  inherits ItemAvgStats<Electricity>; raw long IS kW, unscaled
+  (OneKw = new Electricity(1)); four RleSequence history rings
+  (55-bit value + repeat count, newest-first); Avg semantics: the
+  scalars collapse to the latest sample, monthly = integer avg of
+  last 30 daily, yearly = avg of 12 monthly, 25-year = MAX of 25.
+  Key open question for the live cross-check: a daily bar is the
+  last tick sample before the boundary, NOT a time average.
+  Public read surface enumerated (GetLatestData etc.).
+- (b) Trains: NO ActivityStats/TravelStats types exist — the
+  counters are the shared ProductivityCounter family on Train.
+  One bucket = 600 reports; Data = 4x ushort unioned with ulong;
+  activity A/B/C/D = Working/Idle/Refueling/CannotWork, travel
+  A/B/C/D = FullSpeed/Accel+Brake/SpeedLimit/BlockedByTrains;
+  classify rules + constants recovered; panel uses TWO different
+  denominators (categorised total for headlines, 600 for charts).
+  6-point live cross-check list written for the future decode.
+- (c) Custom priorities: the hoped-for *Priority*Proto does NOT
+  exist (zero proto types with "Prio" in three assemblies). The id
+  universe is 7 hardcoded strings across exactly 6 implementer
+  classes (Storage pair ImportPrio/ExportPrio, depot fuel pair,
+  CargoExportPrio, shipyard's five). GetCustomPriority AND
+  SetCustomPriority Assert.Fail on unknown ids in all five direct
+  implementers; IsCustomPriorityVisible never asserts (false =
+  n/a) — the only safe probe. Future enumeration = compile-time
+  table keyed by concrete class, as v0.6.1 did for Storage.
+  (Global pair ConstructionPriority/DeconstructionPriority is a
+  separate manager and errors cleanly instead of asserting.)
+
+## [17:04 Paris] Round 4 chunk 6 DONE + final reconciliation
+- SPEC.md gained Addendum X (Round 4 summary).
+- local-coi-playing skill updated: the "Rust plan-check was not
+  built" line replaced with the engine + converter + parity gate;
+  new bullets for the /plans page, the early-game fixture and its
+  two authoring caveats, the blueprint audit, and the decoder
+  prep (incl. the IsCustomPriorityVisible-only probing rule).
+- FINAL VERIFICATION: dist/coi.exe 5,306,248 B (release, embeds
+  plan-check + /plans + baked plans/verdicts); parity gate PASS;
+  validate_plan PASS (0 errors, both plans); audit_blueprints
+  exit 0; fixture + both-engine reports in plans/; MODDING-NOTES
+  recon round 4 in place; tools/ gained plan_to_json.py,
+  gen_verdicts.py, check_plan_parity.py, audit_blueprints.py.
+- ROUND 4 COMPLETE: chunks 1-6 all done, nothing blocked.
+  Standing opens unchanged: everything live (mod install, UI
+  eyeball, sandbox protocols, DieselReforming decision) waits for
+  Philip's PC; uploads wait for ~21:07 Paris or his word.
+
+## [17:56 Paris] Round 5 chunk 3 DONE — CoiBridge v0.6.3 (bridge side)
+- Power(): /coi/v1/power gains "averages" (production / consumption /
+  generationCapacity, each lastDayKw/lastMonthKw/lastYearKw from the
+  ElectricityAvgStats typed props LastDay/LastMonth/LastYear, raw
+  .Value = kW) plus sibling "averagesUnverified": true. Decoding
+  follows recon round 4 layout (monthly = rollup avg of daily
+  samples; daily = last-tick sample) and is UNVERIFIED — no live
+  cross-check has been possible; recon round 4 (a) check list stands.
+- NEW route GET /coi/v1/priorities in BridgeRoutesV6 (IEntitiesManager
+  added as 7th ctor param; route added to s_routeTable): walks
+  non-destroyed entities implementing IEntityWithCustomPriority,
+  probes the 7 ids ONLY via IsCustomPriorityVisible (never asserts),
+  calls GetCustomPriority ONLY for visible=true ids. Output
+  {"ids":[7 ids],"entities":[{"id","proto","priorities":{visible
+  ids only}}]} — entities with >=1 visible id only. No setters.
+- Version discipline: ModVersion const + manifest.json both 0.6.3;
+  readme header / What's-new v0.6.3 / routes list updated;
+  MODDING-NOTES.md gained "v0.6.3 implementation" note.
+- BUILD: bridge/vm-build/build.sh — 0 errors / 0 warnings.
+  Staged dist/CoiBridge-mod-0.6.3.zip (19,656 B), layout verified
+  CoiBridge/{CoiBridge.dll, manifest.json, readme.txt}, manifest
+  inside reads 0.6.3. No uploads, no live-game contact.
+
+## [17:56 Paris] Round 5 chunks 2 + 3-companion DONE — bare-exe launch + power averages display
+- Chunk 2 (coi/src/main.rs): bare `coi` with NO subcommand no longer
+  defaults to the one-shot `status`. New `cmd_bare_launch`: probe-
+  binds 127.0.0.1:8484 first — on AddrInUse it prints "CoI Companion
+  appears to be already running at http://127.0.0.1:8484/", still
+  opens the browser, and exits 0; on any other probe error it falls
+  through to serve so serve's own bind error surfaces. Normal path
+  prints a friendly banner (website starting, where, set-password
+  on first visit, keep window open), best-effort opens the default
+  browser (new `open_browser`: Windows `cmd /C start "" <url>`,
+  macOS `open`, Linux `xdg-open`; spawn-and-ignore, failure never
+  stops the server), then runs `serve::cmd` with default options
+  (global flags such as --db already parsed are respected).
+  Explicit subcommands unchanged. usage() updated: USAGE now shows
+  `[command]`, a no-command behaviour line + `(none)` entry added,
+  and `status` no longer marked "(default)".
+- README.md quickstart updated to the real flow: double-click
+  coi.exe → browser opens to the login page → set password on first
+  visit; `coi serve` kept as the terminal alternative; already-
+  running behaviour noted.
+- Chunk 3-companion (coi/src/serve.rs `power_panel`): when the
+  bridge power payload carries an `averages` object (CoiBridge
+  v0.6.3), a second sub-line is appended showing produced /
+  consumed / generation-capacity averages for last day / last
+  month / last year in kW, worded "Averages via CoiBridge v0.6.3 —
+  decoding UNVERIFIED: produced ≈X kW last day · …" (missing values
+  render as —). When `averages` is absent (older mod) the panel
+  renders byte-for-byte as before (empty extra string).
+- Build: `cargo build` (debug, stable toolchain PATH) — 0 errors,
+  0 warnings in the tail output.
+- Bare-launch test on this VM (scratch DB /tmp/coi-bare-test.db,
+  cleaned up after): `timeout 6 ./target/debug/coi --db
+  /tmp/coi-bare-test.db` with no subcommand printed the banner, then
+  serve's own start line, and kept serving (timeout had to kill it,
+  wrapper exit 124 — NOT one-shot status output); `curl
+  http://127.0.0.1:8484/login` during the window returned 200 with
+  the login page HTML. xdg-open was attempted and failed gracefully
+  on this headless VM ("no method available") without affecting the
+  server, as designed. Port-taken path: a second bare instance
+  while the first was serving printed the already-running message,
+  attempted the browser open, and exited 0; the first instance
+  still returned 200 on /login afterwards. Explicit `status` with
+  the game off still takes the old one-shot path (exit 1, game
+  connection refused) — unchanged. No Windows exe built (coordinator
+  does the final build), no uploads, guides.rs and bridge/ untouched.
+
+## [17:57 Paris] Round 5 chunk 5 DONE — three new guides (contracts-trade, loans, edicts)
+- coi/src/guides.rs: GUIDES 7 → 10 entries, appended only, existing
+  guides untouched. contracts-trade "Contracts & trade — the world
+  market without surprises" (5 sections), loans "Loans — borrowed
+  product, repaid product" (4 sections), edicts "Edicts — enabled is
+  not the same as active" (4 sections). Failure-mode framing and
+  closing Sources lines match the existing style.
+- Grounding discipline held: no invented numbers. Contracts from
+  BridgeRoutesV6 ContractProto fields + ToggleContractCmd toggle
+  semantics + live toBuy + raw profit multiplier; quick trades from
+  QuickTradeProvider step/maxSteps/isSoldOut/hasPriceIncreased +
+  raw unity cost + QuickTradeCmd by id. Loans: interest/fee as
+  percents via the Trade page rendering, maxActiveLoans, active-loan
+  fields, AcceptLoanCmd / MakeLoanOverpaymentCmd /
+  SetLoanBufferPriorityCmd schemas — and credit score stated plainly
+  as a RAW Fix32 whose human-scale decoding is UNVERIFIED. Edicts:
+  route state + the game's own reason strings only; no cost/tier
+  claims (route carries neither); actuation caveat prominent —
+  ToggleEdictEnabledCmd exists in-game but is absent from the web
+  API's 240-command registry, toggling stays in-game until
+  SANDBOX-PROTOCOLS.md Protocol B passes on a sandbox save.
+- guides_for_issue lives in serve.rs (NOT guides.rs) — serve.rs not
+  edited (another worker owns it). Suggested mappings for its owner:
+  issue titles containing "contract" -> contracts-trade; "loan" /
+  "payment due" -> loans; "edict" -> edicts; product-deficit/draining
+  issues whose product matches an active contract's payment product
+  or an active loan's product -> also push the matching trade guide.
+- VERIFY: cargo check in coi/ PASS, zero errors/warnings in the
+  tail (guides.rs, serve.rs and main.rs all clean at check time).
+- No uploads, no live-game contact.
+
+## [17:58 Paris] Round 5 chunk 1 DONE — plan-semantics guards applied (net_flow vacuity + diesel chain)
+- THE GUARDS (Round 4 documented findings 1+2 in plans/fixtures/early-game/README.md; this chunk APPLIES them):
+  (b) HISTORY/vacuity guard on every `product.net_flow` leaf with `window: lastMonth` in BOTH plans (no `lastYear` net_flow leaf exists in either plan): leaf L wrapped as `all: [ {any: [produced(P,lastMonth)>0, consumed(P,lastMonth)>0]}, L ]`; a leaf's `for:` was MOVED onto the composite (§4.3); each item gained/extended a `note:` naming the vacuous-window guard and why.
+  (a) DIESEL CHAIN guard: fresh-start check `p4-diesel-net-flow` — its `when:` is now `all: [ {product.produced Product_Diesel lifetime > 0}, {net_flow thisMonth < 0} ]`, note extended. Quantity-based diesel floors/invariants were NOT touched (see below).
+- ITEMS GUARDED — fresh-start (10× (b), all gate leaves): phase-2 exit ConstructionParts >=0 (for:{months:1} moved to composite); phase-3 entry ConstructionParts >=0; phase-3 exit IronOre >0; phase-3 exit Iron >=0; phase-4 exit Diesel >=0; phase-5 entry Diesel >=0; phase-5 exit Copper >=0; phase-6 exit ConstructionParts2 >=0; phase-7 entry ConstructionParts2 >=0; phase-7 exit IronOre >0. Plus 1× (a): check p4-diesel-net-flow. The two fresh diesel lastMonth gates got (b) only: (a) is redundant there — activity-guard TRUE plus net_flow >= 0 mathematically entails produced > 0 in the window, so the chain-exists condition is already implied when the composite passes.
+- ITEMS GUARDED — dragon-isle continuation (10× (b), all gate leaves): phase-2 exit ConcreteSlab >=0 (for moved); phase-3 exit IronOre >=0 (for moved); phase-4 entry IronOre >=0; phase-4 exit Steel >0 (for moved); phase-5 entry Steel >=0; phase-5 exit Fertilizer >=0 (for moved); phase-6 entry Steel >=0; phase-6 exit HouseholdGoods >=0 (for moved); phase-7 entry Steel >=0; phase-7 exit VehicleParts2 >=0. Guard (a): NONE applied — the continuation plan contains NO diesel net_flow predicate at all (its chain provably exists; every diesel predicate there is a product.quantity floor/invariant). Existing notes on continuation items were preserved verbatim with the guard sentence appended.
+- DIESEL INVARIANT CONFIRMATION: fresh-start `globals.invariants` diesel entry is quantity-based — `{metric: product.quantity, product: Product_Diesel, op: ">", value: 0}` (a stock floor, a real signal at any game age) — confirmed and left untouched, as were all diesel quantity floors/checks in both plans.
+- VERSIONS: both plans 1.0.0 -> 1.1.0 (format §3.1: a gate edit is a version bump; predicate additions, no threshold or phase-structure change). All ids preserved. Plan JSONs regenerated via tools/plan_to_json.py (fresh 74,124 B; continuation 83,852 B).
+- VALIDATION: tools/validate_plan.py PASS, 0 errors, both plans (only the pre-existing placeholder/lint-advisory warnings).
+- PARITY: tools/check_plan_parity.py PARITY PASS on live/ for both plans (fresh: 44 gate items, counts 26 T / 26 F / 13 U; continuation: 49 gate items, 31 / 35 / 7). Fixture parity (extract-compare, Python report vs Rust report): PARITY OK, counts 15 / 41 / 9. Engines run: Python + Rust on fresh×live, fresh×fixture, continuation×live (continuation×fixture not sensible — different run). Dry-run reports regenerated: plans/fresh-start-v1.dryrun.md, plans/fresh-start-v1.early-game.dryrun.md, plans/fresh-start-v1.early-game.rust.dryrun.md, plans/dragon-isle-continuation-v1.dryrun.md; plans/verdicts.json regenerated via tools/gen_verdicts.py (only change vs Round 4: the two version strings; active phases unchanged).
+- VERDICT CHANGES vs Round-3/4 reports — every flip traces to a guarded leaf whose window was exactly 0-0 (or duration-masked 0-0) in the source stats; no unexpected flips, no phase-status changes anywhere:
+  FRESH x FIXTURE (counts 21/34/10 -> 15/41/9):
+  1. phase-2 exit ConstructionParts (for:{months:1}): UNEVALUABLE -> FALSE — guard fails (0 produced / 0 consumed lastMonth); was duration-masked TRUE-on-0-0. Exit combined stays FALSE.
+  2. phase-3 entry ConstructionParts: TRUE -> FALSE (0-0 vacuity). Combined stays FALSE.
+  3. phase-3 exit Iron: TRUE -> FALSE (0-0). Combined stays FALSE.
+  4. phase-4 exit Diesel: TRUE -> FALSE (0-0). Combined stays FALSE.
+  5. phase-5 entry Diesel: TRUE -> FALSE (0-0); entry COMBINED UNEVALUABLE -> FALSE (the fixture README finding-2 knock-on is fixed: the vacuous TRUE no longer masks the sibling).
+  6. phase-5 exit Copper: TRUE -> FALSE (0-0). Combined stays FALSE.
+  7. check p4-diesel-net-flow: TRUE / WOULD FIRE -> FALSE / not firing — guard (a): lifetime diesel produced = 0 on the fixture, no chain exists; thisMonth -30 is starting-stock drawdown (fixture README finding 1 fixed).
+  Guarded but unchanged on the fixture: phase-3 exit IronOre, phase-6 exit ConstructionParts2, phase-7 entry ConstructionParts2, phase-7 exit IronOre all stay UNEVALUABLE (products absent from fixture stats — the guard leaves are honestly UNEVALUABLE too).
+  FRESH x LIVE (counts 30/21/14 -> 26/26/13):
+  8. phase-2 exit ConstructionParts (for): UNEVALUABLE -> FALSE — live lastMonth is literally 0-0 for ConstructionParts; exit COMBINED UNEVALUABLE -> FALSE.
+  9. phase-3 entry ConstructionParts: TRUE -> FALSE (0-0); entry COMBINED UNEVALUABLE -> FALSE.
+  10. phase-3 exit Iron: TRUE -> FALSE (Iron lastMonth 0-0 on the live capture). Combined stays FALSE.
+  11. phase-6 exit ConstructionParts2: TRUE -> FALSE (lastMonth 0-0); exit COMBINED UNEVALUABLE -> FALSE.
+  12. phase-7 entry ConstructionParts2: TRUE -> FALSE (0-0); entry COMBINED UNEVALUABLE -> FALSE.
+  Guarded but unchanged on live: phase-3 exit IronOre FALSE (real activity, net -29), phase-4 exit Diesel FALSE (net -28), phase-5 entry Diesel FALSE, phase-5 exit Copper TRUE (78-72, real activity), phase-7 exit IronOre FALSE; check p4-diesel-net-flow stays TRUE / WOULD FIRE on live — correct: lifetime diesel produced 423,589, the chain exists, thisMonth net -77 is a real deficit.
+  CONTINUATION x LIVE (counts 32/33/8 -> 31/35/7):
+  13. phase-6 exit HouseholdGoods (for): UNEVALUABLE -> FALSE — lastMonth 0-0 (lifetime 0-0 too); the duration wrapper no longer masks the vacuity. Combined stays FALSE.
+  14. phase-7 exit VehicleParts2: TRUE -> FALSE — lastMonth 0-0 (its activity is lastYear only); exit COMBINED UNEVALUABLE -> FALSE.
+  Guarded but unchanged: phase-2 exit ConcreteSlab stays UNEVALUABLE (real 8-4 activity, instantaneous TRUE, for-duration unprovable from one snapshot), phase-3 exit / phase-4 entry IronOre FALSE (net -29, real), all Steel items FALSE (net -46, real consumption), phase-5 exit Fertilizer stays UNEVALUABLE (30-15, for).
+- NOTE: plans/fixtures/early-game/README.md's "Python engine verdict" section still quotes the pre-guard counts/findings — left untouched by this chunk; the regenerated reports + this entry are the current record (coordinator may refresh the README at reconciliation).
+- Constraints held: offline data only, no live-game contact, no uploads, no messages.
+
+## 2026-11-03 18:03 CET — Round 5 chunk 4: growth-sequence test (12 monthly fixtures)
+
+- GENERATOR + FIXTURES: tools/gen_growth_fixtures.py written; produces plans/fixtures/growth/month-01/ … month-12/ in the exact early-game shape (9 files each). Month 1 = early-game world relabelled; months 2–12 from scripted full-month flow tables with derived quantities (start stock + lifetime net), mid-month snapshots (thisMonth ≈ ½ month, lastMonth = prior full month, thisYear = lifetime in year 1). Generator self-checks (non-negative quantities, stored ≤ capacity ≤ consistent, storage rows ≤ stats stored, percentFullRaw exact) PASS on all 12 months first run — no fixture bugs found, no regeneration needed.
+- STORY FOLLOWED: plan's own build order — scrap starter → iron ≥100 (m3) → Construction done (m2, as ResearchCp1Production) → assemblies + maintenance depot (m3–4), CP balance non-negative on real lastMonth activity from m4 (+5, then +4/mo) → Power & Maintenance (m4) → coal mine (m5) → Vehicles & Mining (m6) → first iron ore + ore smelting (m7) → concrete chain (m9) → Basic Diesel (m10, chain online; diesel stock bottoms at 65 in m9, never breaching the >0 invariant) → rubber (m11) → Copper Refinement + copper district (m12). Pop 100 → 116 (m7) → 132 (m10); monthsOfFood 3–4 throughout.
+- RUNS: Rust `coi plan-check` (plans/fresh-start-v1.json) on all 12 months → plans/fixtures/growth/reports/month-NN.rust.md. Python spot-checks months 1/6/12 → identical phase statuses AND per-phase entry/exit verdicts (parity PASS).
+- FLIP SUMMARY: phase 0 COMPLETE m1; phase 1 COMPLETE m3; phase 2 HELD AT ENTRY (UNEVALUABLE) m3–12; phases 3–7 NOT REACHED all 12 months (status level). Gate level: phase-3 entry TRUE m4, phase-3 exit TRUE m8–12; phase-4 entry TRUE m6; phase-5 entry TRUE m11; phase-6 entry TRUE m12.
+- VERIFICATION: (i) strict order PASS (status level); (ii) no COMPLETE regressions PASS; (iii) no TRUE on absent/UNEVALUABLE evidence PASS (phase-3 exit UNEVALUABLE m6 solely because IronOre absent; FALSE m7 on the 0−0 guard; CP2 never TRUE); (iv) firing checks explainable PASS (diesel floors during the 220→65→220 drawdown/rebuild; p6-transport-connectivity m9, 8/9 belts while the kiln line is built).
+- FINDINGS (full text in plans/growth-sequence-timeline.md): (1) phases ≥2 can never flip in single-snapshot dry runs — phase-2 exit's CP leaf carries for:{months:1} (instantaneous TRUE → UNEVALUABLE in both engines) and phase-5 exit has the same cap; a snapshot sequence is the history a duration needs but neither engine consumes cross-snapshot history. (2) Phase-2 entry UNEVALUABLE all 12 months by plan design (§4.5 placeholder Research<Construction>; fixtures record completion under the candidate id ResearchCp1Production, which the gate never reads). (3) Phase 4 realistically needs ~14 months: at m12 its exit fails on exactly one leaf (diesel stock 220 < 300; concrete/diesel-flow/rubber all TRUE). (4) Fixture-choice disclosures: no concrete node in `researched` (game id unsourced; no gate reads it), Synthetic Rubber recorded as ResearchRubber (plan candidate, real id), census proto labels beyond early-game fixture are plausible labels (only gate-read one, MaintenanceDepotT1, is plan-flagged unconfirmed). (5) Diesel is the first year's binding constraint — crisis checks fire through the middle sequence exactly as the plan's bottleneck watch predicts.
+- Constraints held: fixtures + generator + timeline + this log only; no plan/engine edits, no uploads, no live-game contact.
+
+## [18:07 Paris] Round 5 chunk 6 DONE — reconciliation + final build + docs (coordinator)
+- serve.rs guides_for_issue: added the Round-5 title-keyword
+  mappings the guides worker proposed (contract / quick trade ->
+  contracts-trade; loan / payment due -> loans; edict -> edicts),
+  matched on the lowercased title; product-matching mappings
+  deliberately not done (need bridge plumbing in the issue page,
+  not a keyword rule).
+- plans/fixtures/early-game/README.md verdict section refreshed
+  for plan v1.1.0: totals 15/41/9 (was 21/34/10), findings 1-2
+  marked RESOLVED (guards), finding 3 marked RESOLVED (Round 4),
+  phase statuses noted unchanged.
+- FINAL BUILD: ensure-toolchain OK; Windows release build clean;
+  dist/coi.exe = 5,369,011 B (was 5,306,248) — embeds bare-exe
+  launch, power-averages panel, 10 guides + mappings, plan
+  v1.1.0 verdicts. dist/CoiBridge-mod-0.6.3.zip = 19,656 B.
+- SPEC.md Addendum XI written (Round 5 summary incl. the
+  growth-sequence duration finding + executor-history next step).
+- Skills updated: local-coi-playing (v0.6.3 routes + UNVERIFIED
+  averages, bare-exe launch line, parity counts at v1.1.0 +
+  guard discipline, growth finding, decoder-prep status);
+  local-coi-companion-dev (bare-launch default corrected).
+- ROUND 5 COMPLETE: chunks 1-6 all done, nothing blocked.
+  Constraints held: zero uploads, zero live-game contact, zero
+  applies. Standing opens unchanged (mod install, populated-UI
+  eyeball, sandbox protocols, DieselReforming decision) + new
+  engine item: executor/cross-snapshot history for duration
+  gates.
+
+## Round 6 — 2026-11-03 evening (Philip in London, PC off; coordinator session)
+
+Constraints held throughout: zero uploads, zero live-game contact,
+zero applies, no messages to Philip. Deliveries wait for Thursday.
+
+- ~18:32 CET — Chunk 1 (format semantics) DONE: GAME-PLAN-FORMAT.md
+  §4.3.1 defines `for:`-duration evaluation over a state sequence
+  (CoI calendar 12×30 days, 2880 ticks/day — fixture-verified;
+  anchor-at-window-start rule; FALSE anywhere in window → FALSE;
+  no anchor / inner UNEVALUABLE → UNEVALUABLE, never false-by-
+  default; gaps never falsify; `for:{evaluations:n}` = last n
+  snapshots, same rule). §9 cross-reference added.
+- ~18:33 CET — Chunk 2 (Python engine) DONE: tools/plan_check.py
+  gains sequence mode (`--state-seq DIR`, per-state subdirs sorted
+  by in-game date; per-prefix phase derivation + "Sequence phase
+  history" report section). Single-state regression: outputs on
+  live (both plans) and the month-1 fixture are BYTE-IDENTICAL to
+  the committed Round-5 reports.
+- ~18:34 CET — Chunk 5 (fresh-start v1.2) DONE as the documented-
+  candidates outcome: the phase-2 entry placeholder research id
+  cannot be sourced from any project data (starter skill gives
+  display names only; research_ids.txt gives ids only; no mapping
+  exists anywhere in the repo). Plan bumped to v1.2.0 with the
+  investigation recorded as a plan-level assumption and the sole
+  candidate `ResearchCp1Production` documented with reasoning on
+  both placeholder sites; NOT substituted (§4.5). validate_plan
+  PASS; JSON regenerated; live verdicts unchanged (26/26/13).
+- ~18:35 CET — Chunk 3 (Rust port) DONE: coi/src/plan.rs mirrors
+  §4.3.1 exactly; grows `coi plan-check --state-seq`. Parity:
+  live PARITY PASS (both plans); growth sequence — identical
+  per-prefix phase tables, gate verdicts and counts (36/26/3)
+  between engines. Edge fixtures verified in both engines:
+  evaluations form (UNEVALUABLE below n snapshots, flips at n)
+  and insufficient-history (UNEVALUABLE, never defaulted).
+- ~18:36 CET — Chunk 4 (acceptance) DONE: on the growth sequence,
+  phase 2's duration exit COMPLETES at month 5 (window reaches
+  month 3's FALSE at m4; holds {m4,m5} at m5); phase 3 COMPLETE
+  at month 8; phase 4 ACTIVE, blocked on ONE leaf (diesel stock
+  220 < 300 — fixture-horizon limit, ~month 13-14); phases 5-7
+  evaluate on their own gates, blockers named leaf-by-leaf.
+  plans/growth-sequence-timeline-v2.md written; v1 file untouched.
+  Sequence reports saved: plans/fresh-start-v1.growth-sequence
+  .dryrun.md + .rust.dryrun.md.
+- ~18:37 CET — Chunk 6 (diagnosis forward-compat) DONE:
+  tools/diagnose_live.py uses v0.6.x fields when present —
+  §3 splits out full-by-configuration storages (ImportUntil
+  ~100%), §7 priorities (census map / storage fields / v0.6.3
+  route capture), §8 power with a deficit finding. Real-capture
+  output BYTE-IDENTICAL to live/diagnosis-v1.md. Synthetic
+  enriched capture built at live-synthetic-v06/ (SYNTHETIC.txt
+  marker + in-report banner): stuck 39 -> 38 with crude tank
+  23639 explained, synthetic 900 kW deficit reported;
+  live-synthetic-v06/diagnosis.md saved alongside.
+- ~18:38 CET — Chunk 7 (docs) DONE: plans/verdicts.json refreshed
+  (fresh-start v1.2.0; live verdicts unchanged) so the /plans page
+  bakes current data; SPEC.md Addendum XII written; local-coi-
+  playing skill updated (executor usage, sequence sources incl.
+  the product-history non-qualification, parity gate extended to
+  sequence mode, v2 flip sequence).
+- ~18:39 CET — FINAL BUILD: toolchain OK; Windows release build
+  clean; dist/coi.exe = 5,442,879 B (was 5,369,011) — embeds
+  sequence-mode plan-check; verified the new code strings are in
+  the staged binary; live parity re-run against the final build:
+  PARITY PASS. dist/CoiBridge-mod-0.6.3.zip unchanged (19,656 B).
+- ROUND 6 COMPLETE: chunks 1-7 all done, nothing blocked.
+  Standing opens unchanged (mod v0.6.3 + new exe install and
+  populated-UI eyeball on Philip's return Thursday, sandbox
+  protocols, DieselReforming decision).
+
+## Round 7 (2026-11-04, Philip in London, PC off — staged only)
+- 14:18 CET — Chunk 1 (CoiBridge v0.6.4) DONE: NEW GET
+  /coi/v1/machines — one row per machine instance {id, proto, pos,
+  state, recipes[], isPaused, isEnabled, canBePaused} built inside
+  the shared entity scan (same ~5 s cache as census/topology/
+  storages); per-row try/catch with a "skippedRows" counter so a bad
+  row can never poison the scan. /coi/v1/trains gains RAW per-train
+  ProductivityCounter blocks (activity + travel: version, monthly
+  ring in stored order, yearly ring, yearlyRolling, totalRollingHalf
+  [halved per recon], ongoing bucket + ticks), "counterLabels" from
+  the recon-round-4 label tables, and top-level
+  "unverifiedDecoding": true; the counters block sits behind its own
+  try/catch so a failure degrades to "trainsError" and never takes
+  the lines payload. Surfaces verified by fresh recon before coding:
+  TrainsManager [GlobalDependency(AsEverything)] + Trains
+  IIndexable<Train>; Train.{Name, TrainId.Value (ushort), TrainLine,
+  IsPaused, IsSpawned, TrainCarsCount, ActivityStats/TravelStats
+  trios}; ProductivityCounterHistory publics + Data {CategoryA-D
+  ushort fields, RawData, Total}; Entity.{IsPaused, IsEnabled,
+  CanBePaused}. Build: 0 errors / 0 warnings; dist/
+  CoiBridge-mod-0.6.4.zip = 21,767 B, manifest 0.6.4 in-zip, DLL
+  strings confirm /coi/v1/machines + unverifiedDecoding + 0.6.4.
+  Supersedes 0.6.3 for Thursday's install. Live behaviour pending
+  Philip's PC (empty trains list on his save is CORRECT).
+- 14:2x CET — Chunk 2 (diagnosis consumes machines) DONE:
+  tools/diagnose_live.py gains §9, active only when a capture
+  carries bridge-machines.json (v0.6.4 shape): per-proto instance
+  rows vs census aggregates consistency check (MATCH/MISMATCH with
+  per-state diffs), paused/disabled instance lists, and §5's
+  flagged clusters resolved to instances — id, proto, pos, recipes,
+  connected neighbours traced over the topology port edges
+  (storages resolved to product + fill; direction labelled
+  [inference], edges are undirected). Real capture: output
+  BYTE-IDENTICAL to live/diagnosis-v1.md (route absent → zero
+  change). Synthetic test: live-synthetic-v064/ = real capture +
+  SYNTHETIC.txt + bridge-machines.json generated FROM the real
+  census + topology (223 rows; census machine counts matched
+  topology entities exactly for every proto, zero inconsistencies;
+  one AssemblyT1 marked paused to exercise the paused path) —
+  §9 reports MATCH, 46 starved + output-full instances listed with
+  neighbours (e.g. Flares → naphtha storage 21022 at 248/500).
+- 14:31 CET — Chunk 3 (diagnosis → blueprint linkage) DONE:
+  two SIZED layouts authored through packlib in
+  ~/workspace/coi-blueprint-pack (builder
+  rebuild_oil_linkage_v1.py; NEVER imported, run as __main__ only):
+  (1) crude-refining-v1 (77 entities) — Layout 1, REPLACEMENT role
+  for the half-OutputFull tower cluster (F2+F9): 2×T1 + 2×T2 +
+  2×T3 + 1 stripper (exact 36 sour/min match) + 1 BoilerGas on
+  heavy oil; 120 crude/min nameplate → 72 diesel + 48 naphtha +
+  24 fuel gas/min; steam demand 27/min on 20.25 of 24 heavy/min,
+  excess ~3.75/min → the base's FIRST heavy-oil buffer + flare.
+  Counter-scale at the full measured stream (480 TM / 554 LM):
+  diesel 288/332, naphtha 192/222 per month.
+  (2) vehicle-diesel-v1 (45 entities) — Layout 2, sized EXCLUDING
+  DieselReforming (F3): 1 advanced chain (Advanced over Basic:
+  0.60 vs 0.45 crude→diesel, Basic is throwaway), target =
+  vehicle fuel 49/mo × ~2 = ~98/mo → 163 crude/mo at counter
+  scale; two chained diesel buffers (fuel-buffer rule); no T3 —
+  light oil is a buffered export.
+  ASSUMPTION SPLIT (full maths in linkage doc): Case A (reforming
+  OFF) — existing 84/mo already covers vehicles (+35); Layout 2
+  is a prepared paste only, NOT a supply fix, do not build for
+  capacity. Case B (reforming KEPT) — demand 161/mo; existing 84
+  + Layout 2's 98 = 182 ✓ (+21 spare); its 163 crude/mo fits the
+  +340/+354 headroom leaving +177/+191 crude still accumulating
+  (Layout 2 alone does NOT fix crude). Combined: Layout 1 alone
+  closes Case B diesel too (288–332/mo); both at named targets
+  would need 643–717 crude/mo > production 480–554 — alternatives,
+  not additives; sequence is Layout 1 first.
+  LINKAGE DOC: live/diagnosis-blueprint-linkage.md — per layout:
+  fault → evidence (capture numbers + source files) → layout id →
+  sizing maths → expected effect + verification fields → what it
+  does NOT fix; §3 honest gaps.
+  HONEST GAPS: no per-minute ↔ counter/month conversion exists in
+  the captures (sizing is fraction-exact — counters verified to
+  obey dataset ratios exactly: 140 crude → 112 medium → 84 diesel
+  + 70 light, 28 heavy, 42 sour — plus complete nameplate blocks);
+  Layout 1's 120/min nameplate is half the existing cluster's
+  240/min (its constraint was routing, not capacity; instantaneous
+  inflow rate unknown — input buffer + pause-don't-demolish hedge
+  stated); medium/heavy storage product IDs exist in no harvest
+  or live storage (heavy capacity 0 base-wide) → those buffers
+  placed UNASSIGNED with manual in-game set steps (diesel-
+  refining-v3 precedent); all other buffer IDs live-verified in
+  bridge-storages (light/naphtha/fuel-gas assignments newly
+  possible); PipeT1 ~200/min cap remains reported/unverified
+  (manifold peaks 120/min); brief's dataset path omitted
+  reference/daxfb/ and the pack has no README.md — noted in doc.
+  AUDIT: packlib.validate PASS both, footprint warnings 0 both;
+  render_clean 0 unassigned both, assigned products verified
+  46/46 + 25/25 correct (needed no_merge_points at 6 L1 / 3 L2
+  foreign endpoints — renderer's storage-through union box is
+  offset from storage origins and merges neighbouring fluids);
+  audit_final.py PASS — 80 slugs, ISSUE COUNT: 0 (script's
+  hard-coded expected count updated 78 → 80 for exactly these
+  two additions, comment in file). Registered in
+  NEW_MODULES_oil_linkage.json + PACK_MANIFEST.json Phase 6.
+  Constraints held: no uploads, no live-game contact, no
+  messages to Philip; NOT in-game tested (pack global status).
+  Addendum (14:3x CET): audit_pack.py also run — 80 modules,
+  9 failures, ALL on pre-existing slugs (chemicals-v3,
+  cparts-v1/v2/v3, cparts-advanced-v2/v3, nuclear-v1/v2/v3 —
+  the pack's known generic-color / documented-unassigned
+  exceptions); ZERO failures on crude-refining-v1 or
+  vehicle-diesel-v1.
+- 14:3x CET — Chunk 4 (docs) DONE + ROUND 7 COMPLETE: SPEC
+  Addendum XIII written (v0.6.4 routes, diagnosis §9, linkage
+  results incl. the Case A/B assumption split and the
+  alternatives-not-additives crude maths); local-coi-bridge-dev
+  updated (TrainsManager/Train/Entity surfaces, the two deliberate
+  rule-5 exceptions for v0.6.4, unverified-decoding discipline);
+  local-coi-playing updated (machines route, raw-counter posture,
+  diagnosis §9); MODDING-NOTES gained recon round 5. Coordinator
+  independently re-ran audit_final.py: ISSUE COUNT 0 over 80
+  slugs. Nothing blocked. Standing opens unchanged: install
+  CoiBridge v0.6.4 (supersedes 0.6.3) + populated eyeball Thursday,
+  sandbox protocols, DieselReforming decision — which the linkage
+  doc now prices out in both directions.
+
+## Round 8 Chunk 3 — Machines (per-instance) UI — 14:51 CET
+
+- serve.rs: new `machines_section(state)` helper + `MACHINES_JS` const,
+  rendered on the Entities page. Fetches bridge_json "/coi/v1/machines"
+  (CoiBridge v0.6.4). Absent route -> house degradation panel ("Per-
+  instance machine states arrive with CoiBridge v0.6.4 — update the
+  mod to see them here."). Present -> summary line (total + per-state
+  counts, busiest first, plus bridge skippedRows when > 0) and a table
+  Id | Proto | Pos (x, y, z) | State | Recipe(s) | Paused | Enabled.
+  Filters follow the TABLE_JS idiom scoped to #mtable: text input
+  (proto/id/recipe/state via textContent) + explicit state <select>
+  matched exactly against each row's data-state. All interpolated
+  strings via esc(); missing/malformed fields render "—", no panics.
+  The section HTML is computed once at the top of page_entities and
+  inserted in all three render paths (normal flow after Storages;
+  game-API-unreachable page; bridge-absent page) so the degradation
+  note shows even when the game is off. No new deps; plan.rs/main.rs
+  untouched.
+- Build: Linux debug `cargo build` clean, zero warnings/errors.
+- Verify A (game unreachable, scratch coi on :8485, fresh DB):
+  POST /login setup+login, GET /entities -> 200, "Machines
+  (per-instance)" heading + v0.6.4 degradation note present, no
+  #mtable. PASS.
+- Verify B (populated, via new stub): tools/stub_game_server.py
+  (stdlib http.server) serves the game API from live/ + bridge routes
+  from live-synthetic-v064/ on :3999; scratch coi --game-url
+  http://127.0.0.1:3999 on :8486. GET /entities -> 200; #mtable row
+  count == 223 (== capture rows); 4 distinct states (Working 94,
+  OutputFull 59, NotEnoughInput 59, Paused 11) matching the summary
+  line; #mfilter + #mstate controls and all 4 state options present;
+  sample row #2484 AirSeparator at "3200, 486, 4" and a 12-recipe
+  joined cell verified; storages table unaffected. PASS.
+- Verify C (bonus, old bridge): stub --capture live/ (no machines
+  file -> 404): page fully populated (Storages (283)) with the
+  machines degradation note and no table. PASS.
+- Stub saved for reuse: tools/stub_game_server.py (--port/--capture).
+  No uploads, no live-game contact, no /command POSTs. Windows
+  release build left to the coordinator.
+- 14:51 CET — Round 8 Chunk 1 (supervised session runner `coi play`)
+  DONE: new subcommand implemented INSIDE coi/src/plan.rs as
+  `pub fn play_cmd` (uses the private engine internals: load_sequence,
+  eval_gate/eval_predicate, derive_statuses via a new eval_prefix
+  helper; build_report untouched), dispatched in main.rs + one usage
+  line. Interface: `coi play <plan.json> --state-seq DIR
+  [--session-out session.json] [--transcript-out transcript.md]`.
+  Semantics: walks the sequence prefix by prefix (step k =
+  states[0..=k], statuses re-derived per prefix); loop position =
+  first non-COMPLETE phase; at a phase's first ACTIVE step its orders
+  are recorded once, in plan order — PREPARED with the exact command
+  envelope {"type","args"} when `do` is a catalogue command with
+  concrete args (catalogue membership checked against
+  crate::catalogue::CATALOGUE; GameConsoleCmd excluded by policy),
+  SKIPPED with reason for manual-step/place-blueprint/observe-only/
+  wait kinds or class manual (reason names the kind), placeholder
+  research id ("placeholder research id (unsourced)"), any $entity
+  selector ("entity selector requires human resolution (§6.2)"), or
+  any other placeholder. Phase completions recorded at the first
+  step the exit gate is TRUE, with the engine's exit evidence.
+  Final state: complete, or blocked on the loop phase with every
+  exit-gate predicate's rendered description, verdict and verbatim
+  evidence. Outputs follow schema coi-play-session/1 (steps with
+  per-step statuses/loop/events, orders with confirmation:null,
+  phaseHistory, final). HARD SAFETY held: prepare-only, NO apply
+  path — no sockets, no client, no §12 calls; files read + the two
+  named outputs written only; stated in the module doc comment, the
+  play section comment, the session `runner` field and the
+  transcript banner (human confirms in the website).
+  EXERCISE: `coi play plans/fresh-start-v1.json --state-seq
+  plans/fixtures/growth` → plans/fresh-start-growth-session.json +
+  plans/fresh-start-growth-session.md. Walk AGREES with
+  growth-sequence-timeline-v2.md exactly: step 0 (m1, 1-1-18) phase 0
+  COMPLETE + phase 1 ACTIVE (orders recorded: 1 PREPARED
+  p1-resume-time GameSpeedChangeCmd, 5 SKIPPED incl. placeholder
+  p1-research-construction); step 2 (m3, 1-3-15) phase 1 COMPLETE,
+  phase 2 entered HELD (UNEVALUABLE entry — the §4.5 placeholder, as
+  in v2); step 4 (m5, 1-5-15) phase 2 COMPLETE + phase 3 ACTIVE
+  (orders: 4 PREPARED research starts, p3-grow-truck-fleet SKIPPED
+  on its $entity selector, 3 SKIPPED blueprint/manual); step 7
+  (m8, 1-8-15) phase 3 COMPLETE + phase 4 ACTIVE (orders: 1 PREPARED
+  p4-research-basic-diesel, p4-diesel-storage-alert SKIPPED on
+  $entity, 2 placeholder-research SKIPPED, 3 blueprint SKIPPED);
+  steps 8–11 unchanged, phase 4 ACTIVE to m12. FINAL: blocked on
+  phase-4-concrete-diesel-rubber — blockers at final prefix: concrete
+  TRUE (226 ≥ 100), diesel lastMonth net-flow TRUE (+82 = 110 − 28),
+  rubber TRUE (17 > 0), diesel stock FALSE — engine evidence
+  verbatim: "Product_Diesel.quantity = 220" vs >= 300, exactly the
+  v2 timeline's single binding leaf.
+  ONE RULE CONSEQUENCE, flagged honestly: phases 0 and 2 never have
+  an ACTIVE step in this sequence (0 is already COMPLETE at m1; 2
+  goes HELD → COMPLETE at m5), so under the specified
+  record-at-first-ACTIVE-step rule their orders are NOT recorded;
+  phaseHistory still records their entry/completion, and the
+  transcript carries an explicit note per such phase.
+  REGRESSION GATE: `python3 tools/check_plan_parity.py` → PARITY
+  PASS (fresh-start-v1 OK 44 gate items, dragon-isle-continuation-v1
+  OK 49 gate items); Linux debug `cargo build` clean, no warnings.
+  serve.rs untouched; no uploads, no live-game contact.
+
+## [14:54 CET] Round 8 chunk 4 DONE — history → states adapter + continuation over history sequence
+- TOOL: tools/history_to_states.py (stdlib only). Input: the
+  388-2-27 snapshot's `history` block (36 pinned products × 8 monthly
+  points) + live/ for catalogue/pinned/gameId. Output:
+  history-states/month-01-387-07 … month-08-388-02 (dir names carry
+  the calendar month) + generated README.md with full provenance.
+  The tool REFUSES to build if its alignment premises fail (series
+  lengths, gameId match, the live-stats identities, cross-check tail).
+- ALIGNMENT DECISION (evidence in history-states/README.md): point i
+  = calendar month 387-7 + i; point 7 = 388-2 (in progress). Decisive:
+  for 36/36 products, produced AND consumed, history[-1] ==
+  live-stats thisMonth, history[-2] == lastMonth, [-2]+[-1] ==
+  thisYear; quantity[-1] == live quantity 36/36. Corroborated by
+  history.start 387-7-1 (snapshot) vs 387-8-1 (hist-keys) with
+  snapshot[1:] == hist-keys exactly on all 9 shared series (3
+  products × 3 series) — the offset-by-one is a one-month-wider
+  window, and fetch_live's drain-to-trailing-8 (coi/src/main.rs)
+  explains why the stored series starts at its first month, not at
+  a pre-window state point. Quantity opening/closing-boundary
+  convention is NOT provable from flow conservation (exact in only
+  ~half the finished transitions under either reading) — disclosed
+  in the README, never corrected by inventing numbers.
+- ENCODINGS (each TESTED on both engines with a scratch plan first):
+  stats rows hold ONLY the 36 history products; produced/consumed
+  are SHORT arrays [thisMonth, lastMonth] (month 1: length 1 — June
+  387 is in no capture), so thisYear/lastYear/lifetime read
+  UNEVALUABLE in both engines; stored/storageCapacity are
+  present-but-NULL (reads UNEVALUABLE; OMISSION was tested and
+  REJECTED — it makes Python's storage.percent_full cross-ref raise
+  KeyError and blinds that metric even with genuine bridge rows).
+  Ticks: derived by anchoring the documented 2,880/day rate to the
+  real tick (spacing-faithful; the API tick's epoch is not the
+  calendar epoch — documented). Months 1–7 have NO bridge files;
+  month 8 copies live game-info verbatim + the five genuine bridge
+  captures.
+- RUNS: both engines over the continuation plan with
+  --state-seq history-states → plans/continuation-history-states
+  .python.dryrun.md + .rust.dryrun.md. PARITY PASS (verdict skeleton
+  identical incl. per-prefix rows; counts TRUE 27 / FALSE 26 /
+  UNEVALUABLE 20; diffs are the known cosmetic classes only).
+- RESULT (writeup: plans/continuation-history-states.md): phase 0
+  COMPLETE at all 8 prefixes (Steel 1,379→1,108 ≥ 800, Diesel
+  6,461→5,992 ≥ 4,000 every month — buffers held, bleed slow);
+  phase 1 HELD (U) at ALL 8 prefixes and phases 2–7 NOT REACHED
+  throughout. Headline limitation, stated plainly in the writeup:
+  phase 1's entry gate CANNOT be judged from product history alone —
+  its ConcreteSlab `product.stored >= 2900` leaf is underivable in
+  every month (history carries no stored field), even though the
+  out-of-sequence live capture shows 7,205 stored. UNEVALUABLE
+  groups enumerated: (A) bridge-only metrics blind months 1–7 +
+  inside every for: window reaching them (power.balance_kw blind
+  everywhere; research.completed blind even at month 8 — pre-v0.6.2
+  capture); (B) non-pinned products (IronOre, Fertilizer,
+  HouseholdGoods, MedicalSupplies, VehicleParts2) blind at every
+  prefix; (C) underivable stored/capacity + thisYear/lastYear/
+  lifetime slots (the slots are never read by this plan — all its
+  flow predicates are thisMonth/lastMonth); (D) the §4.5 Mega
+  Vehicles placeholder (manual-only by design, not a data gap).
+  Late gates that CAN be read honestly evaluate: phase-2 exit FALSE,
+  phase-4 steel balance FALSE — the sequence refutes, not just
+  abstains. No uploads, no live-game contact, no messages.
+- 14:5x CET — Chunk 6 (strategy skill) DONE (coordinator, after
+  chunk 1 landed per Philip's ordering — runner first, strategy on
+  top): ~/workspace/custom-skills/local-coi-strategy/SKILL.md —
+  the mid-loop decision layer. Contents: triage order (death-spiral
+  triangle fuel/maintenance/electricity + starvation, per starter
+  bottlenecks.md; then bottleneck-chain starvation — steel/CP;
+  blockages/backups; configured-full hygiene; rest), each leg
+  grounded in the real base's diagnosis evidence; expand-vs-fix
+  heuristics (never scale a chain whose binding leaf is failing;
+  crude-cluster routing case from the linkage doc as canonical;
+  settings→recipe→replacement→construction ladder; capacity-only
+  expansion criterion in plan block sizes); stall interpretation
+  (WAIT on §4.3.1 duration/seasonal/refill evidence, REDESIGN via
+  the diagnosis→linkage pattern, ESCALATE on irreversibles,
+  plan-flagged DECIDEs — DieselReforming p0 order named — and
+  plan-vs-base contradictions); experimentation policy (guides
+  first, sandbox protocols before trials, verified/wired/excluded
+  + unverified-decoding labelling incl. train counters);
+  runner consumption (coi-play-session/1: blockers first,
+  prepared≠intended, never-activated phases leave no orders by
+  design, decisions quote evidence verbatim). Every rule cites a
+  guide, plan, diagnosis finding or sibling skill — no invented
+  mechanics. Shape mirrors local-coi-playing (Purpose / sections /
+  Operating Rules).
+- 14:55 CET — Round 8 chunk 2 (blueprint assets for the game plans)
+  DONE: map-first pass over all 20 blueprint_refs (12 fresh-start +
+  8 dragon-isle), author-only-if-honest. MAPPED 7 to existing pack
+  slugs: fresh p1 starter cluster -> iron-v1 (exact smelter core,
+  1 furnace + 2 casters scrap; coal maker / diesel generator / labs
+  have NO genuine prototype in any pack source - manual singles,
+  named in the status doc); fresh p3 ore-smelter anchor -> iron-v1
+  + iron-v2 overlay (the iron-steel skill's Stage-1 build verbatim);
+  fresh p4 kiln+mixer -> concrete-v1 and dragon p2 §5 concrete
+  block -> concrete-v1 (1 kiln + 1 Mixer II = 24 slabs/min, gas kiln
+  = §5's own coal-free swap); fresh p4 basic diesel -> diesel-v1
+  (pumps are deposit-sited, no OilPump prototype exists); fresh p4
+  rubber -> rubber-v1; dragon p4 caster pair -> steel-v1 + steel-v2
+  overlay (48 steel/min; pack's 2-furnace-per-line feed vs §5's
+  dataset 1-furnace rate documented as the one divergence).
+  AUTHORED 2 new modules via rebuild_plan_linkage_v1.py (packlib,
+  __main__ only, no build_*.py imported): starter-assemblies-v1
+  (64 entities - 4x AssemblyManual bank, cparts-v1 lanes extended,
+  A1 CpAssembly preset, A2-A4 recipes cleared rather than guessed,
+  per-assembly output buffers) for fresh p2; household-goods-v1
+  (21 entities - AssemblyElectrifiedT2 HouseholdGoodsAssemblyT2,
+  dataset-verified 16/min, consumer-goods-v1 geometry with the tier
+  corrected; NOT a mapping to the robotic 32/min line) for dragon
+  p6. Registered in NEW_MODULES_plan_linkage.json + PACK_MANIFEST
+  phase 7; renders 0 unassigned each; audit_final updated 80 -> 82
+  slugs, ISSUE COUNT 0. STILL MISSING 11, each with a precise
+  blocker in plans/plans-blueprint-status.md (the full 20-row
+  table): terrain/deposit (coal mine, spine trunk, NE excavation,
+  20-farm district), no genuine prototype (maintenance depot,
+  first-farm - FARM_GUIDANCE is guidance-only and FarmT2 is the
+  wrong tier, fuel station, fertilizer-60 + medical chain -
+  Chemical Plant exists only as manual stubs and both orders are
+  audit/flow-contingent), scrap-vs-ore mismatch (copper district),
+  unspecified design (permanent assembly area). Plans updated in
+  place: asset_status authored + pack_slug (+ pack_slug_overlay
+  where layered) on the 9 resolved refs, blueprint_ref untouched,
+  versions fresh 1.2.0 -> 1.2.1, dragon 1.1.0 -> 1.1.1; canonical
+  JSON regenerated. audit_blueprints.py gained a minimal pack_slug
+  check (authored counts only if the slug exists in the pack;
+  prior verdicts unchanged): 9 AUTHORED / 11 MISSING-DECLARED /
+  0 undeclared. validate_plan PASS 0 errors both plans;
+  check_plan_parity PARITY PASS both. No uploads, no live-game
+  contact, no messages to Philip.
+- 15:0x CET — Chunk 5 (docs + final build) DONE + ROUND 8 COMPLETE
+  (coordinator): SPEC Addendum XIV written (runner, machines UI,
+  blueprint 9/20, history adapter + its proven alignment and HELD
+  caveat, strategy skill, staged sizes). local-coi-playing updated
+  (runner + adapter paragraphs, blueprint audit state 9/20);
+  local-coi-companion-dev updated (play subcommand in CLI surface,
+  Machines section + stub_game_server.py in serve shape; setup-mode
+  first-POST note). FINAL BUILD: Windows release rebuilt clean,
+  dist/coi.exe = 5,609,920 B (was 5,442,879); strings verified in
+  the staged binary: coi-play-session/1, "Machines (per-instance)",
+  "prepare-only". Coordinator independently verified the session
+  file (final: blocked on phase-4, diesel leaf 220 FALSE vs >= 300,
+  other three leaves TRUE; phaseHistory 0@0/0, 1@0/2, 2@2/4, 3@4/7,
+  4@7/—; 6 prepared / 15 skipped) and the history-states layout
+  (month-01-387-07 … month-08-388-02 + README). Round 8 totals:
+  chunks 1–6 all DONE, nothing blocked; parity PASS maintained
+  across every engine change; zero uploads, zero live-game contact,
+  zero applies. Thursday opens unchanged: install CoiBridge v0.6.4
+  + this exe, populated eyeball (machines section first), sandbox
+  protocols A/B, DieselReforming decision — now with the runner,
+  the history sequence and the strategy skill ready to run the
+  session for real.
+
+## QoL mod prep round (2026-11-04 ~21:35 CET)
+- Philip (on the train home) filed five QoL mod ideas in QOL-MODS.md
+  (chicken distribution, world-map dropdown, train cargo for Unity,
+  train network advisor, productivity alerts) and ordered:
+  "Challenge and refine these, to prepare mods."
+- Prep-only round: five recon spikes fanned out (animals,
+  world-map UI feasibility, train cargo + Upoints, advisor metrics,
+  productivity measurement). Deliverable: QOL-MOD-PREP.md —
+  challenge / refined design / recon / readiness per idea + a
+  recommended build order. No gameplay-mod code, no uploads, no
+  live-game contact; each mod still needs Philip's own go-ahead.
+- QoL prep round DONE: five recon spikes landed (qol-recon/01–05,
+  ~175 KB of evidence) and QOL-MOD-PREP.md synthesises them —
+  per idea: challenge / refined design / recon / readiness.
+  Verdicts: chickens READY (vanilla already round-robins moves;
+  the mod is a policy layer over MoveAnimalsCmd with
+  slaughter-limit guards); world-map dropdown READY as a
+  PriorityManager-pattern Unity UI mod, no Harmony (4 live
+  checks pending); train cargo NEEDS 2 decisions + the
+  custom-command serializer sandbox test (DestroyCargo exists
+  but routes to storage; the TrainNetworkJob accounting is the
+  real hazard); advisor SPLIT (L0 ready today, L1 ready as a
+  bridge round S-STATIONS/S-SCHEDULE/S-NETWORKS/S-WAGONS,
+  L2 blocked on live trains for counter verification);
+  productivity READY after the snapshot-store prerequisite +
+  κ calibration (today's store: exactly 1 paused snapshot,
+  zero machine states — coi watch was never built). Build
+  order: chickens → productivity → world map → train cargo →
+  advisor. QOL-MODS.md status lines point at the prep doc.
+
+## 2026-11-04 (late evening, subagent) — QoS suite round 1: foundation + chickens BUILT
+Philip's architecture call (22:03) landed: small individual mods
+linking into one QoS suite, sub-mod dependencies explicitly OK.
+Built under qos/ (ARCHITECTURE.md has the layout + dependency
+rules; BUILD-NOTES.md has built-vs-prep + every deviation):
+
+- Dependency + config mechanics VERIFIED from the official
+  modding README + shipped manifests before designing:
+  mod_dependencies = string[] of ids with optional ">= x.y.z"
+  constraints, topological load; config = per-mod config.json
+  (snake_case params) surfaced in the game's settings UI and
+  persisted in saves, read via ModJsonConfig.Get*(name, default).
+- QoSCore 0.1.0: QoSLog (prefixed suite logging), SuiteRegistry
+  (features Announce themselves), QoSCoreService (verbose_logging
+  config). Nothing speculative beyond what chickens needs.
+- QoSChickens 0.1.0: prep SS1 implemented as designed - daily
+  NewDayEnd pass, vanilla MoveAnimalsCmd via IInputScheduler,
+  guards enforced by EXACT simulation of the shipped round-robin
+  (receiver cap = min(capacity, SlaughterLimit); no drain below
+  the nucleus floor; per-day cap). Ships DISABLED (enabled=false,
+  mode pre-set to equalise) - the prep left the default open;
+  conservative reading taken, recorded in BUILD-NOTES.
+  Growth-paused guard = species skip for the day (the shipped
+  peer set cannot exclude a farm - stricter than prep text,
+  only faithful option). Fill-first order from config ids.
+- Builds: both projects 0 warnings / 0 errors (net48, qos/build/,
+  one csproj per subfolder - shared obj/project.assets.json
+  gotcha found + documented in the bridge-dev skill, which also
+  gained the verified manifest-dependency / config.json /
+  plain-IMod / cross-assembly mechanics).
+- Staged in dist/ (NO uploads): QoSCore-mod-0.1.0.zip (9,951 B),
+  QoSChickens-mod-0.1.0.zip (20,050 B, no QoSCore.dll inside),
+  QoS-suite-0.1.0.zip (32,199 B, both folders + suite readme).
+- Unverified until first live install: cross-assembly QoSCore
+  resolution via manifest dependency; peer enumeration order ==
+  simulation order (guards bound outcomes regardless).
+  CoiBridge untouched; no live-game contact (PC off).

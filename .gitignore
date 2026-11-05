@@ -1,0 +1,14 @@
+refs/
+dist/
+target/
+**/bin/
+**/obj/
+coi.db*
+snapshots/
+history-states/
+live/
+live-synthetic-*/
+*.exe
+*.dll
+*.zip
+*.save
