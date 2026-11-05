@@ -2,6 +2,7 @@ mod catalogue;
 mod client;
 mod guides;
 mod plan;
+mod productivity;
 mod saveinfo;
 mod store;
 mod serve;
@@ -76,10 +77,11 @@ fn main() {
         "probe" => cmd_probe(&cfg),
         "status" => cmd_status(&cfg),
         "snapshot" => cmd_snapshot(&cfg, arg1, &db_path),
+        "watch" => cmd_watch(&cfg, &db_path, &rest[1..]),
         "trend" => cmd_trend(&db_path, arg1),
         "db" => cmd_db(&db_path, &rest[1..]),
         "products" => cmd_products(&cfg, arg1),
-        "report" => cmd_report(&cfg, arg1),
+        "report" => cmd_report(&cfg, arg1, &db_path),
         "forecast" => cmd_forecast(&cfg, arg1),
         "saveinfo" => saveinfo::cmd(&rest[1..]),
         "plan-check" => plan::cmd(&rest[1..]),
@@ -154,6 +156,7 @@ fn usage() {
          USAGE:\n  coi [--game-url URL] [--proxy host:port|tailnet] [--host-header H] [command]\n\n\
          With no command, coi starts the companion website at http://127.0.0.1:8484/ and opens it in your browser (if it is already running, it just opens the browser).\n\n\
          COMMANDS:\n  (none)   Start the companion website and open it in your browser\n  probe    Check the game web API and print server/game info\n  status   One-screen summary of the running game\n  snapshot Write a full snapshot JSON (arg: output path); also stored in the DB
+  watch    Poll the game clock and snapshot on every tick change (opts: --every 60s|5m, --count N)
   trend    Quantity/flow trend from the DB (arg: product name filter)
   db       Database tools: `db info`, `db import <snapshot.json>`\n  products Table of all products (arg: name filter)\n  report   Triage board (Eisenhower) over live data (arg: output .md path)
   forecast Outlook at current rates: stock runways + storage fill ETAs (arg: saved raw-stats JSON bundle, offline)
@@ -356,6 +359,8 @@ pub(crate) struct Live {
     pub(crate) stats: Value,            // /api/v1/products/stats (all)
     pub(crate) pinned_ids: Vec<String>, // order as pinned in game
     pub(crate) history: Value,          // monthly history for pinned ids (may be Null)
+    pub(crate) census: Value,           // CoiBridge /coi/v1/census (Null when bridge absent)
+    pub(crate) machines: Value,         // CoiBridge /coi/v1/machines (Null when bridge absent)
 }
 
 pub(crate) fn fetch_live(c: &Client) -> Result<Live, String> {
@@ -413,6 +418,13 @@ pub(crate) fn fetch_live(c: &Client) -> Result<Live, String> {
         }
         h
     };
+    // CoiBridge payloads, best-effort: the bridge is a separate mod
+    // and may not be installed or the game may predate it. Absence is
+    // normal and must never fail the vanilla fetch — the snapshot
+    // simply carries no machine-state data, and the productivity
+    // layer reports INSUFFICIENT for it (prep §5).
+    let census = get_json(c, "/coi/v1/census").unwrap_or(Value::Null);
+    let machines = get_json(c, "/coi/v1/machines").unwrap_or(Value::Null);
     Ok(Live {
         game,
         server,
@@ -421,6 +433,8 @@ pub(crate) fn fetch_live(c: &Client) -> Result<Live, String> {
         stats,
         pinned_ids,
         history,
+        census,
+        machines,
     })
 }
 
@@ -460,6 +474,11 @@ pub(crate) fn snapshot_json(live: &Live) -> Value {
         "pinnedIds": live.pinned_ids,
         "products": products,
         "history": live.history,
+        // Bridge payloads (schema v2 store support): persisted as
+        // per-proto aggregates + per-instance rows by insert_snapshot.
+        // Null when the bridge was unreachable at capture time.
+        "bridgeCensus": live.census,
+        "bridgeMachines": live.machines,
     });
     snap
 }
@@ -473,7 +492,15 @@ fn cmd_snapshot(cfg: &Config, out: Option<String>, db_path: &str) -> i32 {
             return 1;
         }
     };
-    let snap = snapshot_json(&live);
+    take_snapshot(&live, out, db_path)
+}
+
+/// Shared snapshot path for `snapshot` and `watch`: write the JSON
+/// file, compute the issue board, run the §5 productivity evaluation
+/// against the store (it extends the board and records hysteresis
+/// state), then insert everything in one transaction.
+fn take_snapshot(live: &Live, out: Option<String>, db_path: &str) -> i32 {
+    let snap = snapshot_json(live);
     let path = out.unwrap_or_else(|| {
         format!(
             "snapshots/{}-{}-{}.json",
@@ -495,13 +522,19 @@ fn cmd_snapshot(cfg: &Config, out: Option<String>, db_path: &str) -> i32 {
                 sv(&live.game["date"]),
                 live.game["tick"]
             );
-            let issues = compute_issues(&live);
+            let mut issues = compute_issues(live);
             match store::Store::open(db_path) {
-                Ok(mut st) => match st.insert_snapshot(&snap, &issues) {
-                    Ok(Some(id)) => println!("db: stored as snapshot #{id} in {db_path}"),
-                    Ok(None) => println!("db: this game tick is already stored in {db_path}"),
-                    Err(e) => eprintln!("db warning: {e}"),
-                },
+                Ok(mut st) => {
+                    let th = productivity::Thresholds::load(db_path);
+                    for line in productivity::evaluate_snapshot(&mut st, &snap, live, &mut issues, &th) {
+                        println!("{line}");
+                    }
+                    match st.insert_snapshot(&snap, &issues) {
+                        Ok(Some(id)) => println!("db: stored as snapshot #{id} in {db_path}"),
+                        Ok(None) => println!("db: this game tick is already stored in {db_path}"),
+                        Err(e) => eprintln!("db warning: {e}"),
+                    }
+                }
                 Err(e) => eprintln!("db warning: {e}"),
             }
             0
@@ -510,6 +543,84 @@ fn cmd_snapshot(cfg: &Config, out: Option<String>, db_path: &str) -> i32 {
             eprintln!("snapshot write failed: {e}");
             1
         }
+    }
+}
+
+/// SPEC §9: poll the game clock and snapshot whenever the tick
+/// changes. This is the cadence path that lets the §5 productivity
+/// windows accumulate honest evidence — roughly one snapshot per
+/// in-game day at speed 1 is plenty (the estimator thins to ≥720
+/// ticks itself, so denser polling costs disk, not correctness).
+/// Robust by design: a failed poll (game off, save loading) is a
+/// printed line and a retry, never an exit. Ctrl-C stops it.
+fn cmd_watch(cfg: &Config, db_path: &str, args: &[String]) -> i32 {
+    let mut interval_secs: u64 = 300;
+    let mut max_count: usize = 0; // 0 = forever
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            // --every is the house spelling; --interval is accepted
+            // as an alias because SPEC §9 writes it that way.
+            "--every" | "--interval" => {
+                i += 1;
+                let raw = args.get(i).map(|s| s.as_str()).unwrap_or_else(|| die("--every needs a value (e.g. 60s, 5m)"));
+                interval_secs = parse_duration_secs(raw);
+            }
+            "--count" => {
+                i += 1;
+                max_count = args
+                    .get(i)
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or_else(|| die("--count needs a number"));
+            }
+            other => {
+                eprintln!("watch: unknown option {other}");
+                return 2;
+            }
+        }
+        i += 1;
+    }
+    let c = make_client(cfg);
+    println!(
+        "watch: polling every {interval_secs}s, snapshotting on tick change (Ctrl-C to stop)"
+    );
+    let mut last_tick: Option<i64> = None;
+    let mut taken: usize = 0;
+    loop {
+        match fetch_live(&c) {
+            Ok(live) => {
+                let tick = live.game["tick"].as_i64().unwrap_or(-1);
+                if last_tick != Some(tick) {
+                    take_snapshot(&live, None, db_path);
+                    last_tick = Some(tick);
+                    taken += 1;
+                    if max_count > 0 && taken >= max_count {
+                        println!("watch: --count {max_count} reached, stopping");
+                        return 0;
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("watch: game API not answering ({e}); retrying in {interval_secs}s");
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_secs(interval_secs));
+    }
+}
+
+/// "60s" / "5m" / bare seconds → seconds. Bad input dies loudly
+/// (a typo'd interval silently becoming 300s would waste a night).
+fn parse_duration_secs(raw: &str) -> u64 {
+    let (num, mult) = if let Some(n) = raw.strip_suffix('s') {
+        (n, 1)
+    } else if let Some(n) = raw.strip_suffix('m') {
+        (n, 60)
+    } else {
+        (raw, 1)
+    };
+    match num.parse::<u64>().map(|n| n * mult) {
+        Ok(n) if n > 0 => n,
+        _ => die("--every needs a positive duration like 60s or 5m"),
     }
 }
 
@@ -566,7 +677,7 @@ pub(crate) fn flow_at(v: &Value, idx: usize) -> i64 {
         .unwrap_or(0)
 }
 
-fn importance(id: &str) -> u8 {
+pub(crate) fn importance(id: &str) -> u8 {
     const HIGH: &[&str] = &[
         "Steel", "Diesel", "Coal", "CrudeOil", "FuelGas", "Hydrogen", "Fertilizer",
         "Bread", "FoodPack", "ConstructionParts", "ConcreteSlab", "IronOre", "Iron",
@@ -1121,6 +1232,8 @@ fn cmd_forecast(cfg: &Config, file: Option<String>) -> i32 {
                 stats,
                 pinned_ids: Vec::new(),
                 history,
+                census: Value::Null,
+                machines: Value::Null,
             }
         }
         None => {
@@ -1143,7 +1256,7 @@ fn cmd_forecast(cfg: &Config, file: Option<String>) -> i32 {
     0
 }
 
-fn cmd_report(cfg: &Config, out: Option<String>) -> i32 {
+fn cmd_report(cfg: &Config, out: Option<String>, db_path: &str) -> i32 {
     let c = make_client(cfg);
     let live = match fetch_live(&c) {
         Ok(l) => l,
@@ -1153,7 +1266,23 @@ fn cmd_report(cfg: &Config, out: Option<String>) -> i32 {
         }
     };
     let issues = compute_issues(&live);
-    let md = render_report_md(&live, &issues);
+    let mut md = render_report_md(&live, &issues);
+    // Productivity evidence (prep §5) is store-based: append it when
+    // a database with snapshots exists. Absence is silent — a report
+    // on a fresh machine must not sprout an empty section.
+    if std::path::Path::new(db_path).exists() {
+        if let Ok(st) = store::Store::open(db_path) {
+            let th = productivity::Thresholds::load(db_path);
+            if let Ok(lines) = productivity::report_lines(&st, &th) {
+                if !lines.is_empty() {
+                    md.push_str("\n## Productivity evidence (QOL-MOD-PREP §5)\n\n");
+                    for line in lines {
+                        md.push_str(&format!("- {line}\n"));
+                    }
+                }
+            }
+        }
+    }
     match out {
         Some(path) => match std::fs::write(&path, &md) {
             Ok(()) => {

@@ -98,3 +98,469 @@ store; those arrive only when a feature needs them (§3 may).
 - `IEvent` subscription from a service constructor (pattern
   copied from the game's own StatsManager) — compiled clean;
   confirm the "balancer armed" line appears in the log at load.
+
+---
+
+# QoS build notes — round 3 (2026-11-05): vehicle content recovery + preferred drop-off
+
+Asks (QOL-MODS.md items 6–8): (6) stuck vehicles get their CARGO
+recovered, not just the vehicle; (7) a train or its depot can pick
+a PREFERRED drop-off for overload; (8) the same preferred-drop-off
+routing applies whenever cargo is auto-emptied/cleared.
+
+## Recon answers (full trails: qol-recon/06-vehicle-recovery.md, qol-recon/07-train-overload.md)
+
+### (a) Vanilla vehicle recovery and cargo
+- `RecoverVehicleCmd` → `Vehicle.TryRequestRecovery()` →
+  `IVehiclesManager.TryEnqueueRecoveryJob`. Cost: flat **0.2
+  Upoints** (`VehiclesManager.VEHICLE_RECOVERY_COST`, public),
+  charged at enqueue via `TryConsume(UpointsCategories
+  .VehicleRecovery)`, never refunded. Gate
+  (`CanRecoverVehicle`, public) is exactly two checks: some depot
+  `CanAccept(vehicle)`, and Unity affords 0.2. Cargo is never
+  consulted.
+- The recovery job **teleports**: 1 s wait, despawn in place,
+  respawn at the closest accepting depot, drive out. **Cargo is
+  completely preserved** — nothing in the chain reads or writes
+  `Truck.m_cargoBuffer`; the truck exits the depot with its load
+  byte-identical, assignment + config restored, prior jobs
+  cancelled (its job provider re-plans). A failed enqueue still
+  leaves the truck jobless (jobs are cancelled before the
+  attempt) — so a policy mod must pre-check with
+  `CanRecoverVehicle` before scheduling, never schedule blind.
+- Truck cargo model: one private `ProductBuffer`, surfaced as a
+  single `Cargo` `ProductQuantity` — one product per truck
+  (a mixed-category product carries its member breakdown inside
+  the same buffer). Partial loads are normal.
+- Contrast: replacement/scrap call-ins DO empty the truck first
+  (`ClearCargoImmediately`, StoreBuffer semantics) — recovery is
+  the only depot path that keeps the load aboard.
+
+### (c) Where emptied cargo goes — and why it cannot be steered
+Every clear path (truck `TryDiscardCargo` / `ClearCargo
+Immediately`, wagon `DestroyCargo()`, replacement/scrap) routes
+through `AssetTransactionManager.StoreBuffer` — **no overload
+takes a destination**. Non-mixed: discardable products are
+destroyed (`DestroyReason.Cleared`, stats); everything else goes
+to registered receiver buffers in global-priority order — these
+are the real buffers of real `Storage` entities (each registers
+itself at priority 10), remainder to the first overflow storage
+(the shipyard), destroyed only if no overflow exists. There is
+no abstract pool: "into the economy" = physically deposited in
+ordinary storages, drawable by ordinary logistics afterwards.
+Redirect to a NAMED storage is not buildable on public surfaces:
+`IProductBuffer.TransferTo` is public and the target side is
+public (`StorageBase.Buffer`), but a truck never exposes its
+buffer (`Truck.CargoBuffer` is internal; no interface accessor),
+and the wagon equivalent (`SendAsMuchAsTo`) is internal too.
+The one composite that could land truck cargo in a chosen
+storage — public `Truck.TakeCargo(...)` + the target buffer's
+`StoreAsMuchAs(...)` — has no shipped caller using it as a
+transfer pair and unverified stats accounting: recorded as a
+research lead, NOT built.
+
+### (b) Train overload — no seam exists (evidence)
+- Network jobs are sized to fit at dispatch (min of source
+  available, destination free capacity, train capacity). Overload
+  happens only when the world changes en route: the train then
+  WAITS at the demand station (fullness merely throttles the
+  per-tick partial transfer), force-departs still loaded after
+  `IDLE_TIME_BEFORE_NETWORK_FORCE_DEPART` = 5 days, and
+  `TrainNetworkJob.Finalize(false)` completes the job with NO
+  emptiness check — partial delivery with leftover aboard is
+  vanilla behaviour.
+- Leftover makes the train a "lost train": `TrainNetwork
+  .dispatchLostTrains` builds a delivery-only job to the single
+  destination whose free capacity >= the WHOLE quantity aboard
+  (all-or-nothing, no split), lowest per-product
+  `NetworkPriority` wins; if none qualifies, the loaded train is
+  parked at a waiting bay indefinitely. No timeout, no discard,
+  no player prompt.
+- Destination choice is a closed dispatcher scoring function
+  (NetworkPriority 0–15 per product per station, reservation
+  JobPenalty, active/passive thresholds, free capacity/slots).
+  There is NO per-train, per-line or per-depot preference input
+  anywhere: not on `TrainNetworkJob` (fields are exactly
+  Network/Train/Supply/Demand/Product/LoadedSoFar/Quantity/
+  State), not on the station root (`ArrivalRules`,
+  `LinkedStorages`, `AllowedFuels`, `DoNotSkipThisStation`,
+  `TrainLimit` — arrival rules are per-(station, product)
+  admissibility thresholds, incl. `RequireFullServiceOnArrival`,
+  not routing), not on the network (station sets +
+  `RefuelThreshold` only). Manual line schedule items likewise
+  offer only pre-departure multi-root choice/balancing and
+  skip-if-cannot-arrive — never a divert of a remainder
+  (field inventory in recon 07, Q3).
+- `TrainDepot` never unloads wagons (its product buffers are
+  construction materials), and `RecoverTrainCmd` preserves cargo
+  aboard exactly like vehicle recovery. The depot route is a
+  dead end for this feature.
+- The closest buildable train behaviour — a mod watcher issuing
+  a follow-up delivery-only `TrainNetworkJob` to a configured
+  station — needs internal/private job-line plumbing
+  (`Train.SetNetworkJob` internal, `getOrCreateJobLine`
+  private). That is new state + intervention, not a shipped
+  surface; it breaks the suite's pattern and is NOT built.
+
+## DESIGN — "preferred drop-off" as one routing concept (written before code)
+
+Since no named destination is steerable on either vehicle or
+train side, the concept is defined as an **ordered destination
+policy** — a ladder every auto-recovery / auto-empty follows —
+rather than a place:
+
+1. **Aboard** — recovery preserves the load on the vehicle
+   (strongest form of content recovery; the load re-enters the
+   economy when the vehicle's jobs re-plan from the depot).
+2. **The economy** — when a load demonstrably cannot be
+   delivered, emptying routes it through the game's own
+   StoreBuffer distribution: real storages in global-priority
+   order, shipyard overflow last, destruction only where vanilla
+   itself destroys (discardable products / no receiver at all).
+3. **The dispatcher** (trains) — vanilla already owns overflow:
+   lost-train re-dispatch by NetworkPriority. The player's only
+   preference lever is per-(station, product) `NetworkPriority`
+   (lower = preferred; set the intended overflow station lowest
+   for that product and it wins any lost-train re-dispatch it can
+   wholly accept). Per-train/per-depot designation does not
+   exist and is not faked.
+
+Designation granularity, answered honestly: per-truck automatic
+(the truck's own state designates which ladder rung applies);
+depot choice is vanilla's (closest accepting) and not
+configurable; global defaults live in the mod's config. A named
+storage/station setting is deliberately NOT shipped, because no
+public surface could honour it — a config that pretends
+otherwise would be a lie in the settings UI.
+
+### Build scope for this round
+- **QoSVehicleRecovery v0.1** (new feature mod on QoSCore):
+  the ladder for trucks. Daily NewDayEnd pass (pattern cadence;
+  a finer tick is a named extension, not v1). Stage 1 RECOVER:
+  trucks flagged cannot-deliver, or navigation-stuck on the
+  game's own sustained signals (`IsFailingToNavigateRepeatedly`,
+  or `IsStuck` with `NavigationFailedStreak` >= config), are
+  scheduled `RecoverVehicleCmd` — only after the prediction
+  guards pass: `CanRecoverVehicle` (vanilla's own depot+Unity
+  gate, checked first so a doomed attempt never cancels the
+  truck's jobs for nothing), a Unity reserve floor
+  (`CanConsume(floor + 0.2)`), a per-day recovery cap, and
+  skip-while-scrap/replacement/recovering. Stage 2 EMPTY
+  (default OFF): a truck THIS mod recovered that is
+  cannot-deliver again on a later pass with cargo still aboard
+  is scheduled `DiscardVehicleCargoCmd` — the load goes to the
+  economy via StoreBuffer (ladder rung 2), the truck is freed.
+  Mod-side marks (truck id -> pass) are session memory only;
+  they expire when the truck empties (episode over) or after
+  7 passes. Every scheduled action logs its prediction
+  (vehicle, reason, cargo, cost, expected destination rung).
+  Master switch OFF by default.
+- **Train leg (items 7+8 for trains): NO CODE this round** —
+  scoped down on the recon evidence above. Its honest future
+  form is a companion advisory (detect leftover/foreign cargo
+  sitting on a train across snapshots; surface it with the
+  NetworkPriority lever explained) — the bridge does not expose
+  lost-train/job state today, so even the advisory needs a
+  data source decision first. Recorded here, not built.
+- **Vehicle named-storage drop-off: NO CODE** — scoped down on
+  the Q6 evidence (recon 06). Research lead recorded
+  (TakeCargo composite) for a future verified build.
+
+## AS BUILT — round 3 (2026-11-05)
+
+Built exactly the scope above: **QoSVehicleRecovery v0.1.0**
+(new feature mod on QoSCore) + suite pack **QoS-suite-0.2.0**.
+Train leg and named-storage drop-off: no code, per the design's
+evidence-based scope-down. Everything staged in `dist/`, no
+uploads, no GitHub push, no live-game contact. CoiBridge
+untouched.
+
+### Artefacts
+
+| File | Bytes | Contents |
+|---|---|---|
+| `dist/QoSVehicleRecovery-mod-0.1.0.zip` | 21,926 | `QoSVehicleRecovery/` (dll + manifest + config + readme; **no** QoSCore.dll inside, by design) |
+| `dist/QoS-suite-0.2.0.zip` | 54,677 | `QoSCore/` + `QoSChickens/` + `QoSVehicleRecovery/` + `QoS-SUITE-README.txt` |
+| `dist/QoS-suite-0.1.0.zip` | 32,199 | previous pack — NOT rewritten (sha256 verified identical before/after this build) |
+
+Build: `qos/build/build.sh` (extended) — all three projects
+**0 warnings / 0 errors** (net48; recovery project re-verified
+standalone after a touch). Sources in
+`qos/QoSVehicleRecovery/`; scaffold in `qos/build/recovery/`
+(one csproj per folder, per the suite gotcha).
+
+### QoSVehicleRecovery — as designed
+
+- Daily pass at `ICalendar.NewDayEnd`; both actions issued as
+  shipped commands through `IInputScheduler.ScheduleInputCmd`
+  (`RecoverVehicleCmd`, `DiscardVehicleCargoCmd`) — no direct
+  state mutation anywhere in the mod.
+- Stage 1 prediction guards, in order per truck: skip
+  destroyed/unspawned/being-recovered/scrap-bound/
+  replacement-bound; trigger = cannot-deliver flag, or
+  `IsFailingToNavigateRepeatedly`, or `IsStuck` with
+  `NavigationFailedStreak` >= config; per-day cap;
+  `CanRecoverVehicle` pre-check (so a refused attempt never
+  cancels the truck's jobs for nothing); Unity reserve floor
+  via `CanConsume(floor + VEHICLE_RECOVERY_COST)` using
+  vanilla's public constant, not a hardcoded 0.2.
+- Stage 2 (default OFF): marks are (truck id -> pass, product
+  id) in session memory; fires only for a marked truck,
+  cannot-deliver again, same product aboard, reserve floor
+  checked against `VehicleCommandsProcessor
+  .COST_TO_DISCARD_CARGO` (the game's own 0.1, read from the
+  shipped constant). Stage 2 is evaluated before stage 1 so a
+  repeat rescue cannot loop.
+- Every scheduled action logs its prediction: truck, reason,
+  cargo (product x qty), cost from the shipped constants
+  (`Format1Dec`), expected outcome/rung.
+
+### Defaults (all in Settings -> QoS Vehicle Recovery)
+
+| Setting | Default | Note |
+|---|---|---|
+| `enabled` | **false** | master switch — ships inert |
+| `recover_cannot_deliver` | true | stage 1 trigger A |
+| `recover_navigation_stuck` | true | stage 1 trigger B |
+| `min_navigation_failed_streak` | 3 | when the game's repeated-failure flag is unset |
+| `max_recoveries_per_day` | 5 | = at most 1.0 Upoints/day of stage-1 spend |
+| `unity_reserve_floor` | 5.0 | Upoints; applies to both stages |
+| `empty_cargo_if_still_undeliverable` | **false** | stage 2 — opt-in |
+| `log_actions` | true | one line per scheduled action, with prediction |
+
+### Deviations from the design text (each with its reason)
+
+1. **Stage-2 mark is per (truck, product), not per truck.**
+   The design said "the SAME load"; implemented literally —
+   the mark stores the product id and stage 2 requires the
+   truck to still carry that product. A different load is a
+   new episode (stage 1 may rescue and re-mark).
+2. **Costs are read from the shipped public constants**
+   (`VehiclesManager.VEHICLE_RECOVERY_COST`,
+   `VehicleCommandsProcessor.COST_TO_DISCARD_CARGO`) instead
+   of literals — if a patch re-prices vanilla, the guards and
+   log lines follow automatically.
+3. **Suite pack versioning decoupled from QoSCore.**
+   `build.sh` previously versioned the pack by the core
+   version (hence suite 0.1.0). The pack now has its own
+   `SUITE_VER` (0.2.0): adding a feature bumps the pack, not
+   the core. The script only ever writes the current
+   `SUITE_VER` pack, so older packs in `dist/` stay intact.
+4. **Empty trucks are also recovered when navigation-stuck**
+   (cargo "none" in the log). Item 6 is cargo-focused, but a
+   wedged empty truck blocks the same logistics; the
+   cannot-deliver trigger is inherently loaded-only. Recorded
+   here as a deliberate widening of stage 1's trigger B.
+
+### NOT verified (needs first live install / first enabled days)
+
+- `IVehiclesManager` / `IUpointsManager` constructor injection
+  resolving in the service (both are the game's standard
+  AsEverything globals, the same pattern class as the
+  chickens service's dependencies — compiled clean; a failure
+  would surface as one init error log line, mod inert).
+- Cross-assembly QoSCore resolution through the manifest
+  dependency (still the suite-wide first-install check from
+  round 1).
+- Behavioural eyeball on first enabled days: predicted vs
+  actual recovery outcomes are all in the log lines by design.
+
+# Recon addendum (2026-11-05) — priority re-fill for AssetTransactionManager deposits
+
+Philip's follow-up to round 3: *"What about updating that
+manager to introduce a priority re-fill concept?"* Full trail:
+`qol-recon/08-priority-refill.md`. Recon + design only; the
+rung choice is Philip's. Summary:
+
+- **Ordering truth:** deposit order is an immutable per-buffer
+  int fixed at buffer construction (`AssetTransactionManager.
+  GlobalBuffer.Priority`, private struct, ascending sort
+  recomputed per call, ties unspecified — `Array.Sort`).
+  Machine inputs register at 5, **every storage at 10**,
+  outputs/depot at 15; the scale is designed
+  (`GlobalInputPriority` INCREASED 5 / DEFAULT 10 / LOW 15).
+  No command/UI/config surface touches it. The entries are
+  **serialized into saves** (priority included).
+- **Rung A — steer the existing mechanism: POSSIBLE
+  (recommended).** A policy pass re-registers a preferred
+  storage's buffer on the **input side only** via the public
+  `IAssetTransactionManager.RemoveGlobalInput/AddGlobalInput`
+  at priority 9 (config 6–9) — the same public calls buffers
+  make themselves; `CargoDepotBuffer.SetIsInput` is the
+  shipped runtime re-registration precedent. All deposit
+  flows (discards, `DestroyCargo`, refunds, loot, mixed)
+  steer; truck logistics and global draws do not (draws stay
+  untouched precisely because the output side is never
+  re-pinned). Costs: pins persist in saves while active
+  (restore-on-disable pass mitigates; first suite feature
+  whose settings outlive it in save data), and it is the
+  suite's first direct-service-API mutation (vs
+  shipped-command scheduling).
+- **Rung B — DI substitution: POSSIBLE-WITH-COSTS, strictly
+  dominated.** The door is open (mods' `RegisterDependencies`
+  runs last; last-registered impl wins absent a preference;
+  consumers are interface-typed incl. `EntityContext`) — but
+  one core consumer (terrain-surface path) injects the
+  concrete class, and substitution puts a mod type inside
+  every save's core economy graph: removal orphans saves.
+  Zero capability over rung A. Do not take.
+- **Rung C — Harmony on `StoreProduct`/`StoreBuffer`:
+  POSSIBLE-WITH-COSTS, reserve.** Two patch points cover all
+  deposits; Harmony is mod-bundled only (DoubleQoLMod,
+  Lib.Harmony 2.2.2). It is the only rung with true custom
+  distribution (splits/routing), at the price of the suite's
+  first Harmony dependency + per-patch re-verification of a
+  core economy method. Not needed for priority order.
+- **Second reading (pull):** "re-fill" as trucks keeping a
+  designated storage filled is already fully supported —
+  `Storage.ImportPriority`/`ExportPriority` (default 8, via
+  `SetCustomPriorityCmd` "ImportPrio"/"ExportPrio") + slider
+  percents feed `VehicleBuffersRegistry` strategies. That is
+  QoSStoragePolicy (survey #1) with priority presets added;
+  it composes with rung A (disjoint flow systems).
+
+## AS BUILT — round 4 (2026-11-05): productivity prerequisite + QoSWorldMap
+
+Two work items in one round, per QOL-MOD-PREP §5 and §2.
+Everything staged in `dist/`, no uploads, no GitHub push, no
+live-game contact. CoiBridge untouched.
+
+### Item 1 — productivity prerequisite (companion, Rust)
+
+Built exactly what prep §5 names as the prerequisite, plus the
+κ-free estimator that can ship on it:
+
+- **Store schema v2** (`PRAGMA user_version`; v1 files upgrade in
+  place, verified against a copy of the real coi.db — its single
+  snapshot, tick 2787522 / 388-2-27, survives intact and honestly
+  carries zero machine rows):
+  `machine_state_proto` (per-snapshot per-proto counts by state +
+  source), `machine_state_instance` (per-entity state/isPaused/
+  isEnabled where the bridge machines route provides them),
+  `productivity_state` (hysteresis: status, cause, since-tick,
+  last value + evidence label).
+- **Capture**: `fetch_live` now also fetches the bridge's
+  `/coi/v1/census` + `/coi/v1/machines`, best-effort (absence is
+  normal — the snapshot simply carries no machine data, and the
+  estimator says INSUFFICIENT for it). Snapshots gain
+  `bridgeCensus`/`bridgeMachines` keys; `insert_snapshot` parses
+  them in the same transaction (machines route takes precedence
+  over census aggregates per proto; unknown state names sum into
+  `other` — the state vocabulary is not closed, recon §5.2.5).
+- **Cadence**: `coi watch` (SPEC §9) — polls the game clock,
+  snapshots on tick change only, `--every 60s|5m`, `--count N`;
+  a failed poll is a printed line and a retry, never an exit.
+  Smoke-tested end-to-end (2 snapshots on 2 tick changes).
+- **Estimator** (`coi/src/productivity.rs`): (a) machine working
+  share over the trailing 30-day window with prep-exact evidence
+  classes (MEASURED N_eff≥96/span≥27d/gap≤3d; ESTIMATED 30/24d/7d;
+  else INSUFFICIENT = listed as unjudged, never "healthy"),
+  720-tick thinning, population gate (≥3 instances at ≥80% of
+  counted snapshots), Wilson-CI firing (CI upper < 0.50 and
+  p̂ < 0.45, confirmed by the second-half leg (ii): CI upper
+  < 0.55), clear at CI lower > 0.60, hysteresis dead zone between,
+  same-cause re-fire cooldown of one month, cause separation
+  (starved / blocked / mixed / unclassified-other / idle) and
+  PARKED at paused share ≥ 50% (checked before the class gate —
+  parked-ness needs no eligible samples). Ramp exemption (first
+  appearance < 1 month before window end, or > 50% instance
+  growth). (b) κ-free self-relative output per product
+  (FLOW-EXACT; U vs own best finished month; fires at U < 0.50
+  sustained 2 months or U < 0.35 once; clears at U > 0.65;
+  seasonal + virtual exempt, reusing the board's `is_seasonal`
+  verbatim; no-baseline products left to the stall detector;
+  composes into an existing stall/deficit issue for the same
+  product instead of duplicating it). Every verdict carries the
+  recon §5.7 label. Thresholds are the prep's defaults,
+  overridable via `[productivity]` in `coi.toml` (minimal parser,
+  no new dependency). Surfaces: snapshot-time issues + log lines
+  (CLI `snapshot`/`watch` and the website's snapshot button),
+  a Productivity section in `coi report`, and a read-only
+  Productivity section on the website's Issues page.
+- **Verification**: cargo build 0 warnings / 0 errors on Linux
+  debug AND Windows release; 12 unit tests (Wilson values,
+  thinning, class/fire/parked on synthetic windows, hysteresis
+  transitions, TOML overrides, store round-trip incl. census
+  unknown-state bucketing); plan-engine parity PASS (both plans);
+  `diagnose_live.py` output byte-identical; synthetic end-to-end
+  demo against a fake game server — phase A (3 daily snapshots):
+  all protos INSUFFICIENT with the missing ingredient named,
+  (b) already fired; phase B (31 snapshots): FurnaceT1 MEASURED
+  FIRE (N_eff=300, p̂=0.300, CI [0.251, 0.354], starved), MillT1
+  PARKED, PressT1 running hot; 93 proto rows + 806 instance rows
+  persisted. `dist/coi.exe` rebuilt: 5,828,998 B.
+- **Deviations / open mechanics (named, per the prep's licence)**:
+  (i) confirmation uses leg (ii) (second-half CI) — leg (i) needs
+  a proto→product map that does not exist yet; (ii) cause shares
+  are judged on point estimates with every share's numbers in the
+  label (the prep says "CI-checked" without fixing the rule);
+  (iii) year-window classes not implemented — the store has no
+  year of cadence; month window only, stated in the module docs;
+  (iv) one real bug was caught by the demo, not the tests (an
+  8-for-9 placeholder INSERT that rolled back every snapshot
+  insert) — a store round-trip test now guards it.
+
+### Item 2 — QoSWorldMap v0.1.0 (sources complete; compile blocked on refs)
+
+Implemented to prep §2's refined design exactly: plain IMod
+shell deferring UI to renderer-init (PriorityManager pattern,
+zero Harmony), `WorldMinesWindow : Window` over
+`WorldMapManager.Mines` (mines AND rigs — there is no OilRig
+type), toolbar entry via `ToolbarHud.AddMainMenuButton` +
+`IToolbarItemController` (`ControllerConfig.Window`), filters
+(text, state), sorts (product / level / quantity / state / name),
+rows showing title, product, state, level + step, quantity left
+(or ∞), buffer; row click → `MineNavigator.Navigate` →
+`WorldMapWindow.Controller.OpenAndCenterOnLocation` +
+`InspectorsManager.TryActivateFor`. NAVIGATION ONLY — no
+commands exist in the mod, no remote actions; the inertness
+argument is in the mod readme. Manifest dependency on
+QoSCore >= 0.1.0, QoSCore.dll reference copy-local OFF, same
+discipline as QoSChickens. The four prep unknowns are isolated
+as seams and listed in the readme as first-hour live checks:
+(1) inspector placement → `MineNavigator.Navigate` (fallback =
+guarded SelectLocation replication, plugs in there);
+(2) `WorldMapWindow.Controller` resolution → resolved once at
+renderer-init via TryResolve, degrades to inspector-only + log
+if unresolvable; (3) fullscreen stacking → config
+`navigate_opens_map` (default true) flips clicks to
+inspector-only; (4) toolbar slot → `WorldMinesController.
+ToolbarOrder` = 1500f (PriorityManager's proven slot; the game's
+map button is 520). No `enabled` switch, deliberately: the mod
+does nothing unless its window is opened and a row clicked
+(differs from the acting mods; justified in the readme).
+
+**BLOCKER — no zip this round.** Compiling ANY UiToolkit
+`Window` subclass requires the game's UnityEngine module
+assemblies (`UnityEngine.dll`, `UnityEngine.CoreModule.dll`,
+`UnityEngine.UIElementsModule.dll`) as references — the same
+set CoI_PriorityManager and the official ExampleMod reference
+from the game install. They are not in `refs/` (which holds
+only the Mafi set) and nowhere else on this VM. Probe evidence:
+a minimal Window subclass against the Mafi-only refs fails with
+exactly one error — CS0012 naming
+`UnityEngine.UIElementsModule`; `UiComponent.OnClick` likewise
+needs `EventCallback<>` from that module. Everything else was
+verified as far as the refs allow: QoSWorldMapMod +
+MineNavigator + WorldMinesController compile **0 warnings /
+0 errors** against the real Mafi assemblies + QoSCore (stub-
+window probe), and every component API the window file uses was
+exercised in a second probe — all clean except the two
+UIElementsModule-touching points above. The probe also caught
+two real bugs pre-emptively (passing `null` for the value-type
+`Option<KbHandle>` shortcut parameter — now omitted, using its
+declared default; `ControllerConfig` lives in
+`Mafi.Unity.InputControl`).
+
+**Unblock**: copy the three UnityEngine*.dll from
+`<game install>\Captain of Industry_Data\Managed\` into `refs/`
+(the same folder the Mafi set came from) and re-run
+`qos/build/build.sh` — it detects them, builds QoSWorldMap, and
+writes `dist/QoSWorldMap-mod-0.1.0.zip` +
+`dist/QoS-suite-0.3.0.zip` (SUITE_VER already bumped; the suite
+readme inside already describes v0.3.0). Until then build.sh
+skips both with a loud notice rather than shipping a pack that
+silently lacks a member. This round's build.sh run: the three
+existing projects rebuilt 0/0 and all prior zips verified
+byte-identical (sha256) — `QoS-suite-0.1.0.zip`,
+`QoS-suite-0.2.0.zip`, and the three mod zips untouched.

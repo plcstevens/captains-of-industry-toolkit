@@ -67,3 +67,14 @@ Sub-mod dependencies are explicitly OK where that's how a feature
 is best achieved (e.g. a shared core mod the feature mods depend
 on). CoiBridge stays separate and read-only; the QoS suite is the
 gameplay/UI side.
+
+## Philip, 2026-11-05 11:54 — new build asks
+6. **QoS vehicle CONTENT recovery** (build): stuck vehicles get their
+   CARGO recovered, not just the vehicle — content preserved back
+   into the economy (storage / preferred drop-off), Unity-bounded.
+7. **Preferred drop-off for overload**: a train (or its depot) can
+   name a PREFERRED overflow drop-off for when the primary
+   destination cannot take everything.
+8. **Same routing for auto-empty**: whenever cargo is auto-emptied
+   or cleared, it goes to the preferred drop-off (per #7) rather
+   than vanishing or dumping globally.

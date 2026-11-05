@@ -22,7 +22,16 @@ qos/
     QoSChickensMod.cs      IMod shell
     ChickenBalancer.cs     the policy/scheduler service
     manifest.json  config.json  readme.txt
-  QoSWorldMap/             (future — QOL-MOD-PREP §2)
+  QoSVehicleRecovery/      feature mod (mod id "QoSVehicleRecovery")
+    QoSVehicleRecoveryMod.cs  IMod shell
+    VehicleRecoveryService.cs the policy/scheduler service
+    manifest.json  config.json  readme.txt
+  QoSWorldMap/             feature mod (mod id "QoSWorldMap"; sources
+    QoSWorldMapMod.cs        complete round 4 — compile awaits the
+    WorldMinesWindow.cs      game's UnityEngine*.dll refs, see
+    WorldMinesController.cs  BUILD-NOTES round 4)
+    MineNavigator.cs
+    manifest.json  config.json  readme.txt
   QoSTrainCargo/           (future — QOL-MOD-PREP §3)
   build/                   VM build scaffold (mirrors bridge/vm-build)
     QoSCore.csproj  QoSChickens.csproj  build.sh

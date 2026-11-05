@@ -1353,3 +1353,39 @@ zero applies; deliveries staged locally for Philip's return Thursday.
   machines UI inside; strings verified). Bridge unchanged this round
   (v0.6.4 stands). Still Thursday-gated: installs, populated eyeball,
   sandbox protocols, DieselReforming decision.
+
+### Addendum XV — Productivity prerequisite: store schema v2, `coi watch`, §5 κ-free estimators (2026-11-05)
+
+Implements QOL-MOD-PREP §5's prerequisite build (design authority
+stays with the prep + qol-recon/05; this addendum records what the
+code does):
+
+- **Store schema v2** (`PRAGMA user_version = 2`; v1 files upgrade
+  in place). New tables: `machine_state_proto` (per-snapshot
+  per-proto machine-state counts + source), `machine_state_instance`
+  (per-entity state/isPaused/isEnabled), `productivity_state`
+  (estimator hysteresis). Snapshots taken before v2 have no machine
+  rows and evaluate as INSUFFICIENT — absence is data, not an error.
+- **Capture**: `fetch_live` fetches `/coi/v1/census` +
+  `/coi/v1/machines` best-effort alongside the vanilla routes;
+  snapshot JSON gains `bridgeCensus`/`bridgeMachines` keys;
+  `insert_snapshot` derives the v2 rows in the same transaction
+  (machines route beats census per proto; unknown states → `other`).
+- **`coi watch`** (§9's polling snapshotter, now real): snapshots
+  on game-tick change only; `--every 60s|5m` (SPEC's `--interval`
+  spelling accepted as an alias), `--count N` to stop after N.
+  Poll failures print and retry; the loop never exits on its own.
+- **Estimators** (`coi/src/productivity.rs`): (a) machine working
+  share, trailing 30-day window, prep-exact evidence classes
+  (MEASURED / ESTIMATED / INSUFFICIENT — silence below the line,
+  never "healthy"), Wilson-CI firing with second-half confirmation,
+  hysteresis dead zone, one-month same-cause cooldown, cause
+  separation, PARKED ≥ 50% paused; (b) self-relative finished-month
+  output (FLOW-EXACT, no nameplate, no κ — κ calibration remains
+  future live work). Thresholds: prep defaults, overridable in
+  `coi.toml [productivity]`. Surfaces: snapshot-time issues on the
+  board, `coi report` section, website Issues-page section.
+- Verified: builds 0/0 (Linux + Windows), 12 unit tests, plan
+  parity PASS, diagnosis reproduction byte-identical, synthetic
+  fake-server demo (INSUFFICIENT at 3 snapshots → MEASURED FIRE /
+  PARKED / running-hot at 31). dist/coi.exe = 5,828,998 B.

@@ -1,4 +1,4 @@
-QoS Suite v0.1.0 — a suite of small quality-of-life mods for
+QoS Suite v0.3.0 — a suite of small quality-of-life mods for
 Captain of Industry v0.8.8 (Update 4.3). Author: Lewis Cameron.
 
 THE IDEA
@@ -18,11 +18,26 @@ CONTENTS OF THIS PACK
                   slaughter limit, growth-paused farms untouched,
                   breeding-nucleus floor). SHIPS DISABLED — enable
                   it in its settings when ready.
+  QoSVehicleRecovery/  stuck truck cargo rescue: once a day,
+                  rescues trucks stuck with their load via the
+                  game's own recovery (0.2 Unity; the load stays
+                  aboard — recovery never touches cargo), under
+                  hard guards (vanilla gate pre-checked, Unity
+                  reserve floor, daily cap). Optional stage 2
+                  empties a still-undeliverable load into the
+                  game's storage routing. SHIPS DISABLED.
+  QoSWorldMap/    world-map mine & rig index: a window listing
+                  every world-map location (product, state, level,
+                  quantity left, buffer), filterable and sortable;
+                  clicking a row centres the world map on it and
+                  opens its inspector. NAVIGATION ONLY — it issues
+                  no commands and cannot change game state, so it
+                  needs no enable switch. New in v0.3.0; see its
+                  readme for the four first-hour live checks.
 
-More feature mods (a world-map location dropdown, a safe
-train-cargo clear) are designed and will slot in as sibling
-folders — QoSWorldMap/, QoSTrainCargo/ — each depending on
-QoSCore, never on each other.
+More feature mods (a safe train-cargo clear) are designed and
+will slot in as sibling folders — QoSTrainCargo/ — each
+depending on QoSCore, never on each other.
 
 INSTALL
 1. Close the game completely.
@@ -31,6 +46,8 @@ INSTALL
    You should end up with:
       %APPDATA%\Captain of Industry\Mods\QoSCore\manifest.json
       %APPDATA%\Captain of Industry\Mods\QoSChickens\manifest.json
+      %APPDATA%\Captain of Industry\Mods\QoSVehicleRecovery\manifest.json
+      %APPDATA%\Captain of Industry\Mods\QoSWorldMap\manifest.json
       (plus this readme, which you can delete)
 3. Launch the game; enable mods in Settings -> Miscellaneous if
    not already enabled; load your save and tick the QoS mods in

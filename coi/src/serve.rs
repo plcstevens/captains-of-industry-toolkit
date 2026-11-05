@@ -917,8 +917,41 @@ fn page_issues(state: &State, session: &Session) -> Response {
         where a fix is a game command, buttons that prepare it for the specific storages and \
         machines involved.</p>");
     body.push_str(&issues_html(&issues, false));
+    body.push_str(&productivity_section(state));
     body.push_str("<p class=\"sub\">Also available as <a href=\"/api/report.md\">markdown</a> or <a href=\"/api/snapshot.json\">raw snapshot JSON</a>.</p>");
     Response::html(200, layout(session, "Issues", &body))
+}
+
+/// Productivity evidence section (QOL-MOD-PREP §5): read-only over
+/// the persisted machine-state aggregates. Below the evidence line a
+/// proto is listed as INSUFFICIENT — unjudged, never "healthy".
+/// Renders nothing when no database/snapshots exist yet.
+fn productivity_section(state: &State) -> String {
+    if !std::path::Path::new(&state.db_path).exists() {
+        return String::new();
+    }
+    let Ok(st) = store(state) else {
+        return String::new();
+    };
+    let th = crate::productivity::Thresholds::load(&state.db_path);
+    let Ok(lines) = crate::productivity::report_lines(&st, &th) else {
+        return String::new();
+    };
+    if lines.is_empty() {
+        return String::new();
+    }
+    let mut body = String::from(
+        "<h2>Productivity evidence (§5)</h2>\
+         <p class=\"sub\">Machine working-share from stored snapshots (bridge census/machines), \
+         judged only when the evidence class reaches ESTIMATED — below that, a line reads \
+         INSUFFICIENT and means <b>unjudged</b>, not healthy. κ-free self-relative output \
+         checks ride along with snapshots.</p><ul>",
+    );
+    for line in lines {
+        body.push_str(&format!("<li>{}</li>", esc(&line)));
+    }
+    body.push_str("</ul>");
+    body
 }
 
 fn page_products(state: &State, session: &Session) -> Response {
@@ -3173,16 +3206,23 @@ fn do_take_snapshot(state: &State, session: &Session, req: &Request) -> Response
         Err(e) => return game_unreachable(&e),
     };
     let snap = snapshot_json(&live);
-    let issues = compute_issues(&live);
+    let mut issues = compute_issues(&live);
     match store(state) {
-        Ok(mut st) => match st.insert_snapshot(&snap, &issues) {
+        Ok(mut st) => {
+            // §5 productivity evaluation, same as the CLI snapshot
+            // path: extends the board + records hysteresis state
+            // before the insert persists everything together.
+            let th = crate::productivity::Thresholds::load(&state.db_path);
+            let _ = crate::productivity::evaluate_snapshot(&mut st, &snap, &live, &mut issues, &th);
+            match st.insert_snapshot(&snap, &issues) {
             Ok(Some(id)) => Response::redirect(&format!(
                 "/snapshots?msg={}",
                 pct_encode(&format!("Snapshot #{id} stored ({} products).", snap["products"].as_array().map(|a| a.len()).unwrap_or(0)))
             )),
             Ok(None) => Response::redirect("/snapshots?msg=That game tick is already stored — nothing new to save."),
             Err(e) => Response::text(502, &e),
-        },
+            }
+        }
         Err(e) => Response::text(502, &e),
     }
 }
