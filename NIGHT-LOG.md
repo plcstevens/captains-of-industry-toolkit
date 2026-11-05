@@ -1235,3 +1235,16 @@ Philip's ask: "add a LOG tab which is an exact replay of things we did in the CO
 
 ## 2026-11-05 (afternoon) — Recon round 9: placement semantics settled from code
 Philip: "go build and place shit" / "go find that shit — maybe learn more?" Static-only round (ilspycmd on the shipped 0.8.8 assemblies; NO game contact, nothing prepared or sent). Full trail: qol-recon/09-placement.md; summary in bridge/MODDING-NOTES round 9; Protocol A gained Revision A-R (original text + Expanding-save abort guard preserved). Headlines: (1) `TileTransform.Position` IS the centre tile (LayoutEntityBase.SetTransform assigns CenterTile = Position) — the coordinate question that blocked placement is closed, and topology readback is an exact cross-check. (2) CreateStaticEntityCmd places a CONSTRUCTION SITE through the game's own validator pipeline (unknown proto / research-lock / validator error = clean result-error, instance destroyed, result on success = the new EntityId); cost is truck-delivered construction buffers — nothing is charged at placement and the IsFree field is ignored, so there is no free test placement on a live save. (3) Rotation fully mapped (Deg0/90/180/270 = (1,0)/(0,1)/(−1,0)/(0,−1)); only its visible effect still needs an eyeball. (4) FinishBuild = Unity quick build/removal, errors on finished entities. (5) Deconstruction is a state machine: untouched site vanishes instantly (the cheap sandbox revert), finished buildings refund sell-value × DeconstructionRefundMultiplier as physical hauled stock. (6) THE structural finding: belts/pipes and blueprints are created by BuildTransportCmd / BatchCreateStaticEntitiesCmd, and BOTH are absent from the web registry — the Protocol B unlisted-type question now gates all transport work, while plain building placement (Create is listed) does not depend on it. Minimal live set is now five small steps (SANDBOX-PROTOCOLS Revision A-R: R1 placement+readback, R2 instant revert, R3 delivery/completion/refund measurement, R4 rotation eyeball, R5 validation legs) on a throwaway save whenever Philip loads one.
+
+## 2026-11-05 (evening) — Protocol A-R minimal live test PASSED
+
+At Philip's explicit direction, on his real save while paused: placed a
+StorageUnit construction site via CreateStaticEntityCmd through the §12
+flow — result EntityId 38208 at exactly the requested centre tile
+(3167,762,4); removed the untouched site via
+StartDeconstructionOfStaticEntityCmd; census 12503→12504→12503,
+construction-parts quantities unchanged. Zero cost, zero residual state.
+Placement is a verified capability for buildings; belts/pipes/blueprints
+still hinge on Protocol B (unlisted BuildTransportCmd /
+BatchCreateStaticEntitiesCmd). Catalogue: 15 verified / 224 wired /
+1 excluded.

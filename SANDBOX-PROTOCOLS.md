@@ -1215,3 +1215,34 @@ controls that become interesting only once A-U1 is known).
    `ToggleEdictEnabledCmd`; it does not prove the channel accepts
    *arbitrary* unlisted types — each further unlisted type is its
    own sandbox question.
+
+---
+
+## Protocol A — RESULT (Revision A-R minimal live test, 2026-11-05)
+
+Run on Philip's REAL save ("Expanding", gameId 5583213724730880438) at his
+explicit in-the-moment direction, as the minimal variant: R1 + R2 only,
+game PAUSED throughout (tick 2787522 never moved; commands process while
+paused, trucks cannot deliver). Both commands went through the companion's
+§12 prepare -> confirm -> apply flow (scratch serve + scratch DB) and are
+audit/activity logged there.
+
+- R1 PLACE: CreateStaticEntityCmd {protoId: "StorageUnit", transform:
+  {position: {x:3167, y:762, z:4}, rotation: {dx:1, dy:0}},
+  allowValidationSuppression: false}
+  -> {"ok":true, "result":38208, "error":""} — result IS the new EntityId.
+  Readback: census 12503 -> 12504; topology shows StorageUnit id 38208 at
+  exactly [3167, 762, 4]. CENTRE-TILE SEMANTICS CONFIRMED LIVE.
+- R2 REMOVE: StartDeconstructionOfStaticEntityCmd {entityId: 38208,
+  reason: "Remove", isAreaRemove: false}
+  -> {"ok":true, "result":true}. Readback: census back to 12503,
+  StorageUnit rows back to 8, entity 38208 absent. Construction Parts
+  quantities unchanged (763 / 760 / 89 before and after): ZERO COST.
+- Verdict: channel acceptance, centre-tile transform, and the instant
+  untouched-site revert are all VERIFIED. CreateStaticEntityCmd +
+  StartDeconstructionOfStaticEntityCmd moved to the catalogue's VERIFIED
+  set (15 verified / 224 wired / 1 excluded). Still unproven (full A-R on
+  a sandbox save): delivery + completion of a web-placed site (R3),
+  rotation's visible effect (R4), validation legs + refund measurement
+  (R5), and the unlisted-command question for BuildTransportCmd /
+  BatchCreateStaticEntitiesCmd (Protocol B).

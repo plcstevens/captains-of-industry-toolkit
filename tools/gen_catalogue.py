@@ -26,6 +26,11 @@ VERIFIED = {
     "StorageDisableLogisticsToggleCmd", "SetGeneralPriorityCmd",
     # Via the generic schema form, executed + reverted live 2026-11-02:
     "StorageAlertSetEnabledCmd",
+    # Protocol A-R minimal live test, Philip's real save, while paused,
+    # 2026-11-05: placed StorageUnit (result = new EntityId 38208 at the
+    # requested centre tile) and removed the untouched site; net zero,
+    # zero cost, census 12503 -> 12504 -> 12503.
+    "CreateStaticEntityCmd", "StartDeconstructionOfStaticEntityCmd",
 }
 
 EXCLUDED = {
@@ -33,8 +38,8 @@ EXCLUDED = {
 }
 
 NOTES = {
-    "CreateStaticEntityCmd": "THE construction primitive: places a static entity (building/transport) from a prototype at a tile transform. Whether it creates a construction site or a finished building, and how TileTransform encodes position/rotation, is untested — sandbox-save experiments only.",
-    "FinishBuildOfStaticEntityCmd": "Completes construction of a placed entity instantly (pairs with CreateStaticEntityCmd). Semantics untested.",
+    "CreateStaticEntityCmd": "THE construction primitive: places a construction SITE for a static entity from a prototype. VERIFIED live 2026-11-05 (Protocol A-R): transform.position is the CENTRE tile in bridge topology space; rotation {dx,dy} maps Deg0=(1,0) Deg90=(0,1) Deg180=(-1,0) Deg270=(0,-1); nothing is charged at placement (cost arrives as truck-delivered construction materials); the game's layout validators reject bad spots with a clean error and nothing placed; result = the new EntityId. allowValidationSuppression stays OFF. Semantics: qol-recon/09-placement.md. Belts/pipes are NOT placed by this command (BuildTransportCmd, absent from the web registry).",
+    "FinishBuildOfStaticEntityCmd": "Unity-paid quick build of a placed construction site (arg is 'id', not 'entityId'); the free Cheat variant is absent from the web registry. Price formula unread in code — HUD eyeball prices it. Untested live.",
     "CreateTrainTrackEntityWithDirectionCmd": "Places rail track pieces with a travel direction — the rail-building primitive.",
     "CreateNewTrainLineCmd": "Creates an empty train line; schedule items and consists are separate commands (the Trains namespace is the deepest in the game: 68 commands).",
     "CreateNewTrainNetworkCmd": "Creates an empty train network (Update 4.1 system); stations join it via separate commands.",
