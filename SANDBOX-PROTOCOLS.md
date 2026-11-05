@@ -608,6 +608,124 @@ as aborted if any of these occur:
   it and close the game without saving if Philip agrees.
 
 ---
+# PROTOCOL A — REVISION A-R (2026-11-05, after recon round 9)
+
+*Static recon (`qol-recon/09-placement.md`, decompiles of the shipped
+0.8.8 assemblies) settled most of the A.2 unknowns register from
+code. The original Protocol A text above is preserved unchanged —
+this revision supersedes its unknowns register and step list with
+the minimal live sequence below. **The Shared-setup Expanding-save
+guard (gameId ≠ `5583213724730880438`) applies unchanged and aborts
+the run before any POST.***
+
+## A-R.1 Unknowns register — verdicts from code
+
+| ID | Verdict (KNOWN FROM CODE — do not re-test) |
+|---|---|
+| A-U1 | **Construction site.** Placement auto-starts construction (`StaticEntity.OnAddedToWorld` → `ConstructionManager.StartConstruction`); nothing is deducted at placement — cost is per-product delivery buffers trucks must fill. |
+| A-U2 | **Centre tile.** `LayoutEntityBase.SetTransform`: `CenterTile = transform.Position`. Readback `pos` must equal `[X, Y, Z]` exactly. The footprint-origin hypothesis is dead. |
+| A-U3 | **Acceptance settled; effect still live-only.** `rotation:{dx,dy}` takes the four unit axis vectors (Deg0=(1,0), Deg90=(0,1), Deg180=(−1,0), Deg270=(0,−1)); never send (0,0). Use this form, not `rotFlip` (bit packing unread). Whether rotation *took effect* still needs the eyeball leg (R4) — topology has no rotation field. |
+| A-U4 | **Charged on delivery, never at placement.** A products diff while paused would *contradict* the code — if one appears, stop and record it as a finding. Unity is involved only via FinishBuild (A7's subject; semantics now code-known, price still HUD-only). |
+| A-U5 | **Mechanics settled; one proto fact open.** Suppression only acts on protos implementing `IProtoWithValidationSuppressFlag` (flags are the proto's, not the caller's); a suppressed error adds the entity anyway and files it in the invalid-entities registry. Whether `StorageUnit` carries such flags is the only live question (R5). |
+| A-U6 | **Response carries the id.** Success = `SetResultSuccess(resultEntity.Id)`; failure = result-error with the validator's message and the instance destroyed. The topology diff is now a cross-check, not the source. |
+
+`FinishBuildOfStaticEntityCmd` (old A7) no longer needs a test to
+be *understood*: ConstructionManager runs it as Unity-paid quick
+build (in construction) or quick removal (in deconstruction), and
+it result-errors on a finished, non-upgradable entity. Run it only
+if Philip wants its Unity price observed on the HUD.
+
+## A-R.2 The minimal live sequence
+
+Prerequisites: the original A.1 checklist, unchanged (sandbox save,
+guard passed, baseline capture `A0-`, game paused). Location: the
+A.0 strategy, unchanged — but the candidate is now known to be a
+**centre tile**, so target it as one.
+
+### R1 — One valid placement (channel + response + position)
+
+Fire the original A2 body unchanged (protoId `StorageUnit`,
+candidate centre `(X, Y, Z)`, `rotation:{"dx":1,"dy":0}`,
+`allowValidationSuppression:false`).
+*Readbacks:* response verbatim (expect success, `result` = new id
+`E1`); topology diff (exactly one new `StorageUnit` row, `pos` ==
+`[X, Y, Z]`); census `StorageUnit` = N0+1; products diff while
+paused (**expect none** — a diff is a code-contradicting finding,
+record and stop); storages row for `E1` may exist with the site —
+its capacity behaviour is observation, not a verdict input.
+*Settles:* live unknowns 1 (channel) and the readback half of 3.
+
+### R2 — Revert the untouched site (instant-removal leg)
+
+Game still paused, nothing delivered. Fire the original A.6.1 body:
+`StartDeconstructionOfStaticEntityCmd` {entityId: E1,
+reason:"Remove", isAreaRemove:false}.
+*Readbacks:* response verbatim; immediate census/topology capture —
+code predicts the entity is **already gone** (0 steps + empty
+buffers = instant removal, no refund, nothing spent).
+*Settles:* the cheap-revert leg of the deconstruction state machine.
+
+### R3 — Delivery + completion (the construction flow, observed once)
+
+Repeat R1 at a second clear centre `(X2, Y2, Z)` → `E2`. Note the
+build panel's material cost (A1 eyeball). Unpause at speed 1 until
+the site completes (trucks deliver; allow a few in-game days),
+re-pause.
+*Readbacks:* products/stats diff over the window (deliveries should
+accumulate to the panel cost as stock drops); storages row for `E2`
+at full proto capacity once constructed; eyeball: finished building
+rendered, no construction panel.
+*Revert:* `StartDeconstructionOfStaticEntityCmd` on `E2`, unpause
+until the deconstruction completes (trucks haul the refund out),
+re-pause; final census/topology vs baseline (counts restored).
+Record the products delta that does **not** return to baseline —
+code predicts it equals (1 − DeconstructionRefundMultiplier) ×
+cost; that diff is how the multiplier's value gets measured
+(live unknown 5).
+*Settles:* live unknowns 3 (behavioural half) and 5.
+
+### R4 — Rotation effect (eyeball only)
+
+Place a third `StorageUnit` at `(X3, Y3, Z)` with
+`rotation:{"dx":0,"dy":1}`. *Readback:* the in-game rendering /
+screenshot vs the R1/R3 buildings — do ports/facing point the other
+way? (A square footprint may still read as indistinguishable; if
+so, record INCONCLUSIVE as the original A8 did and move on — the
+acceptance question is already settled.) Revert as in R2 (paused,
+undelivered → instant).
+
+### R5 — Validation legs (failure shape + suppression fact)
+
+Fire the R1 body at the anchor's own occupied centre
+`[ax, ay, az]`, suppression **false**. *Expect (code):* result-error
+carrying the validator's message, `result` invalid, **no** new
+entity on full topology diff. Then — only if Philip agrees — the
+identical body with suppression **true**: rejection-identical means
+`StorageUnit` has no suppress flags (the code-predicted default);
+an entity appearing means the proto carries flags and the entity
+is in the invalid registry — **revert it immediately** (R2 body)
+and record that suppression on this proto is a real hazard, not a
+no-op.
+*Settles:* live unknown 4 and the failure-shape half of 1.
+
+## A-R.3 What this revision removes
+
+The original A2-fallback (rotation form 2), A4's separate
+site-vs-finished unpause window (folded into R3), A7 (FinishBuild
+understanding — code-known; optional price eyeball only), and A8 as
+a separate optional arm (folded into R4) are no longer steps. The
+abort conditions (A.7) and the revert discipline (A.6) apply to
+R1–R5 unchanged, with one addition: **a products diff while paused
+at R1 aborts the run** (it contradicts the decompiled cost model —
+something else is happening).
+
+**Not covered here, deliberately:** belts/pipes and blueprint
+placement. Their creation commands (`BuildTransportCmd`,
+`BatchCreateStaticEntitiesCmd`) are **absent from the web
+registry** (recon 09 §4) — they belong to the Protocol B channel
+question, and no placement result in R1–R5 changes that.
+
+---
 # PROTOCOL B — `ToggleEdictEnabledCmd` via `POST /command`
 
 *Estimated run time once the sandbox save is loaded and a qualifying
