@@ -10,7 +10,7 @@ namespace QoSCore;
 /// <summary>
 /// QoSCore — the shared sub-mod of the QoS suite. Feature mods
 /// (QoSChickens, and later QoSWorldMap / QoSTrainCargo) declare a
-/// manifest dependency on it ("QoSCore >= 0.1.0") and use its
+/// manifest dependency on it ("QoSCore >= 0.2.0") and use its
 /// logging + suite registry. Core itself changes no gameplay.
 ///
 /// Shape: the plain IMod contract exactly as shipped by
@@ -23,7 +23,7 @@ namespace QoSCore;
 public sealed class QoSCoreMod : IMod {
 
 	/// <summary>Suite version of this mod. Keep in step with manifest.json (manifest is the truth).</summary>
-	public const string Version = "0.1.0";
+	public const string Version = "0.2.0";
 
 	public QoSCoreMod(ModManifest manifest) {
 		Manifest = manifest;

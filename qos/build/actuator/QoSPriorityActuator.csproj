@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <CoiRefsDir Condition="'$(CoiRefsDir)'==''">..\..\..\refs\</CoiRefsDir>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>QoSPriorityActuator</AssemblyName>
+    <RootNamespace>QoSPriorityActuator</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <Deterministic>true</Deterministic>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>bin\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\QoSPriorityActuator\*.cs" LinkBase="src" />
+    <!-- QoSCore comes from the QoSCore mod folder at runtime via the
+         manifest dependency; it must NOT be copied into this mod's
+         folder (Private=false / ReferenceOutputAssembly copy off). -->
+    <ProjectReference Include="..\core\QoSCore.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+    <Reference Include="Mafi">
+      <HintPath>$(CoiRefsDir)\Mafi.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Mafi.Core">
+      <HintPath>$(CoiRefsDir)\Mafi.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Mafi.Unity">
+      <HintPath>$(CoiRefsDir)\Mafi.Unity.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

@@ -204,6 +204,18 @@ public sealed class VehicleRecoveryService : IDisposable {
 				return;
 			}
 			m_scheduler.ScheduleInputCmd(new DiscardVehicleCargoCmd(truck.Id));
+			// Unified activity record (Addendum XVI).
+			QoSEventLog.Record("QoSVehicleRecovery", QoSVehicleRecoveryMod.Version, "command",
+				"DiscardVehicleCargoCmd",
+				"stage-2 EMPTY scheduled: truck #" + id + ", cargo " + DescribeCargo(truck) +
+				" -> economy storage routing (load was still undeliverable after a mod recovery)",
+				new Dictionary<string, object> {
+					{ "truckId", id },
+					{ "stage", 2 },
+					{ "product", mark.ProductId },
+					{ "quantity", truck.Cargo.Quantity.Value },
+					{ "costUpoints", UpointsValue(discardCost) },
+				});
 			m_marks.Remove(id);
 			if (logActions) {
 				QoSLog.Info("VehicleRecovery", "stage-2 EMPTY scheduled: truck #" + id +
@@ -251,10 +263,29 @@ public sealed class VehicleRecoveryService : IDisposable {
 				ProductId = truck.Cargo.Product.Id.Value,
 			};
 		}
+		string reason = cannotDeliver
+			? "cannot-deliver"
+			: "navigation-stuck (streak " + truck.NavigationFailedStreak + ")";
+		// Unified activity record (Addendum XVI): every scheduled
+		// recovery, whether or not log_actions is on.
+		var recordData = new Dictionary<string, object> {
+			{ "truckId", id },
+			{ "stage", 1 },
+			{ "reason", cannotDeliver ? "cannot-deliver" : "navigation-stuck" },
+			{ "navigationFailedStreak", truck.NavigationFailedStreak },
+			{ "costUpoints", UpointsValue(cost) },
+		};
+		if (truck.IsNotEmpty) {
+			recordData["cargoProduct"] = truck.Cargo.Product.Id.Value;
+			recordData["cargoQuantity"] = truck.Cargo.Quantity.Value;
+		}
+		QoSEventLog.Record("QoSVehicleRecovery", QoSVehicleRecoveryMod.Version, "command",
+			"RecoverVehicleCmd",
+			"stage-1 RECOVER scheduled: truck #" + id + ", reason " + reason +
+			", cargo " + DescribeCargo(truck) + ", predicted cost " + cost.Format1Dec() +
+			" Upoints; cargo preserved aboard",
+			recordData);
 		if (logActions) {
-			string reason = cannotDeliver
-				? "cannot-deliver"
-				: "navigation-stuck (streak " + truck.NavigationFailedStreak + ")";
 			QoSLog.Info("VehicleRecovery", "stage-1 RECOVER scheduled: truck #" + id +
 				", reason " + reason + ", cargo " + DescribeCargo(truck) +
 				", predicted cost " + cost.Format1Dec() +
@@ -267,5 +298,11 @@ public sealed class VehicleRecoveryService : IDisposable {
 			return "none";
 		}
 		return truck.Cargo.Product.Id.Value + " x" + truck.Cargo.Quantity.Value;
+	}
+
+	/// <summary>Upoints as a plain number for the activity record
+	/// (Fix32 raw / 65536 — the bridge-verified Fix32 decoding).</summary>
+	private static double UpointsValue(Upoints u) {
+		return u.Value.RawValue / 65536.0;
 	}
 }

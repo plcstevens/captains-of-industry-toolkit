@@ -1,4 +1,4 @@
-QoS Vehicle Recovery v0.1.0 — stuck truck cargo rescue for the
+QoS Vehicle Recovery v0.1.1 — stuck truck cargo rescue for the
 QoS suite. Author: Lewis Cameron. For Captain of Industry
 v0.8.8 (Update 4.3).
 Requires: QoSCore >= 0.1.0 (install it first, or use the
@@ -98,6 +98,12 @@ COSTS (the game's own prices, charged by the game)
   enqueued, never refunded (vanilla behaviour).
   Stage-2 empty: 0.1 Unity, charged by the game only on
   success.
+
+ACTIVITY RECORD
+Every recovery or cargo-empty this mod schedules is recorded to the QoS activity feed
+(%APPDATA%\Captain of Industry\QoS\events-v1.jsonl) by QoSCore,
+and shows on the CoI Companion website's Log page. Controlled by
+QoSCore's activity_log_enabled setting (default on).
 
 REMOVAL SAFETY
 The mod registers no prototypes, recipes or entities and

@@ -1,4 +1,4 @@
-QoS World Map v0.1.0 — world-map mine & rig index for the QoS suite.
+QoS World Map v0.1.1 — world-map mine & rig index for the QoS suite.
 Author: Lewis Cameron. For Captain of Industry v0.8.8 (Update 4.3).
 Requires: QoSCore >= 0.1.0 (install it first, or use the combined
 QoS suite pack, which contains both folders).
@@ -73,6 +73,12 @@ DEFAULTS (change them in Settings -> QoS World Map)
   navigate_opens_map   true    row click opens the world map
                                centred on the location, then its
                                inspector; off = inspector only
+
+ACTIVITY RECORD
+Every navigation this mod performs is recorded to the QoS activity feed
+(%APPDATA%\Captain of Industry\QoS\events-v1.jsonl) by QoSCore,
+and shows on the CoI Companion website's Log page. Controlled by
+QoSCore's activity_log_enabled setting (default on).
 
 REMOVAL SAFETY
 The mod registers no prototypes, recipes or entities and stores

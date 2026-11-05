@@ -26,7 +26,7 @@ namespace QoSVehicleRecovery;
 public sealed class QoSVehicleRecoveryMod : IMod {
 
 	/// <summary>Mod version. Keep in step with manifest.json (manifest is the truth).</summary>
-	public const string Version = "0.1.0";
+	public const string Version = "0.1.1";
 
 	public QoSVehicleRecoveryMod(ModManifest manifest) {
 		Manifest = manifest;

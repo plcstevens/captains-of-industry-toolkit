@@ -307,13 +307,30 @@ public sealed class ChickenBalancer : IDisposable {
 				return 0;
 			}
 			if (GuardsSatisfied(eligible, predicted, floor)) {
-				m_scheduler.ScheduleInputCmd(new MoveAnimalsCmd(farm.Id, pull ? moved : -moved));
+				int signed = pull ? moved : -moved;
+				m_scheduler.ScheduleInputCmd(new MoveAnimalsCmd(farm.Id, signed));
+				int min = int.MaxValue, max = int.MinValue;
+				foreach (KeyValuePair<AnimalFarm, int> kv in predicted) {
+					if (kv.Value < min) min = kv.Value;
+					if (kv.Value > max) max = kv.Value;
+				}
+				// Unified activity record (Addendum XVI): every
+				// scheduled move, whether or not log_moves is on.
+				QoSEventLog.Record("QoSChickens", QoSChickensMod.Version, "command", "MoveAnimalsCmd",
+					modeLabel + ": moved " + (pull ? "+" : "-") + moved + " into farm #" +
+					farm.Id.Value + " (" + farm.Prototype.Animal.Id.Value +
+					"); predicted spread " + min + ".." + max + " across " +
+					eligible.Count + " farms",
+					new Dictionary<string, object> {
+						{ "farmId", farm.Id.Value },
+						{ "amount", signed },
+						{ "species", farm.Prototype.Animal.Id.Value },
+						{ "mode", modeLabel },
+						{ "predictedMin", min },
+						{ "predictedMax", max },
+						{ "eligibleFarms", eligible.Count },
+					});
 				if (logMoves) {
-					int min = int.MaxValue, max = int.MinValue;
-					foreach (KeyValuePair<AnimalFarm, int> kv in predicted) {
-						if (kv.Value < min) min = kv.Value;
-						if (kv.Value > max) max = kv.Value;
-					}
 					QoSLog.Info("Chickens", modeLabel + ": scheduled MoveAnimalsCmd farm #" +
 						farm.Id.Value + " " + (pull ? "+" : "-") + moved +
 						" (" + farm.Prototype.Animal.Id.Value + "; predicted spread " +

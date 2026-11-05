@@ -39,6 +39,22 @@
 //! v1 databases upgrade in place; snapshots stored before v2 simply
 //! have no machine-state rows, and the productivity layer reports
 //! INSUFFICIENT evidence for them rather than guessing.
+//!
+//! Schema v3 (PRAGMA user_version = 3; SPEC Addendum XVI — the
+//! unified Log):
+//!   activity_events(id, event_key UNIQUE, recorded_ts_unix, source,
+//!                   actor, category, action, summary, game_id,
+//!                   game_date, game_tick, outcome, payload_json)
+//!     -- the one chronological activity record behind the website's
+//!     -- Log page. Sources: 'companion' (§12 applies recorded by
+//!     -- do_apply), 'system' (companion housekeeping worth replaying,
+//!     -- currently website snapshot creation), 'qos' (QoS mod
+//!     -- actions imported from the mods' JSONL feed). Pre-v3 `audit`
+//!     -- rows are backfilled once at migration with event_key
+//!     -- 'legacy-audit-<id>' and the original detail text carried in
+//!     -- the payload; their game context was never stored and stays
+//!     -- NULL — it is not reconstructed. The legacy `audit` table is
+//!     -- kept and still written by do_apply (Actions page unchanged).
 
 use rusqlite::{params, Connection};
 use serde_json::Value;
@@ -145,6 +161,31 @@ CREATE INDEX IF NOT EXISTS idx_msp_snap ON machine_state_proto(snapshot_id);
 CREATE INDEX IF NOT EXISTS idx_msi_snap ON machine_state_instance(snapshot_id);
 ";
 
+/// Schema v3 additions (see module docs). Applied by `Store::open`
+/// when `PRAGMA user_version` < 3; IF NOT EXISTS like the earlier
+/// migrations. The legacy-audit backfill runs in the same step (in
+/// Rust, so the payload JSON is built with serde_json, not SQL
+/// string surgery) and is idempotent via the UNIQUE event_key.
+const SCHEMA_V3: &str = "
+CREATE TABLE IF NOT EXISTS activity_events (
+    id INTEGER PRIMARY KEY,
+    event_key TEXT NOT NULL UNIQUE,
+    recorded_ts_unix INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    actor TEXT,
+    category TEXT,
+    action TEXT NOT NULL,
+    summary TEXT,
+    game_id TEXT,
+    game_date TEXT,
+    game_tick INTEGER,
+    outcome TEXT,
+    payload_json TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_activity_ts ON activity_events(recorded_ts_unix DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_source ON activity_events(source);
+";
+
 impl Store {
     pub fn open(path: &str) -> Result<Store, String> {
         let conn = Connection::open(path).map_err(|e| format!("open db {path}: {e}"))?;
@@ -162,6 +203,13 @@ impl Store {
             conn.execute_batch(SCHEMA_V2)
                 .map_err(|e| format!("db schema v2: {e}"))?;
             conn.execute_batch("PRAGMA user_version = 2")
+                .map_err(|e| format!("db user_version set: {e}"))?;
+        }
+        if version < 3 {
+            conn.execute_batch(SCHEMA_V3)
+                .map_err(|e| format!("db schema v3: {e}"))?;
+            backfill_legacy_audit(&conn)?;
+            conn.execute_batch("PRAGMA user_version = 3")
                 .map_err(|e| format!("db user_version set: {e}"))?;
         }
         Ok(Store { conn })
@@ -348,6 +396,310 @@ impl Store {
 
 fn flow(p: &Value, key: &str, idx: usize) -> Option<i64> {
     p[key].as_array().and_then(|a| a.get(idx)).and_then(|v| v.as_i64())
+}
+
+// ---------------------------------------------------------------------------
+// Schema v3: the unified activity log (SPEC Addendum XVI)
+// ---------------------------------------------------------------------------
+
+/// One row of `activity_events`, as written. `event_key` is the
+/// idempotency key (UNIQUE): companion-generated keys are
+/// `<kind>-<unix>-<random hex>`, imported QoS keys are
+/// `qos:<eventId>`, backfilled legacy rows are `legacy-audit-<id>`.
+pub struct ActivityEvent {
+    pub event_key: String,
+    pub recorded_ts_unix: i64,
+    pub source: String,
+    pub actor: Option<String>,
+    pub category: Option<String>,
+    pub action: String,
+    pub summary: Option<String>,
+    pub game_id: Option<String>,
+    pub game_date: Option<String>,
+    pub game_tick: Option<i64>,
+    pub outcome: Option<String>,
+    pub payload_json: Option<String>,
+}
+
+/// One row of `activity_events`, as read for the Log page.
+pub struct ActivityRow {
+    pub recorded_ts_unix: i64,
+    pub source: String,
+    pub actor: Option<String>,
+    pub category: Option<String>,
+    pub action: String,
+    pub summary: Option<String>,
+    pub game_date: Option<String>,
+    pub game_tick: Option<i64>,
+    pub outcome: Option<String>,
+    pub payload_json: Option<String>,
+}
+
+/// Outcome of one QoS feed import pass.
+#[derive(Default, Debug, PartialEq)]
+pub struct QosImportStats {
+    /// New rows inserted.
+    pub imported: usize,
+    /// Valid lines whose eventId was already stored.
+    pub skipped: usize,
+    /// Lines that were not usable events (bad JSON, missing fields,
+    /// oversized).
+    pub malformed: usize,
+}
+
+/// v2 → v3 migration step: carry every pre-existing `audit` row into
+/// `activity_events` exactly once. The original detail text is
+/// preserved verbatim inside the payload; game context was never
+/// recorded for those rows and is left NULL. Idempotent: the
+/// `legacy-audit-<id>` keys collide on re-run and are ignored.
+fn backfill_legacy_audit(conn: &Connection) -> Result<(), String> {
+    let rows: Vec<(i64, i64, String, String)> = {
+        let mut stmt = conn
+            .prepare("SELECT id, ts_unix, action, COALESCE(detail, '') FROM audit ORDER BY id")
+            .map_err(|e| format!("db backfill prepare: {e}"))?;
+        let mapped = stmt
+            .query_map([], |r| {
+                Ok((
+                    r.get::<_, i64>(0)?,
+                    r.get::<_, i64>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                ))
+            })
+            .map_err(|e| format!("db backfill: {e}"))?;
+        let mut out = Vec::new();
+        for r in mapped {
+            out.push(r.map_err(|e| format!("db backfill row: {e}"))?);
+        }
+        out
+    };
+    for (id, ts, action, detail) in rows {
+        let payload = serde_json::json!({
+            "detail": detail,
+            "legacyAuditId": id,
+        })
+        .to_string();
+        conn.execute(
+            "INSERT OR IGNORE INTO activity_events(event_key, recorded_ts_unix, source, actor,
+                                                    category, action, summary, game_id, game_date,
+                                                    game_tick, outcome, payload_json)
+             VALUES (?1, ?2, 'companion', NULL, 'command', ?3, ?4, NULL, NULL, NULL, NULL, ?5)",
+            params![format!("legacy-audit-{id}"), ts, action, detail, payload],
+        )
+        .map_err(|e| format!("db backfill insert: {e}"))?;
+    }
+    Ok(())
+}
+
+/// Parse an ISO-8601 UTC timestamp ("2026-11-05T14:03:22.1234567Z"
+/// or with an explicit +00:00 offset) into unix seconds. Returns
+/// None for anything else — the caller treats the line as malformed
+/// rather than guessing a time for it.
+fn parse_iso8601_utc(s: &str) -> Option<i64> {
+    let bytes = s.as_bytes();
+    if bytes.len() < 20 {
+        return None;
+    }
+    let num = |from: usize, len: usize| -> Option<i64> {
+        s.get(from..from + len)?.parse::<i64>().ok()
+    };
+    if bytes.get(4) != Some(&b'-') || bytes.get(7) != Some(&b'-')
+        || (bytes.get(10) != Some(&b'T') && bytes.get(10) != Some(&b' '))
+        || bytes.get(13) != Some(&b':') || bytes.get(16) != Some(&b':')
+    {
+        return None;
+    }
+    let (year, month, day) = (num(0, 4)?, num(5, 2)?, num(8, 2)?);
+    let (hour, min, sec) = (num(11, 2)?, num(14, 2)?, num(17, 2)?);
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day)
+        || hour > 23 || min > 59 || sec > 60
+    {
+        return None;
+    }
+    // Days from civil (Howard Hinnant's algorithm, inverse of the
+    // one in serve::fmt_clock).
+    let y = if month <= 2 { year - 1 } else { year };
+    let era = if y >= 0 { y } else { y - 399 } / 400;
+    let yoe = y - era * 400;
+    let mp = if month > 2 { month - 3 } else { month + 9 };
+    let doy = (153 * mp + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146097 + doe - 719468;
+    Some(days * 86400 + hour * 3600 + min * 60 + sec)
+}
+
+impl Store {
+    /// Insert one activity event. Returns true when the row was
+    /// new, false when its event_key was already stored (imports
+    /// and retries are idempotent by construction).
+    pub fn activity_add(&self, ev: &ActivityEvent) -> Result<bool, String> {
+        let n = self
+            .conn
+            .execute(
+                "INSERT OR IGNORE INTO activity_events(event_key, recorded_ts_unix, source, actor,
+                                                        category, action, summary, game_id, game_date,
+                                                        game_tick, outcome, payload_json)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                params![
+                    ev.event_key,
+                    ev.recorded_ts_unix,
+                    ev.source,
+                    ev.actor,
+                    ev.category,
+                    ev.action,
+                    ev.summary,
+                    ev.game_id,
+                    ev.game_date,
+                    ev.game_tick,
+                    ev.outcome,
+                    ev.payload_json,
+                ],
+            )
+            .map_err(|e| format!("db activity: {e}"))?;
+        Ok(n > 0)
+    }
+
+    /// Import one QoS JSONL feed's full text into `activity_events`.
+    /// Line schema v1 is written by QoSCore's QoSEventLog: each line
+    /// is one JSON object with eventId / recordedAtUtc / modId /
+    /// modVersion / kind / action / summary / data. The mod's
+    /// gameDate rides inside `data` (the feed has no game tick —
+    /// ICalendar exposes a date, not a tick) and is promoted to the
+    /// game_date column here. Bad lines are counted, never fatal;
+    /// blank lines are ignored silently.
+    pub fn import_qos_feed(&self, text: &str) -> Result<QosImportStats, String> {
+        const MAX_LINE: usize = 64 * 1024;
+        let mut stats = QosImportStats::default();
+        for line in text.lines() {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            if line.len() > MAX_LINE {
+                stats.malformed += 1;
+                continue;
+            }
+            let v: Value = match serde_json::from_str(line) {
+                Ok(v) => v,
+                Err(_) => {
+                    stats.malformed += 1;
+                    continue;
+                }
+            };
+            let event_id = v["eventId"].as_str().unwrap_or("");
+            let action = v["action"].as_str().unwrap_or("");
+            let ts = v["recordedAtUtc"]
+                .as_str()
+                .and_then(parse_iso8601_utc);
+            if event_id.is_empty() || action.is_empty() || ts.is_none() {
+                stats.malformed += 1;
+                continue;
+            }
+            let data = if v["data"].is_object() {
+                v["data"].clone()
+            } else {
+                Value::Null
+            };
+            let payload = serde_json::json!({
+                "modId": v["modId"],
+                "modVersion": v["modVersion"],
+                "kind": v["kind"],
+                "recordedAtUtc": v["recordedAtUtc"],
+                "data": data,
+            })
+            .to_string();
+            let ev = ActivityEvent {
+                event_key: format!("qos:{event_id}"),
+                recorded_ts_unix: ts.unwrap(),
+                source: "qos".to_string(),
+                actor: v["modId"].as_str().map(|s| s.to_string()),
+                category: v["kind"].as_str().map(|s| s.to_string()),
+                action: action.to_string(),
+                summary: v["summary"].as_str().map(|s| s.to_string()),
+                game_id: None,
+                game_date: data["gameDate"].as_str().map(|s| s.to_string()),
+                game_tick: None,
+                outcome: Some("recorded".to_string()),
+                payload_json: Some(payload),
+            };
+            if self.activity_add(&ev)? {
+                stats.imported += 1;
+            } else {
+                stats.skipped += 1;
+            }
+        }
+        Ok(stats)
+    }
+
+    /// Count activity rows matching the Log page's filters.
+    pub fn activity_count(&self, source: Option<&str>, search: Option<&str>) -> Result<i64, String> {
+        let (where_sql, like) = activity_filter(source, search);
+        let sql = format!("SELECT COUNT(*) FROM activity_events{where_sql}");
+        self.conn
+            .query_row(&sql, params![source, like], |r| r.get(0))
+            .map_err(|e| format!("db activity count: {e}"))
+    }
+
+    /// Activity rows matching the Log page's filters, newest first.
+    pub fn activity_recent(
+        &self,
+        source: Option<&str>,
+        search: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ActivityRow>, String> {
+        let (where_sql, like) = activity_filter(source, search);
+        let sql = format!(
+            "SELECT recorded_ts_unix, source, actor, category, action, summary,
+                    game_date, game_tick, outcome, payload_json
+             FROM activity_events{where_sql}
+             ORDER BY recorded_ts_unix DESC, id DESC LIMIT ?3 OFFSET ?4"
+        );
+        let mut stmt = self
+            .conn
+            .prepare(&sql)
+            .map_err(|e| format!("db activity prepare: {e}"))?;
+        let rows = stmt
+            .query_map(params![source, like, limit, offset], |r| {
+                Ok(ActivityRow {
+                    recorded_ts_unix: r.get(0)?,
+                    source: r.get(1)?,
+                    actor: r.get(2)?,
+                    category: r.get(3)?,
+                    action: r.get(4)?,
+                    summary: r.get(5)?,
+                    game_date: r.get(6)?,
+                    game_tick: r.get(7)?,
+                    outcome: r.get(8)?,
+                    payload_json: r.get(9)?,
+                })
+            })
+            .map_err(|e| format!("db activity list: {e}"))?;
+        let mut out = Vec::new();
+        for r in rows {
+            out.push(r.map_err(|e| format!("db activity row: {e}"))?);
+        }
+        Ok(out)
+    }
+}
+
+/// Shared WHERE clause for the Log page queries. Positional params:
+/// ?1 = source (NULL = any), ?2 = LIKE pattern for the free-text
+/// search over action/summary. Both params are always referenced
+/// and always bound — with no search the pattern is a bare "%"
+/// (match all) — so count and list queries share one shape.
+fn activity_filter(_source: Option<&str>, search: Option<&str>) -> (String, String) {
+    let like = match search.map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        Some(s) => format!(
+            "%{}%",
+            s.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_")
+        ),
+        None => "%".to_string(),
+    };
+    let sql = " WHERE (?1 IS NULL OR source = ?1) \
+               AND (action LIKE ?2 ESCAPE '\\' OR COALESCE(summary, '') LIKE ?2 ESCAPE '\\')"
+        .to_string();
+    (sql, like)
 }
 
 // ---------------------------------------------------------------------------
@@ -701,8 +1053,7 @@ impl Store {
     }
 
     /// (id, game_date, tick, taken_unix, product_rows, issue_rows), newest first.
-    pub fn recent_snapshots(&self, limit: i64) -> Result<Vec<(i64, String, i64, i64, i64, i64)>, String> {
-        let mut stmt = self
+    pub fn recent_snapshots(&self, limit: i64) -> Result<Vec<(i64, String, i64, i64, i64, i64)>, String> {        let mut stmt = self
             .conn
             .prepare(
                 "SELECT s.id, s.game_date, s.tick, s.taken_unix,
@@ -728,5 +1079,139 @@ impl Store {
             out.push(r.map_err(|e| format!("db snaps row: {e}"))?);
         }
         Ok(out)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests: schema v3 migration/backfill + QoS feed import (Addendum XVI)
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_db(tag: &str) -> String {
+        let p = std::env::temp_dir().join(format!(
+            "coi-store-test-{}-{tag}.db",
+            std::process::id()
+        ));
+        let s = p.to_string_lossy().to_string();
+        for suffix in ["", "-wal", "-shm"] {
+            let _ = std::fs::remove_file(format!("{s}{suffix}"));
+        }
+        s
+    }
+
+    fn cleanup(path: &str) {
+        for suffix in ["", "-wal", "-shm"] {
+            let _ = std::fs::remove_file(format!("{path}{suffix}"));
+        }
+    }
+
+    #[test]
+    fn iso8601_utc_parsing() {
+        // 2026-11-05T13:00:00Z, computed independently.
+        assert_eq!(parse_iso8601_utc("2026-11-05T13:00:00Z"), Some(1793883600));
+        assert_eq!(parse_iso8601_utc("2026-11-05T13:00:00.1234567Z"), Some(1793883600));
+        assert_eq!(parse_iso8601_utc("2026-11-05T13:00:00+00:00"), Some(1793883600));
+        assert_eq!(parse_iso8601_utc("not a date"), None);
+        assert_eq!(parse_iso8601_utc("2026-13-05T13:00:00Z"), None);
+        assert_eq!(parse_iso8601_utc(""), None);
+    }
+
+    #[test]
+    fn v2_to_v3_migration_backfills_legacy_audit_idempotently() {
+        let path = temp_db("migrate");
+        // Build a genuine v2 database: v1 + v2 schemas, stamped 2,
+        // with two audit rows and nothing in activity_events.
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute_batch(SCHEMA).unwrap();
+            conn.execute_batch(SCHEMA_V2).unwrap();
+            conn.execute_batch("PRAGMA user_version = 2").unwrap();
+            conn.execute(
+                "INSERT INTO audit(ts_unix, action, detail) VALUES (1762000000, 'ToggleEnabledCmd', 'Pause steel · HTTP 200 · success')",
+                [],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO audit(ts_unix, action, detail) VALUES (1762000100, 'SetGeneralPriorityCmd', 'Raise furnace · HTTP 500 · FAILED')",
+                [],
+            )
+            .unwrap();
+        }
+        {
+            let st = Store::open(&path).unwrap();
+            let version: i64 = st
+                .conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(version, 3);
+            assert_eq!(st.activity_count(None, None).unwrap(), 2);
+            let rows = st.activity_recent(None, None, 10, 0).unwrap();
+            assert_eq!(rows.len(), 2);
+            // Newest first: the priority row (later ts) leads.
+            assert_eq!(rows[0].action, "SetGeneralPriorityCmd");
+            assert_eq!(rows[0].source, "companion");
+            assert_eq!(rows[0].recorded_ts_unix, 1762000100);
+            assert!(rows[0].game_date.is_none());
+            assert!(rows[0].game_tick.is_none());
+            let payload = rows[0].payload_json.clone().unwrap();
+            assert!(payload.contains("Raise furnace"));
+            assert!(payload.contains("\"legacyAuditId\":2"));
+            // The legacy table itself is untouched.
+            let legacy: i64 = st
+                .conn
+                .query_row("SELECT COUNT(*) FROM audit", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(legacy, 2);
+        }
+        // Re-opening must not duplicate the backfill.
+        {
+            let st = Store::open(&path).unwrap();
+            assert_eq!(st.activity_count(None, None).unwrap(), 2);
+        }
+        cleanup(&path);
+    }
+
+    const FEED_LINE_A: &str = r#"{"schema":1,"eventId":"11111111-2222-3333-4444-555555555555","recordedAtUtc":"2026-11-05T13:00:00.0000000Z","source":"qos","modId":"QoSChickens","modVersion":"0.1.1","kind":"command","action":"MoveAnimalsCmd","summary":"equalise: moved +12 into farm #101","data":{"farmId":101,"amount":12,"species":"Chicken","gameDate":"388-2-27"}}"#;
+    const FEED_LINE_B: &str = r#"{"schema":1,"eventId":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee","recordedAtUtc":"2026-11-05T13:05:00.0000000Z","source":"qos","modId":"QoSWorldMap","modVersion":"0.1.1","kind":"navigation","action":"NavigateToMine","summary":"Navigated to Iron mine","data":{"mine":"Iron mine","product":"Product_IronOre"}}"#;
+
+    #[test]
+    fn qos_feed_import_counts_and_promotes_game_date() {
+        let path = temp_db("import");
+        let feed = [
+            FEED_LINE_A,
+            FEED_LINE_B,
+            FEED_LINE_A, // duplicate eventId
+            "this is not json",
+            r#"{"schema":1,"recordedAtUtc":"2026-11-05T13:06:00Z","action":"NoIdCmd"}"#, // no eventId
+            "",
+        ]
+        .join("\n");
+        let st = Store::open(&path).unwrap();
+        let stats = st.import_qos_feed(&feed).unwrap();
+        assert_eq!(
+            stats,
+            QosImportStats { imported: 2, skipped: 1, malformed: 2 }
+        );
+        // Second pass: everything valid is a duplicate now.
+        let stats2 = st.import_qos_feed(&feed).unwrap();
+        assert_eq!(
+            stats2,
+            QosImportStats { imported: 0, skipped: 3, malformed: 2 }
+        );
+        assert_eq!(st.activity_count(Some("qos"), None).unwrap(), 2);
+        assert_eq!(st.activity_count(Some("companion"), None).unwrap(), 0);
+        assert_eq!(st.activity_count(None, Some("Navigated")).unwrap(), 1);
+        let rows = st.activity_recent(Some("qos"), Some("MoveAnimals"), 10, 0).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].actor.as_deref(), Some("QoSChickens"));
+        assert_eq!(rows[0].category.as_deref(), Some("command"));
+        assert_eq!(rows[0].game_date.as_deref(), Some("388-2-27"));
+        assert!(rows[0].game_tick.is_none());
+        assert_eq!(rows[0].outcome.as_deref(), Some("recorded"));
+        assert_eq!(rows[0].recorded_ts_unix, 1793883600);
+        cleanup(&path);
     }
 }

@@ -216,6 +216,16 @@ public sealed class WorldMinesWindow : Window {
 		}
 		QoSLog.Debug("WorldMap", "navigate: " + Title(mine) + " (" + ProductName(mine) + ")");
 		navigator.Navigate(mine, m_inspectors);
+		// Unified activity record (Addendum XVI): a row click that
+		// actually navigated — the mod's only "action".
+		QoSEventLog.Record("QoSWorldMap", QoSWorldMapMod.Version, "navigation", "NavigateToMine",
+			"Navigated to " + Title(mine) + " (" + ProductName(mine) + ")",
+			new Dictionary<string, object> {
+				{ "mine", Title(mine) },
+				{ "product", ProductName(mine) },
+				{ "state", StateText(mine) },
+				{ "level", mine.Level },
+			});
 	}
 
 	private static int FirstNonZero(int first, int second) {

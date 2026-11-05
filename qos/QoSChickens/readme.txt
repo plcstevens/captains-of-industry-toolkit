@@ -1,4 +1,4 @@
-QoS Chickens v0.1.0 — animal farm distribution for the QoS suite.
+QoS Chickens v0.1.1 — animal farm distribution for the QoS suite.
 Author: Lewis Cameron. For Captain of Industry v0.8.8 (Update 4.3).
 Requires: QoSCore >= 0.1.0 (install it first, or use the combined
 QoS suite pack, which contains both folders).
@@ -65,6 +65,12 @@ DEFAULTS (change them in Settings -> QoS Chickens)
                                       (fill_first only)
   log_moves                   true    one log line per scheduled
                                       move, prefixed QoS.Chickens:
+
+ACTIVITY RECORD
+Every move this mod schedules is recorded to the QoS activity feed
+(%APPDATA%\Captain of Industry\QoS\events-v1.jsonl) by QoSCore,
+and shows on the CoI Companion website's Log page. Controlled by
+QoSCore's activity_log_enabled setting (default on).
 
 REMOVAL SAFETY
 The mod registers no prototypes, recipes or entities and stores

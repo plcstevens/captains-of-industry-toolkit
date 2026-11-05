@@ -32,6 +32,10 @@
 //!   from the topology route with pause/recipe/priority controls,
 //!   and the not-fully-connected transports list.
 //! - Snapshots: take one now (stores file + DB row), browse history.
+//! - Log: the unified activity record (SPEC Addendum XVI) — every
+//!   applied command and website snapshot from this companion, plus
+//!   the QoS mods' recorded actions imported from their JSONL feed,
+//!   in one chronological, filterable replay.
 //!
 //! Std-only HTTP (thread per connection). All state-changing POSTs
 //! require a session + CSRF token.
@@ -45,7 +49,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
 use crate::client::Client;
-use crate::store::Store;
+use crate::store::{ActivityEvent, Store};
 use crate::catalogue::CATALOGUE;
 use crate::guides::{guide_by_id, Guide, GUIDES};
 use crate::{
@@ -436,6 +440,7 @@ fn route(state: &State, req: &Request) -> Response {
                 ("POST", "/actions/apply") => do_apply(state, &session, req),
                 ("GET", "/snapshots") => page_snapshots(state, &session, req),
                 ("POST", "/snapshots/take") => do_take_snapshot(state, &session, req),
+                ("GET", "/log") => page_log(state, &session, req),
                 ("GET", "/api/snapshot.json") => match fetch_live(&client(state)) {
                     Ok(live) => {
                         let body = serde_json::to_string_pretty(&snapshot_json(&live)).unwrap();
@@ -534,7 +539,7 @@ fn layout(session: &Session, title: &str, body: &str) -> String {
          <header><span class=\"brand\">🏛️ CoI Companion</span>\
          <nav><a href=\"/\">Overview</a><a href=\"/issues\">Issues</a><a href=\"/guides\">Guides</a>\
          <a href=\"/products\">Products</a><a href=\"/entities\">Entities</a><a href=\"/trade\">Trade</a><a href=\"/research\">Research</a><a href=\"/plans\">Plans</a><a href=\"/actions\">Actions</a><a href=\"/catalogue\">Catalogue</a>\
-         <a href=\"/snapshots\">Snapshots</a></nav>\
+         <a href=\"/snapshots\">Snapshots</a><a href=\"/log\">Log</a></nav>\
          <form method=\"post\" action=\"/logout\"><button class=\"ghost\" type=\"submit\">Log out ({})</button></form></header>\
          <main>{body}</main></body></html>",
         esc(&session.user)
@@ -1660,6 +1665,10 @@ fn do_apply(state: &State, session: &Session, req: &Request) -> Response {
         }
     };
     let envelope = json!({"type": prepared.cmd_type, "args": prepared.args});
+    // Game context for the activity record: fetched before the
+    // command goes out (after is the fallback — the game may have
+    // stopped answering between the two).
+    let before = get_json(&client(state), "/api/v1/game-info").unwrap_or(Value::Null);
     let result = client(state).post_json("/command", &envelope);
     let (http, result_text, ok) = match &result {
         Ok(r) => {
@@ -1668,6 +1677,7 @@ fn do_apply(state: &State, session: &Session, req: &Request) -> Response {
         }
         Err(e) => (0, e.clone(), false),
     };
+    let after_g = get_json(&client(state), "/api/v1/game-info").unwrap_or(Value::Null);
     if let Ok(st) = store(state) {
         let _ = st.audit_add(
             now_unix() as i64,
@@ -1680,15 +1690,41 @@ fn do_apply(state: &State, session: &Session, req: &Request) -> Response {
                 if ok { "success" } else { "FAILED" }
             ),
         );
+        // Addendum XVI: the same attempt as a rich activity event —
+        // exact envelope, game response, session user, game context.
+        let ctx = if before.is_object() { &before } else { &after_g };
+        let _ = st.activity_add(&ActivityEvent {
+            event_key: format!("apply-{}-{}", now_unix(), rand_hex(8)),
+            recorded_ts_unix: now_unix() as i64,
+            source: "companion".to_string(),
+            actor: Some(session.user.clone()),
+            category: Some("command".to_string()),
+            action: prepared.cmd_type.clone(),
+            summary: Some(prepared.summary.clone()),
+            game_id: ctx["gameId"].as_str().map(|s| s.to_string()),
+            game_date: ctx["date"].as_str().map(|s| s.to_string()),
+            game_tick: ctx["tick"].as_i64(),
+            outcome: Some(if ok { "success" } else { "failed" }.to_string()),
+            payload_json: Some(
+                json!({
+                    "envelope": envelope,
+                    "httpStatus": http,
+                    "responseBody": result_text,
+                })
+                .to_string(),
+            ),
+        });
     }
-    let after = match get_json(&client(state), "/api/v1/game-info") {
-        Ok(g) => format!(
+    let after = if after_g.is_object() {
+        let g = &after_g;
+        format!(
             "Game now: {} · {} · speed {}×",
             sv(&g["date"]),
             if g["isPaused"].as_bool().unwrap_or(false) { "PAUSED" } else { "running" },
             g["speed"]
-        ),
-        Err(_) => String::new(),
+        )
+    } else {
+        String::new()
     };
     let body = format!(
         "<h1>{}</h1>\
@@ -3214,7 +3250,45 @@ fn do_take_snapshot(state: &State, session: &Session, req: &Request) -> Response
             // before the insert persists everything together.
             let th = crate::productivity::Thresholds::load(&state.db_path);
             let _ = crate::productivity::evaluate_snapshot(&mut st, &snap, &live, &mut issues, &th);
-            match st.insert_snapshot(&snap, &issues) {
+            let result = st.insert_snapshot(&snap, &issues);
+            // Addendum XVI: snapshot creation is a system event in
+            // the unified log — stored and duplicate outcomes both
+            // replay (an insert error stays a bare 502, as before).
+            if !matches!(result, Err(_)) {
+                let (outcome, summary, snap_id) = match &result {
+                    Ok(Some(id)) => (
+                        "stored",
+                        format!("Snapshot #{id} stored"),
+                        Some(*id),
+                    ),
+                    _ => (
+                        "duplicate",
+                        "Snapshot skipped — that game tick is already stored".to_string(),
+                        None,
+                    ),
+                };
+                let _ = st.activity_add(&ActivityEvent {
+                    event_key: format!("snapshot-{}-{}", now_unix(), rand_hex(8)),
+                    recorded_ts_unix: now_unix() as i64,
+                    source: "system".to_string(),
+                    actor: Some(session.user.clone()),
+                    category: Some("snapshot".to_string()),
+                    action: "TakeSnapshot".to_string(),
+                    summary: Some(summary),
+                    game_id: snap["game"]["gameId"].as_str().map(|s| s.to_string()),
+                    game_date: snap["game"]["date"].as_str().map(|s| s.to_string()),
+                    game_tick: snap["game"]["tick"].as_i64(),
+                    outcome: Some(outcome.to_string()),
+                    payload_json: Some(
+                        json!({
+                            "snapshotId": snap_id,
+                            "products": snap["products"].as_array().map(|a| a.len()).unwrap_or(0),
+                        })
+                        .to_string(),
+                    ),
+                });
+            }
+            match result {
             Ok(Some(id)) => Response::redirect(&format!(
                 "/snapshots?msg={}",
                 pct_encode(&format!("Snapshot #{id} stored ({} products).", snap["products"].as_array().map(|a| a.len()).unwrap_or(0)))
@@ -3225,6 +3299,213 @@ fn do_take_snapshot(state: &State, session: &Session, req: &Request) -> Response
         }
         Err(e) => Response::text(502, &e),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Log page — the unified activity record (SPEC Addendum XVI)
+// ---------------------------------------------------------------------------
+
+/// Where the QoS mods' activity feed lives: the mods append it next
+/// to the game's own data, at %APPDATA%\Captain of Industry\QoS\
+/// events-v1.jsonl. COI_QOS_EVENTS_PATH overrides the location
+/// (tests, unusual installs). None when no path can be derived.
+fn qos_feed_path() -> Option<String> {
+    if let Ok(p) = std::env::var("COI_QOS_EVENTS_PATH") {
+        if !p.trim().is_empty() {
+            return Some(p);
+        }
+    }
+    let appdata = std::env::var("APPDATA").ok().filter(|s| !s.trim().is_empty())?;
+    Some(format!("{appdata}\\Captain of Industry\\QoS\\events-v1.jsonl"))
+}
+
+struct QosImportReport {
+    path: String,
+    found: bool,
+    stats: Option<crate::store::QosImportStats>,
+    error: Option<String>,
+}
+
+/// Import the QoS feed into the store (idempotent — already-stored
+/// eventIds are skipped). A missing feed is a normal state (mods
+/// not installed yet, or never ran), never an error for the page.
+fn import_qos_feed_now(state: &State, st: &Store) -> QosImportReport {
+    let Some(path) = qos_feed_path() else {
+        return QosImportReport {
+            path: "(no APPDATA and no COI_QOS_EVENTS_PATH — feed location unknown)".to_string(),
+            found: false,
+            stats: None,
+            error: None,
+        };
+    };
+    let _ = state;
+    match std::fs::read(&path) {
+        Ok(bytes) => {
+            // The feed is append-only small JSON lines; cap the
+            // read so a pathological file cannot stall the page.
+            let cap = bytes.len().min(64 * 1024 * 1024);
+            let text = String::from_utf8_lossy(&bytes[..cap]).into_owned();
+            match st.import_qos_feed(&text) {
+                Ok(stats) => QosImportReport { path, found: true, stats: Some(stats), error: None },
+                Err(e) => QosImportReport { path, found: true, stats: None, error: Some(e) },
+            }
+        }
+        Err(_) => QosImportReport { path, found: false, stats: None, error: None },
+    }
+}
+
+fn page_log(state: &State, session: &Session, req: &Request) -> Response {
+    const PAGE_SIZE: i64 = 200;
+    let src_filter = req.query.get("source").map(|s| s.as_str()).unwrap_or("all");
+    let source = match src_filter {
+        "companion" | "qos" | "system" => Some(src_filter),
+        _ => None,
+    };
+    let search = req.query.get("q").map(|s| s.as_str()).unwrap_or("");
+    let page: i64 = req
+        .query
+        .get("page")
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(0)
+        .max(0);
+
+    let mut body = String::from("<h1>Log — everything that was done, in order</h1>");
+    body.push_str(
+        "<p class=\"sub\">The unified activity record, stored in this companion's local \
+         database (coi.db). <b>Companion</b> rows are written when a command is applied \
+         through the Actions flow; <b>system</b> rows when a snapshot is taken here; \
+         <b>QoS</b> rows are the mods' own record of what they did inside the game, \
+         imported from their feed file each time this page loads. QoS events exist only \
+         from the updated mods onward — mod actions from before the update lived only \
+         in the game log and are <b>not</b> backfilled. Times are UTC, as everywhere \
+         in this companion.</p>",
+    );
+
+    match store(state) {
+        Ok(st) => {
+            let report = import_qos_feed_now(state, &st);
+            if report.found {
+                match (&report.stats, &report.error) {
+                    (Some(s), _) => body.push_str(&format!(
+                        "<p class=\"sub\">QoS feed: {} — this load imported {} new, skipped {} already stored, {} malformed line(s).</p>",
+                        esc(&report.path), s.imported, s.skipped, s.malformed
+                    )),
+                    (None, Some(e)) => body.push_str(&format!(
+                        "<div class=\"err\">QoS feed import failed ({}): {}</div>",
+                        esc(&report.path),
+                        esc(e)
+                    )),
+                    _ => {}
+                }
+            } else {
+                body.push_str(&format!(
+                    "<p class=\"sub\">QoS feed: no file at {} yet — nothing to import.</p>",
+                    esc(&report.path)
+                ));
+            }
+
+            // Filter form (plain GET, so filters live in the URL).
+            let sel = |v: &str| if src_filter == v { " selected" } else { "" };
+            body.push_str(&format!(
+                "<form method=\"get\" action=\"/log\" style=\"margin:12px 0\">\
+                 <label>Source <select name=\"source\">\
+                 <option value=\"all\"{}>All sources</option>\
+                 <option value=\"companion\"{}>Companion</option>\
+                 <option value=\"qos\"{}>QoS mods</option>\
+                 <option value=\"system\"{}>System</option></select></label> \
+                 <label>Search <input type=\"text\" name=\"q\" value=\"{}\" placeholder=\"action or summary text\"></label> \
+                 <button type=\"submit\">Filter</button></form>",
+                sel("all"),
+                sel("companion"),
+                sel("qos"),
+                sel("system"),
+                esc(search)
+            ));
+
+            let total = st.activity_count(source, Some(search)).unwrap_or(0);
+            let rows = st
+                .activity_recent(source, Some(search), PAGE_SIZE, page * PAGE_SIZE)
+                .unwrap_or_default();
+            body.push_str(&format!(
+                "<p class=\"sub\">{total} event(s) match. Showing {} (newest first).</p>",
+                rows.len()
+            ));
+            if rows.is_empty() {
+                body.push_str("<p>No events recorded yet.</p>");
+            } else {
+                body.push_str("<table><tr><th>Time (UTC)</th><th>Source</th><th>Actor / mod</th><th>Action</th><th>Summary</th><th>Outcome</th><th>Game</th><th>Payload</th></tr>");
+                for r in &rows {
+                    let badge = match r.source.as_str() {
+                        "qos" => "<span class=\"badge\" style=\"background:#274a2a\">QoS</span>",
+                        "system" => "<span class=\"badge\" style=\"background:#3a3f4a\">system</span>",
+                        _ => "<span class=\"badge\" style=\"background:#2b3a5e\">companion</span>",
+                    };
+                    let game = match (&r.game_date, r.game_tick) {
+                        (Some(d), Some(t)) => format!("{} · tick {}", esc(d), t),
+                        (Some(d), None) => esc(d),
+                        (None, Some(t)) => format!("tick {t}"),
+                        (None, None) => "—".to_string(),
+                    };
+                    let payload = match &r.payload_json {
+                        Some(p) => {
+                            let pretty = serde_json::from_str::<Value>(p)
+                                .map(|v| {
+                                    serde_json::to_string_pretty(&v)
+                                        .unwrap_or_else(|_| p.clone())
+                                })
+                                .unwrap_or_else(|_| p.clone());
+                            format!("<details><summary>payload</summary><pre>{}</pre></details>", esc(&pretty))
+                        }
+                        None => "—".to_string(),
+                    };
+                    body.push_str(&format!(
+                        "<tr><td style=\"white-space:nowrap\">{}</td><td>{}</td><td>{}</td>\
+                         <td><b>{}</b>{}</td><td>{}</td><td>{}</td><td style=\"white-space:nowrap\">{}</td><td>{}</td></tr>",
+                        esc(&fmt_clock(r.recorded_ts_unix as u64)),
+                        badge,
+                        esc(r.actor.as_deref().unwrap_or("—")),
+                        esc(&r.action),
+                        r.category
+                            .as_deref()
+                            .map(|c| format!("<br><span class=\"sub\">{}</span>", esc(c)))
+                            .unwrap_or_default(),
+                        esc(r.summary.as_deref().unwrap_or("")),
+                        esc(r.outcome.as_deref().unwrap_or("")),
+                        game,
+                        payload,
+                    ));
+                }
+                body.push_str("</table>");
+            }
+
+            // Pagination: simple older/newer links preserving filters.
+            let qs = format!(
+                "source={}&q={}",
+                pct_encode(src_filter),
+                pct_encode(search)
+            );
+            let mut pager = String::new();
+            if page > 0 {
+                pager.push_str(&format!(
+                    "<a class=\"btn\" href=\"/log?{}&page={}\">← Newer</a> ",
+                    qs,
+                    page - 1
+                ));
+            }
+            if total > (page + 1) * PAGE_SIZE {
+                pager.push_str(&format!(
+                    "<a class=\"btn\" href=\"/log?{}&page={}\">Older →</a>",
+                    qs,
+                    page + 1
+                ));
+            }
+            if !pager.is_empty() {
+                body.push_str(&format!("<p style=\"margin-top:14px\">{pager}</p>"));
+            }
+        }
+        Err(e) => body.push_str(&format!("<div class=\"err\">{}</div>", esc(&e))),
+    }
+    Response::html(200, layout(session, "Log", &body))
 }
 
 // ---------------------------------------------------------------------------

@@ -564,3 +564,378 @@ silently lacks a member. This round's build.sh run: the three
 existing projects rebuilt 0/0 and all prior zips verified
 byte-identical (sha256) — `QoS-suite-0.1.0.zip`,
 `QoS-suite-0.2.0.zip`, and the three mod zips untouched.
+
+---
+
+# QoS build notes — round 5 (2026-11-05): QoSPriorityActuator (DESIGN — written before code)
+
+Source design: PATTERN-SURVEY.md §2.3 (verdict FITS-WITH-EXTENSION,
+~1.2x chickens) + QOL-MOD-PREP.md §5 cause discipline. This is the
+actuator counterpart to the companion's productivity estimators:
+the companion detects with evidence classes (§5), this mod acts
+with bounded steps, and the two share §5's cause vocabulary
+(STARVED / BLOCKED / PARKED) so a machine is never described two
+ways. It reads machine states in-game and does NOT depend on the
+companion or on §5's snapshot prerequisite.
+
+## Verified surfaces (assembly recon: MODDING-NOTES recon 2a + round 7)
+
+- Actuation: `SetGeneralPriorityCmd(EntityId, int)` /
+  `(IEntity, int)` — shipped InputCommand in
+  `Mafi.Core.Entities.Commands`, public ctors, processed by
+  `EntitiesCommandsProcessor` → `entity.SetGeneralPriority(v)`
+  with `GeneralPriorities.AssertAssignableRange`, range 0–14.
+- Value semantics: `GeneralPriorities` constants settle the
+  direction — HIGHEST_PRIORITY=0, HIGH=8, DEFAULT=9,
+  LOWEST_ACTIONABLE_PRIORITY=14, LOWEST_PRIORITY=15, IGNORE=16.
+  **Lower number = served sooner.** "Stepping a machine's
+  priority up" (survey wording) therefore means DECREMENTING
+  the stored value toward 0.
+- Read side: `Machine.CurrentState` is the nested enum
+  `Machine.State` { None, Broken, Paused, NotEnoughWorkers,
+  NotEnoughPower, NotEnoughComputing, NotEnoughInput,
+  InvalidPlacement, OutputFull, NoRecipes, Working };
+  `Machine.Prototype` is `MachineProto`;
+  `Prototype.Costs.DefaultPriority` is a public readonly
+  per-proto int (ctor default 9). Every Machine is a
+  LayoutEntity implementing `IEntityWithGeneralPriority`
+  (public `GeneralPriority` getter) and exposes
+  `IsCargoAffectedByGeneralPriority` — the per-entity flag for
+  whether cargo jobs honour the value at all.
+- Scheduling: `IInputScheduler.ScheduleInputCmd` (the suite's
+  only mutation path); cadence `ICalendar.NewDayEnd` (chickens /
+  recovery pattern).
+
+## Sensing cadence
+
+One pass per in-game day at NewDayEnd. A daily pass is enough:
+the actuator's whole premise is PERSISTENT states (a machine
+starved for days), and daily granularity is the pattern's proven
+cadence. No finer tick (the extension vehicle recovery needed)
+is required — a same-day transient starve is exactly what the
+persistence gate exists to ignore.
+
+## Cause classification (in-mod, from Machine.State + entity flags)
+
+- **PARKED** — `IsPaused` OR NOT `IsEnabled` OR state == Paused.
+  The player's own choice; NEVER touched, never even counted
+  toward persistence. (§5 checks parked-ness before its class
+  gate; same order here.)
+- **STARVED** — state == NotEnoughInput (eligible: constructed,
+  enabled, not paused, cargo-affected).
+- **BLOCKED** — state == OutputFull. Observed, verbose-logged,
+  NEVER adjusted (see the sign decision below).
+- **Working** — state == Working: not a nudge target; the
+  restore candidate class.
+- **Unclassified / hands-off** — None, Broken, InvalidPlacement,
+  NoRecipes, NotEnoughWorkers, NotEnoughPower,
+  NotEnoughComputing. Priority steers cargo jobs; it cannot fix
+  workers, power, computing, breakage or a missing recipe, so
+  these are never touched (§5's "other" bucket, same reasoning).
+
+## Nudge policy per cause (the sign decision, named)
+
+- **STARVED → step UP**: schedule SetGeneralPriorityCmd at
+  current − 1 (toward HIGHEST_PRIORITY), i.e. trucks serve this
+  machine's cargo jobs sooner — the survey's policy verbatim
+  ("trucks serve its inputs first"). One step per action.
+- **BLOCKED → no action, ever.** The survey leaves the sign
+  choice open (it says only "never raised"); the conservative
+  resolution is never-touch, for two reasons: (1) the survey's
+  stated rationale is that priority cannot fix a downstream
+  blockage — a down-step is still "fixing with priority";
+  (2) mechanically, general priority steers the entity's cargo
+  jobs as a whole (`IsCargoAffectedByGeneralPriority` is a
+  single per-entity flag — there is no input-only priority for
+  machines), so stepping a blocked machine DOWN would also
+  deprioritise the pickups that empty it, working against the
+  unblocking. Blocked machines are counted and verbose-logged
+  so the pass stays auditable.
+- **Working → step back toward proto default** (+1 per pass)
+  while the value is still a mod-producible one (restore rule
+  below). Restoration is the survey's "steps back toward proto
+  default" made symmetric with the nudge.
+
+## Ownership + restore rules (STATELESS — the heart of the mod)
+
+The mod keeps no per-entity memory of what it set (pattern
+limit: persistence across reload must be derivable from the
+value itself). Let D = the machine's proto default
+(`Prototype.Costs.DefaultPriority`) and N = `max_nudge_steps`.
+
+- **Owned set** = { D − k : 0 ≤ k ≤ N }. Only a machine whose
+  current value is in the owned set may be adjusted at all.
+  Anything outside it (D + anything, or below D − N) is treated
+  as player-set and left alone — the mod never fights a value it
+  could not have produced.
+- **Nudge test** (starved, persistence + cooldown passed):
+  current ∈ owned set AND current > D − N AND current − 1 ≥ 0
+  (assignable floor) → schedule current − 1.
+- **Restore test** (Working): current ∈ { D − k : 1 ≤ k ≤ N }
+  — exactly "the value this mod's rule would have set" — →
+  schedule current + 1 (one step per pass; reaching D ends it).
+- Known imperfection (from the survey, accepted + bounded): a
+  player's own D − 1 is indistinguishable from the mod's −1;
+  after a reload the mod may "restore" a value the player set.
+  The band cap (N small) bounds the worst case, every action is
+  logged with its prediction, and the player can defeat the
+  rule entirely by setting any value outside the owned set.
+
+## Bounds (all config, conservative defaults)
+
+- `persistence_days` = 3: a machine must be observed STARVED on
+  3 consecutive daily passes before the first nudge (survey:
+  "multi-day persistence required before the first step").
+- `max_nudge_steps` (N) = 2: the band is [D − 2, D]; also
+  hard-clamped to the assignable range [0, 14].
+- `cooldown_days` = 2: minimum passes between two nudges of the
+  same machine.
+- `max_actions_per_day` = 10: nudges + restores together.
+- Persistence counters, cooldowns and last-cause tracking are
+  SESSION memory only (the recovery mod's marks pattern): a
+  reload resets them, which only delays action — the safety
+  properties (ownership, band, restore) are all stateless and
+  survive reloads exactly.
+- Safety class, stated plainly: NO exact simulation exists for
+  logistics response (survey limit), so this mod is the weaker
+  safety class — bounded nudges + stateless ownership + restore,
+  with every scheduled action logged with its prediction (id,
+  proto, cause, from → to, expected effect) for audit against
+  the next passes.
+
+## Toggles
+
+`enabled` (master, default false), `nudge_starved` (default
+true), `restore_when_working` (default true), `log_actions`
+(default true). Config via the game's own settings mechanism,
+re-read every pass — the suite convention.
+
+## AS BUILT — round 5 (2026-11-05)
+
+Built exactly the design above: **QoSPriorityActuator v0.1.0**
+(new feature mod on QoSCore) + suite pack **QoS-suite-0.4.0**.
+Everything staged in `dist/`, no uploads, no GitHub push, no
+live-game contact. CoiBridge untouched.
+
+### Artefacts
+
+| File | Bytes | Contents |
+|---|---|---|
+| `dist/QoSPriorityActuator-mod-0.1.0.zip` | 23,267 | `QoSPriorityActuator/` (dll 13,824; **no** QoSCore.dll inside, by design) |
+| `dist/QoS-suite-0.4.0.zip` | 79,201 | `QoSCore/` + `QoSChickens/` + `QoSVehicleRecovery/` + `QoSPriorityActuator/` + `QoS-SUITE-README.txt` |
+| `dist/QoS-suite-0.1.0.zip` / `0.2.0.zip` | — | previous packs — NOT rewritten (sha256 verified identical before/after this build, as were all three prior mod zips) |
+
+Build: `qos/build/build.sh` (extended) — all five compilable
+projects **0 warnings / 0 errors** (net48). Sources in
+`qos/QoSPriorityActuator/`; scaffold in `qos/build/actuator/`
+(one csproj per folder, per the suite gotcha). QoSWorldMap
+still cannot compile (UnityEngine refs absent) and was skipped
+loudly, as before.
+
+### QoSPriorityActuator — as designed
+
+- Daily pass at `ICalendar.NewDayEnd`; the only mutation path
+  is `SetGeneralPriorityCmd` via `IInputScheduler`. Cause
+  classification from `Machine.CurrentState` + entity flags in
+  §5's order: PARKED (paused / disabled / state Paused) first,
+  then STARVED / BLOCKED / Working / hands-off states.
+- Nudge = current − 1 (lower number = served sooner), gated by
+  persistence streak, per-machine cooldown, the stateless
+  owned-set test, the band floor, the assignable range [0, 14]
+  and the daily cap. Restore = current + 1 toward proto
+  default while Working, under the stateless restore test.
+- Every scheduled action logs its prediction (machine, proto,
+  cause, from → to, proto default, band floor, streak).
+
+### Defaults (all in Settings -> QoS Priority Actuator)
+
+| Setting | Default | Note |
+|---|---|---|
+| `enabled` | **false** | master switch — ships inert |
+| `nudge_starved` | true | the starved-step policy |
+| `restore_when_working` | true | step back toward proto default |
+| `persistence_days` | 3 | consecutive starved passes before the first nudge |
+| `max_nudge_steps` | 2 | band = [proto default − 2, proto default] |
+| `cooldown_days` | 2 | between nudges of the same machine |
+| `max_actions_per_day` | 10 | nudges + restores together |
+| `log_actions` | true | one line per scheduled action, with prediction |
+
+### Deviations from the survey / design text (each named)
+
+1. **BLOCKED sign resolved to never-touch.** The brief's
+   "opposite-signed treatment" reading was considered; the
+   survey's literal semantics ("never raised") plus the
+   single-flag cargo argument (a down-step would deprioritise
+   the pickups that empty the machine) make no-touch the
+   conservative pick. Rationale in the design section above.
+2. **Suite pack ships without QoSWorldMap (process change vs
+   round 4).** Round 4 withheld the pack entirely while the
+   window mod could not compile. This round's brief required a
+   new pack; the pack is written with the four compilable mods
+   and the suite readme inside declares the membership (and
+   WorldMap's absence + reason) explicitly — declared absence,
+   not silence, which was round 4's actual concern. SUITE_VER
+   0.3.0 → 0.4.0; no 0.3.0 pack file was ever written (0.3.0
+   existed only as a version string + readme state).
+3. **Restores are not cooldown-gated.** The cooldown bounds
+   nudges; restores step at most once per pass while Working,
+   and re-nudging after a restore must re-earn the full
+   persistence streak, so oscillation is bounded to ±1 per
+   (persistence + 1) days by construction.
+4. **Streak counting is gated by `nudge_starved`.** With the
+   toggle off, starved observations do not accumulate;
+   enabling it starts a fresh persistence count. Conservative
+   reading of "observed under the active policy".
+5. **Cargo-affected gate added.** A machine whose
+   `IsCargoAffectedByGeneralPriority` is false is skipped in
+   both directions — its priority value is inert for cargo, so
+   adjusting it would be a no-op action with a misleading log
+   line. The survey did not name this gate; the surface is
+   verified (recon 2a / round 7).
+6. **Log cause labels are lowercase** (`cause=starved`,
+   `cause=working`) to match the companion estimator's
+   evidence-label format (productivity.rs `cause={}`), while
+   the design vocabulary stays §5's STARVED / BLOCKED /
+   PARKED. Same words, two casings, one meaning.
+
+### NOT verified (needs first live install / first enabled days)
+
+- `IEntitiesManager` injection + `GetAllEntitiesOfType<Machine>`
+  enumeration in the service (the chickens service uses the
+  same manager surface — compiled clean; a failure would
+  surface as one init error log line, mod inert).
+- Cross-assembly QoSCore resolution through the manifest
+  dependency (still the suite-wide first-install check).
+- Behavioural eyeball on first enabled days: predicted steps
+  vs the machines' inspector values the next day; confirm a
+  machine set OUTSIDE the band is never touched; confirm the
+  owned-band imperfection behaves as documented (a player's
+  own D−1 inside the band is indistinguishable from the mod's).
+- Weaker-than-survey sensing, reported honestly: the survey
+  described the read side via the bridge's scan
+  (`Machine.CurrentState`, `IsPaused`, `IsEnabled` per
+  instance). In-mod all three verified present and public —
+  no weakening found. The one nuance: `Machine.State` has no
+  separate "disabled" value — disabled arrives via the entity
+  `IsEnabled` flag, which is why PARKED is a flag test, not a
+  state test.
+
+# QoS build notes — round 6 (2026-11-05): the unified activity log (QoSCore 0.2.0)
+
+Philip's ask: "add a LOG tab which is an exact replay of things we
+did in the COI exe or in the mod usage and stored that way" — a
+persistent, chronological activity record (a replay to READ, not
+a re-execution). Companion half is SPEC Addendum XVI; this note is
+the QoS half: what the mods record, where, and in what shape.
+
+## DESIGN (written before code)
+
+- **One recorder in Core.** `QoSEventLog` (new file in QoSCore):
+  static, append-only, JSON Lines. Mods must never grow their own
+  file formats — the feed is suite infrastructure, so it lives
+  with the logging and the registry.
+- **Location**: `%APPDATA%\Captain of Industry\QoS\events-v1.jsonl`
+  — next to the game's own data (where Mods/ lives), NOT inside
+  any mod folder (removing a mod must not delete the record) and
+  NOT in a save (the record spans saves; the companion imports it).
+- **Line schema v1**: schema / eventId (GUID — the companion's
+  import dedupe key) / recordedAtUtc (ISO-8601 UTC wall clock) /
+  source "qos" / modId / modVersion / kind / action / summary /
+  data{}. Hand-rolled JSON writer (string/bool/integral/double/
+  dictionary/list) — no new dependency for a fixed, tiny schema.
+- **Fail-safe above all**: Record() wraps everything in try/catch
+  and appends under a lock. A full disk or a locked file costs one
+  warning line (once), never an exception in the simulation.
+- **Actions only.** Instrumentation points are the existing
+  ScheduleInputCmd call sites, AFTER the call succeeds, plus
+  QoSWorldMap's navigation (its only action). No debug lines, no
+  skipped/no-op passes, no per-pass summaries. Recording is NOT
+  gated by log_moves/log_actions (those govern game-log noise);
+  the single gate is QoSCore's new `activity_log_enabled` config
+  (default true), wired by QoSCoreService.
+- **Game clock**: recon (MODDING-NOTES round 8) found the verified
+  public surface — `ICalendar.CurrentDate` (`Mafi.GameDate`, public
+  Year/Month/Day). QoSCoreService — which now also takes ICalendar
+  by constructor injection, the feature services' pattern — wires
+  it as the recorder's date provider; the date rides in
+  `data.gameDate` and the companion promotes it on import.
+  ICalendar exposes NO tick, so QoS events carry no game tick.
+- **Versions**: QoSCore 0.2.0 (new capability = minor bump per the
+  suite's own convention); features that call the recorder bump
+  patch → 0.1.1 and their manifest dependency becomes
+  "QoSCore >= 0.2.0". Suite pack → 0.5.0.
+
+## AS BUILT — round 6 (2026-11-05)
+
+### Artefacts
+
+All five projects: **0 warnings / 0 errors** (net48). Suite pack
+**QoS-suite-0.5.0.zip** (116,830 B — QoSCore 0.2.0 + four features
+at 0.1.1 + QoSWorldMap + suite readme). Individual zips:
+QoSCore-mod-0.2.0.zip (16,040 B), QoSChickens-mod-0.1.1.zip
+(21,341 B), QoSVehicleRecovery-mod-0.1.1.zip (23,748 B),
+QoSPriorityActuator-mod-0.1.1.zip (24,579 B),
+QoSWorldMap-mod-0.1.1.zip (26,286 B). Prior suite packs
+(0.1.0 / 0.2.0 / 0.4.0) and prior individual zips sha256-verified
+byte-identical after the build. No feature zip contains
+QoSCore.dll (as always).
+
+### What each mod records
+
+- **QoSChickens** — `MoveAnimalsCmd` at the single TryMove
+  scheduling site (both modes): farm id, signed amount, species,
+  mode, predicted post-move spread (min..max over the eligible
+  set — now computed unconditionally; the log line reuses it),
+  eligible farm count.
+- **QoSVehicleRecovery** — `RecoverVehicleCmd` (truck id, stage 1,
+  reason cannot-deliver / navigation-stuck, NavigationFailedStreak,
+  cargo product+quantity when loaded, cost) and
+  `DiscardVehicleCargoCmd` (truck id, stage 2, the mark's product,
+  quantity, cost). Costs are plain numbers via
+  `Upoints.Value.RawValue / 65536.0` (Fix32 decoding, recon 8).
+- **QoSPriorityActuator** — `SetGeneralPriorityCmd` at both sites:
+  nudge (machine id, proto, cause=starved, current→target, proto
+  default, band floor, streak) and restore (same minus streak,
+  cause=working).
+- **QoSWorldMap** — kind `navigation`, action `NavigateToMine`, in
+  the window's Go() AFTER `MineNavigator.Navigate` returns (a
+  click that actually navigated; the pre-renderer-init early
+  return records nothing): mine title, product, state, level.
+
+### Companion half (for the trail; detail in SPEC Addendum XVI)
+
+Store schema v3 + `activity_events`; do_apply writes the legacy
+audit row AND the rich event; snapshot creation is a system
+event; the feed imports on Log-page load (idempotent, counts
+shown on the page); `/log` renders with source/search filters and
+200-row pagination. Verified: 15/15 Rust tests (migration +
+backfill idempotency, import counts/dedupe, ISO-8601 parsing) and
+`tools/check_log_page.sh` against a scratch serve.
+
+### Deviations / limits (named)
+
+1. **No game tick on QoS events** — ICalendar has no tick member
+   (recon 8). Dates only; the companion's own events carry both.
+2. **QoSCoreService gained an ICalendar constructor parameter.**
+   Same injection the feature services already use, so it should
+   resolve identically — but Core previously resolved with only
+   suite-internal dependencies, so this is a new (if small) live
+   unknown: if it failed, Core would log its init error, the
+   registry/verbose wiring would be skipped, and the recorder
+   would still work (Enabled defaults true) minus game dates.
+3. **Feed growth is unbounded** — one small line per action, no
+   rotation in v1. At daily-pass cadences this is years of runway;
+   deleting the file is safe (the companion keeps its imports).
+4. **WorldMap records even if navigation visually no-ops** — the
+   record attests the click invoked Navigate(), which is the
+   mod's action; whether the game centred as intended is one of
+   the round-4 live-check seams, not something the click handler
+   can attest.
+
+### NOT verified (needs first live install)
+
+- QoSEventLog writing in-game (path, permissions, append sharing
+  with the companion reading the same file).
+- QoSCoreService's ICalendar injection (see deviation 2).
+- The companion's Log page against a real feed (scratch feed
+  verified; real one awaits the mods running).

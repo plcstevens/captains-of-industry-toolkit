@@ -15,6 +15,7 @@ qos/
   QoSCore/                 the shared sub-mod (mod id "QoSCore")
     QoSCoreMod.cs          IMod shell (PriorityManager shape)
     QoSLog.cs              prefixed logging for the whole suite
+    QoSEventLog.cs         the unified activity recorder (round 6)
     SuiteRegistry.cs       feature mods announce themselves here
     QoSCoreService.cs      core's own global dependency
     manifest.json  config.json  readme.txt
@@ -32,9 +33,14 @@ qos/
     WorldMinesController.cs  BUILD-NOTES round 4)
     MineNavigator.cs
     manifest.json  config.json  readme.txt
+  QoSPriorityActuator/     feature mod (mod id "QoSPriorityActuator")
+    QoSPriorityActuatorMod.cs  IMod shell
+    PriorityActuatorService.cs the policy/scheduler service
+    manifest.json  config.json  readme.txt
   QoSTrainCargo/           (future — QOL-MOD-PREP §3)
   build/                   VM build scaffold (mirrors bridge/vm-build)
-    QoSCore.csproj  QoSChickens.csproj  build.sh
+    build.sh                 one csproj per subfolder:
+    {core,chickens,recovery,worldmap,actuator}/*.csproj
 ```
 
 One folder per mod, one DLL per mod, one manifest per mod. Sources
@@ -78,8 +84,10 @@ On-Demand-Contracts' shipped manifest (vendor copies):
 
 Suite rules built on that:
 
-1. **Every feature mod declares `mod_dependencies: ["QoSCore >=
-   0.1.0"]`** and references `QoSCore.dll` at compile time with
+1. **Every feature mod declares a `mod_dependencies` entry for
+   QoSCore** naming the oldest core version that provides what it
+   uses (`"QoSCore >= 0.2.0"` today — the activity recorder's
+   floor) and references `QoSCore.dll` at compile time with
    copy-local OFF — the DLL is provided by the QoSCore mod folder
    at runtime, never duplicated inside a feature folder (two
    copies would be two different `SuiteRegistry` types).
@@ -128,14 +136,46 @@ the suite-identity plumbing:
   job: feature mods `Announce(featureId, version)` from their
   `Initialize`; the registry logs the suite composition. It holds
   no state any feature depends on for behaviour.
+- **`QoSEventLog`** (round 6, QoSCore 0.2.0) — the suite's
+  unified activity recorder: a static, fail-safe, thread-safe
+  append-only JSONL writer. See "The unified activity log" below.
 - **`QoSCoreService`** — core's own global dependency: reads
-  core config (verbose flag), announces QoSCore itself.
+  core config (verbose flag, activity-log switch), wires the
+  recorder's game-date provider from `ICalendar`, announces
+  QoSCore itself.
 
 Deliberately NOT in core (would be speculation): shared UI
 windows, a command bus, cross-feature state, persistence helpers.
 §3 (train cargo) may one day want a shared "confirm + charge
 Unity" helper; it goes into core *when that feature is built*,
 not before.
+
+## The unified activity log (round 6 — SPEC Addendum XVI)
+
+One chronological record of everything the toolkit did, readable
+on the companion website's Log page:
+
+- **QoS side**: feature mods call `QoSEventLog.Record(...)`
+  immediately after an action actually happens (a scheduled
+  command, a navigation) — never for diagnostics or skipped
+  passes. Lines land in
+  `%APPDATA%\Captain of Industry\QoS\events-v1.jsonl`
+  (outside every mod folder, so removing a mod never deletes the
+  record; not in a save, so the record spans saves). Each line:
+  GUID eventId, ISO-8601 UTC timestamp, mod id + version, kind,
+  action, one-line summary, structured data (including the
+  in-game date from `ICalendar.CurrentDate` when QoSCoreService
+  wired the provider; ICalendar has no tick, so QoS events carry
+  no game tick). The recorder never throws into the simulation.
+  One gate: QoSCore's `activity_log_enabled` (default true) —
+  deliberately independent of the features' log verbosity flags,
+  because this is a record, not logging.
+- **Companion side**: the same store (coi.db, `activity_events`)
+  holds the companion's own applied commands and snapshot events;
+  the Log page imports the QoS feed on every load (idempotent by
+  eventId) and renders all sources together, filtered and
+  paginated. Pre-upgrade mod actions are NOT in the record —
+  they lived only in the game log; the page says so.
 
 ## Removal safety
 

@@ -1389,3 +1389,97 @@ code does):
   parity PASS, diagnosis reproduction byte-identical, synthetic
   fake-server demo (INSUFFICIENT at 3 snapshots → MEASURED FIRE /
   PARKED / running-hot at 31). dist/coi.exe = 5,828,998 B.
+
+### Addendum XVI — The unified Log: one activity record for the whole toolkit (2026-11-05)
+
+Philip's ask: "add a LOG tab which is an exact replay of things we
+did in the COI exe or in the mod usage and stored that way". Built
+as a persistent, chronological activity record — a replay in the
+sense of re-reading history, NOT a re-execution mechanism. Nothing
+on the Log page can re-apply anything.
+
+**Event contract (one shape, two writers).** Every event is:
+`recorded_ts_unix` (wall clock of the action), `source`
+(`companion` | `system` | `qos`), `actor` (session username, or
+the mod id), `category` (companion: `command`; system: `snapshot`;
+QoS: the feed line's `kind` — `command` | `navigation`), `action`
+(the shipped command type name, or `TakeSnapshot` / `NavigateToMine`),
+`summary` (one human line), `game_id` / `game_date` / `game_tick`
+(where the writer could know them), `outcome`, and a `payload_json`
+carrying the exact detail (for applies: the full command envelope
++ HTTP status + game response body; for QoS: the feed line's data).
+
+**Companion side — store schema v3** (`PRAGMA user_version = 3`).
+New table `activity_events(event_key UNIQUE, …)` in coi.db.
+`do_apply` still writes the legacy `audit` row (the Actions page
+is unchanged) AND a rich activity event: exact envelope JSON,
+summary, session username as actor, HTTP status + response body,
+and game date/tick/gameId fetched around the apply. Website
+snapshot creation (`POST /snapshots/take`) is a `system` event
+with the insert outcome (`stored` / `duplicate`). Prepares that
+were never applied, page views and logins are NOT events.
+Pre-v3 `audit` rows are backfilled once at migration
+(`event_key = legacy-audit-<id>`, source `companion`, the original
+detail text verbatim in the payload); their game context was never
+stored and stays NULL — it is not reconstructed.
+
+**QoS side — the feed.** QoSCore 0.2.0 gains `QoSEventLog`: a
+static, fail-safe (never throws into the sim), thread-safe,
+append-only JSONL recorder at
+`%APPDATA%\Captain of Industry\QoS\events-v1.jsonl`
+(`Environment.SpecialFolder.ApplicationData` + fixed subpath).
+Line schema v1: `{schema, eventId (GUID), recordedAtUtc (ISO-8601),
+source:"qos", modId, modVersion, kind, action, summary, data{}}` —
+hand-rolled JSON writer, no new dependencies. QoSCore config
+`activity_log_enabled` (default true) is the master switch, wired
+by QoSCoreService; recording is NOT gated by features' verbosity
+flags. Instrumented actions only (after the shipped command is
+actually scheduled — never diagnostics, never skipped passes):
+QoSChickens `MoveAnimalsCmd` (farm, signed amount, species, mode,
+predicted spread, eligible farms); QoSVehicleRecovery
+`RecoverVehicleCmd` (truck, reason, streak, cargo, cost) and
+`DiscardVehicleCargoCmd` (truck, product, quantity, cost);
+QoSPriorityActuator `SetGeneralPriorityCmd` nudge + restore
+(machine, proto, cause, current→target, proto default, band floor,
+streak where held); QoSWorldMap navigations (kind `navigation`,
+on a row click that actually navigates). Feature mods are 0.1.1
+and require `QoSCore >= 0.2.0`.
+
+**Game clock for QoS events — date yes, tick no.** Recon
+(MODDING-NOTES round 8): `ICalendar.CurrentDate` is a public
+property returning `Mafi.GameDate` (public Year/Month/Day).
+QoSCoreService wires it as the recorder's date provider; the date
+rides inside the line's `data.gameDate` and the importer promotes
+it to the `game_date` column. ICalendar exposes no tick, so QoS
+events carry no game tick — import-time context is never stamped
+onto events after the fact.
+
+**Import.** The Log page imports the feed on every load
+(idempotent via `INSERT OR IGNORE` on `qos:<eventId>`), and
+reports imported / skipped / malformed counts + the feed path on
+the page. Path: `COI_QOS_EVENTS_PATH` override, else APPDATA.
+Malformed lines are counted, never fatal; lines are capped at
+64 KiB; the read is capped at 64 MiB. A missing feed is a normal
+state, shown as such.
+
+**The Log page** (`GET /log`, nav "Log"): newest-first table —
+time (UTC, like the rest of the companion), source badge, actor /
+mod, action, summary, outcome, game date/tick when known, and the
+exact payload in an expandable details block. Filters: source
+(all / companion / qos / system) + free text over action/summary;
+pagination at 200 rows. The header states provenance honestly:
+QoS events exist only from the updated mods onward; pre-upgrade
+mod actions lived only in the game log and are NOT backfilled.
+
+**Versions.** QoSCore 0.2.0; QoSChickens / QoSVehicleRecovery /
+QoSPriorityActuator / QoSWorldMap 0.1.1; suite pack 0.5.0;
+companion rebuilt (dist/coi.exe = 5,885,166 B). Verified: Rust
+15/15 tests (incl. v2→v3 migration + backfill idempotency, feed
+import counts), scripted scratch-serve check
+(`tools/check_log_page.sh` — legacy row renders, QoS rows import,
+source filter separates), all five C# projects 0 warnings /
+0 errors, prior suite packs sha256-untouched. Unverified until
+live install (the standing suite class): the feed file itself is
+only written by the mods in-game; QoSCoreService's new ICalendar
+constructor injection resolves by the same DI pattern the feature
+services already use, but has not been observed live.
