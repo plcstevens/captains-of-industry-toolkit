@@ -17,3 +17,24 @@ A personal toolkit for [Captains of Industry](https://www.captain-of-industry.co
 ## Status
 
 Personal project, built for one player's Dragon Isle run. Specifications live in `SPEC.md`; the build log in `NIGHT-LOG.md`. Expect sharp edges.
+
+## Building
+
+**Companion (`coi.exe`)** — built by GitHub Actions: push a tag like
+`coi-v0.1.0` and the release workflow builds the Rust crate in `coi/`
+on a Windows runner and attaches `coi.exe` (plus a SHA256 file) to
+the GitHub Release. Local build: `cargo build --release` in `coi/`.
+
+**Mods (CoiBridge, QoS suite)** — built locally, not in CI: they
+compile against the game's own assemblies (`Mafi*.dll`), which are
+not redistributable and so cannot live in this repo. The build
+scripts take a call-out to wherever those DLLs are:
+
+```sh
+export COI_REFS_DIR="/path/to/game/Captain of Industry_Data/Managed"
+bridge/vm-build/build.sh   # -> dist/CoiBridge-mod-<version>.zip
+qos/build/build.sh         # -> dist/QoSCore/QoSChickens/suite zips
+```
+
+With `COI_REFS_DIR` unset the scripts fall back to a repo-local
+`refs/` folder. Only prerequisite: a .NET 8 SDK.

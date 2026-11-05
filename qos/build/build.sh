@@ -15,6 +15,14 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 DIST="$ROOT/dist"
 mkdir -p "$DIST"
 
+# Reference assemblies: COI_REFS_DIR points at the folder holding the
+# game's Mafi*.dll (e.g. your game install's Managed folder). Defaults
+# to the repo-local refs/ folder when unset.
+REFS_DIR="${COI_REFS_DIR:-$ROOT/refs}"
+for dll in Mafi.dll Mafi.Core.dll Mafi.Unity.dll; do
+  [ -f "$REFS_DIR/$dll" ] || { echo "missing reference assembly: $REFS_DIR/$dll (set COI_REFS_DIR to the folder with the game's Mafi*.dll)"; exit 1; }
+done
+
 ver() { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" "$1"; }
 CORE_VER="$(ver "$HERE/../QoSCore/manifest.json")"
 CHICK_VER="$(ver "$HERE/../QoSChickens/manifest.json")"
@@ -22,8 +30,8 @@ echo "QoSCore $CORE_VER / QoSChickens $CHICK_VER"
 
 # One project per subfolder: two csprojs in one folder share a
 # single obj/project.assets.json and stomp each other's restore.
-dotnet build "$HERE/core/QoSCore.csproj" -c Release -p:Version="$CORE_VER" -p:AssemblyVersion="$CORE_VER" -p:FileVersion="$CORE_VER"
-dotnet build "$HERE/chickens/QoSChickens.csproj" -c Release -p:Version="$CHICK_VER" -p:AssemblyVersion="$CHICK_VER" -p:FileVersion="$CHICK_VER"
+dotnet build "$HERE/core/QoSCore.csproj" -c Release -p:CoiRefsDir="$REFS_DIR/" -p:Version="$CORE_VER" -p:AssemblyVersion="$CORE_VER" -p:FileVersion="$CORE_VER"
+dotnet build "$HERE/chickens/QoSChickens.csproj" -c Release -p:CoiRefsDir="$REFS_DIR/" -p:Version="$CHICK_VER" -p:AssemblyVersion="$CHICK_VER" -p:FileVersion="$CHICK_VER"
 
 STAGE="$HERE/stage"
 rm -rf "$STAGE"

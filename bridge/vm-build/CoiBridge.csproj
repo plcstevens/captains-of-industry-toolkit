@@ -1,4 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <CoiRefsDir Condition="'$(CoiRefsDir)'==''">../../refs/</CoiRefsDir>
+  </PropertyGroup>
   <!-- VM-side build for CoiBridge (Claudius builds; Philip does not).
        The VS/template project remains ../CoiBridge/CoiBridge.csproj.
        This project compiles the SAME sources against the game's own
@@ -26,19 +29,19 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Mafi">
-      <HintPath>../../refs/Mafi.dll</HintPath>
+      <HintPath>$(CoiRefsDir)/Mafi.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Mafi.Core">
-      <HintPath>../../refs/Mafi.Core.dll</HintPath>
+      <HintPath>$(CoiRefsDir)/Mafi.Core.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Mafi.Base">
-      <HintPath>../../refs/Mafi.Base.dll</HintPath>
+      <HintPath>$(CoiRefsDir)/Mafi.Base.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Mafi.Unity">
-      <HintPath>../../refs/Mafi.Unity.dll</HintPath>
+      <HintPath>$(CoiRefsDir)/Mafi.Unity.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

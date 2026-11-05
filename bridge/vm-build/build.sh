@@ -9,11 +9,15 @@ cd "$(dirname "$0")"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 DOTNET="$HOME/.dotnet/dotnet"
 [ -x "$DOTNET" ] || { echo "dotnet SDK missing at $DOTNET"; exit 1; }
+# Reference assemblies: COI_REFS_DIR points at the folder holding the
+# game's Mafi*.dll (e.g. your game install's Managed folder). Defaults
+# to the repo-local refs/ folder when unset.
+REFS_DIR="${COI_REFS_DIR:-$PWD/../../refs}"
 for dll in Mafi.dll Mafi.Core.dll Mafi.Base.dll Mafi.Unity.dll; do
-  [ -f "../../refs/$dll" ] || { echo "missing reference assembly: refs/$dll"; exit 1; }
+  [ -f "$REFS_DIR/$dll" ] || { echo "missing reference assembly: $REFS_DIR/$dll (set COI_REFS_DIR to the folder with the game's Mafi*.dll)"; exit 1; }
 done
 VERSION=$(python3 -c "import json;print(json.load(open('../CoiBridge/manifest.json'))['version'])")
-"$DOTNET" build -c Release -p:Version="$VERSION" -p:FileVersion="$VERSION" -p:AssemblyVersion="$VERSION"
+"$DOTNET" build -c Release -p:CoiRefsDir="$REFS_DIR/" -p:Version="$VERSION" -p:FileVersion="$VERSION" -p:AssemblyVersion="$VERSION"
 DLL="bin/Release/net48/CoiBridge.dll"
 [ -f "$DLL" ] || { echo "build produced no $DLL"; exit 1; }
 STAGE=$(mktemp -d)

@@ -1,5 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <CoiRefsDir Condition="'$(CoiRefsDir)'==''">..\..\..efs\</CoiRefsDir>
+  </PropertyGroup>
+  <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <AssemblyName>QoSChickens</AssemblyName>
     <RootNamespace>QoSChickens</RootNamespace>
@@ -21,15 +24,15 @@
       <Private>false</Private>
     </ProjectReference>
     <Reference Include="Mafi">
-      <HintPath>..\..\..\refs\Mafi.dll</HintPath>
+      <HintPath>$(CoiRefsDir)\Mafi.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Mafi.Core">
-      <HintPath>..\..\..\refs\Mafi.Core.dll</HintPath>
+      <HintPath>$(CoiRefsDir)\Mafi.Core.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Mafi.Unity">
-      <HintPath>..\..\..\refs\Mafi.Unity.dll</HintPath>
+      <HintPath>$(CoiRefsDir)\Mafi.Unity.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
