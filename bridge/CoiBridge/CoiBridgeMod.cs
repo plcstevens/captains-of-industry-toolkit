@@ -62,7 +62,8 @@ public sealed class CoiBridgeMod : DataOnlyMod, IMod {
 	void IMod.RegisterDependencies(DependencyResolverBuilder depBuilder, ProtosDb protosDb, bool gameWasLoaded) {
 		depBuilder.RegisterDependency<BridgeRoutes>().AsSelf();
 		depBuilder.RegisterDependency<BridgeRoutesV6>().AsSelf();
-		Log.Info("CoiBridge: BridgeRoutes + BridgeRoutesV6 registered with the dependency builder");
+		depBuilder.RegisterDependency<BridgeRoutesTerrain>().AsSelf();
+		Log.Info("CoiBridge: BridgeRoutes + BridgeRoutesV6 + BridgeRoutesTerrain registered with the dependency builder");
 	}
 
 	/// <summary>
@@ -104,6 +105,20 @@ public sealed class CoiBridgeMod : DataOnlyMod, IMod {
 			}
 		} catch (Exception ex) {
 			Log.Error("CoiBridge: v0.6 route setup failed (v0.5 routes unaffected): " + ex.Message);
+		}
+		// v0.6.5 terrain routes resolve in their OWN try/catch too:
+		// if TerrainManager or a designation manager cannot be
+		// injected, only the terrain routes are lost.
+		try {
+			BridgeRoutesTerrain routesT = resolver.Resolve<BridgeRoutesTerrain>();
+			Log.Info("CoiBridge: BridgeRoutesTerrain resolved at Initialize");
+			WebApiServer serverT = resolver.Resolve<WebApiServer>();
+			if (serverT.IsRunning) {
+				int addedT = serverT.ScanObjectForRoutes(routesT);
+				Log.Info("CoiBridge: web server already running; scanned terrain routes, added " + addedT);
+			}
+		} catch (Exception ex) {
+			Log.Error("CoiBridge: terrain route setup failed (other routes unaffected): " + ex.Message);
 		}
 	}
 

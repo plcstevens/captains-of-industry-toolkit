@@ -60,7 +60,7 @@ namespace CoiBridge;
 public sealed class BridgeRoutes {
 
 	/// <summary>Mod version reported by the routes. Keep in step with manifest.json.</summary>
-	public const string ModVersion = "0.6.4";
+	public const string ModVersion = "0.6.5";
 
 	/// <summary>Route namespace version (SPEC section 3). Breaking changes bump this.</summary>
 	public const string GameApi = "v1";
@@ -82,6 +82,10 @@ public sealed class BridgeRoutes {
 		"GET /coi/v1/power",
 		"GET /coi/v1/priorities",
 		"GET /coi/v1/machines",
+		"GET /coi/v1/terrain",
+		"GET /coi/v1/terrain/region",
+		"GET /coi/v1/deposits",
+		"GET /coi/v1/designations",
 	};
 
 	private readonly IEntitiesManager m_entities;

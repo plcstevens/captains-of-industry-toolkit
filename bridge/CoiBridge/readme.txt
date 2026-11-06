@@ -1,9 +1,9 @@
-CoI Bridge v0.6.4 — read-only web API bridge for the CoI Companion tool.
+CoI Bridge v0.6.5 — read-only web API bridge for the CoI Companion tool.
 Author: Lewis Cameron. For Captain of Industry v0.8.8 (Update 4.3).
 
 INSTALL (prebuilt — no building needed)
 1. Close the game completely.
-2. Unzip CoiBridge-mod-0.6.4.zip. You get a folder named CoiBridge
+2. Unzip CoiBridge-mod-0.6.5.zip. You get a folder named CoiBridge
    containing manifest.json, CoiBridge.dll, readme.txt.
 3. If an older CoiBridge folder already exists in the Mods folder,
    delete it first. Then move the new CoiBridge folder into:
@@ -17,6 +17,35 @@ INSTALL (prebuilt — no building needed)
    Settings -> Miscellaneous -> enable mods, then restart the game.
 5. Load your save. The manifest allows adding this mod to an existing
    save; if the game shows a mod list for the save, tick CoiBridge.
+WHAT'S NEW IN v0.6.5
+Terrain sensing — the land itself, not just built things. Terrain
+and entity positions are the same tile grid (an entity's Tile3i.Z
+is the floored terrain height), so these read in companion
+coordinates directly. Heights are raw Fix32 ints (65536 = 1 tile;
+a tile is 2 m x 2 m, one height unit 2 m, one tile-cubed 8 m3):
+   GET /coi/v1/terrain       map dimensions, playable limits,
+                             full-grid min/max height, ocean tile
+                             count, and a point-sampled summary
+                             height grid (stride <= 96 x 96).
+   GET /coi/v1/terrain/region?x0&y0&x1&y1
+                             exact raw heights for a rectangle
+                             (x1/y1 exclusive), clamped to the map
+                             and capped at 16,384 tiles; the
+                             response reports the effective bounds
+                             and whether it was truncated.
+   GET /coi/v1/deposits      on-map resources ARE terrain material
+                             layers (the game has no deposit
+                             objects): per-material totals plus
+                             connected regions per material with
+                             bounds, tile counts and remaining
+                             quantities in the game's own mined-
+                             quantity conversion — mining removes
+                             layer thickness, so what is read is
+                             what is left. Bedrock excluded.
+   GET /coi/v1/designations  mining / dumping / other designation
+                             areas with target heights (integer
+                             tiles) and fulfilment state.
+
 WHAT'S NEW IN v0.6.4
 Two read additions:
    GET /coi/v1/machines      one row per machine INSTANCE: id, proto,
