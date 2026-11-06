@@ -20,18 +20,21 @@ potato 300, vegetables 80, steel 10, everything else 0).
 
 HONESTY NOTES (fixture choices, also recorded in
 plans/growth-sequence-timeline.md):
-- "Construction" completes as ResearchCp1Production — the early-game
-  fixture's own in-progress node and the plan's named candidate. The
-  plan's phase-2 entry gate references the §4.5 placeholder, NOT this
-  id, so that gate stays UNEVALUABLE regardless (by plan design).
-- The Concrete Production node's game id is unsourced (plan §4.5
-  placeholder; only the later ResearchConcreteAdvanced exists in
-  coi/data/research_ids.txt, and the plan forbids substituting it).
-  The fixture therefore never records a concrete node in `researched`;
-  kiln/mixer builds appear month 9 (in-fiction the node completed
-  around then) and NO gate reads that node, so nothing depends on the
-  omission. ResearchRubber IS a real id in research_ids.txt (one of
-  the plan's two candidates) and is used for Synthetic Rubber.
+- "Construction" completes as ResearchCpPacking — the id retired
+  from the shipped game's proto registrations 2026-11-06 (plan
+  v1.3.0). The plan's phase-2 entry gate now reads this id directly,
+  so that gate is EVALUABLE in these fixtures (it was UNEVALUABLE
+  under the §4.5 placeholder in fixture versions before 2026-11-06,
+  which used the goal id ResearchCpPacking by mistake).
+- The Concrete Production node's game id was likewise retired
+  2026-11-06: ResearchConcreteAdvanced (shipped display 'Advanced
+  concrete'). The fixture still never records a concrete node in
+  `researched` — the scripted queue below simply never reaches it
+  in 12 months; kiln/mixer builds appear month 9 as in-fiction
+  approximations and NO gate reads that node, so nothing depends
+  on the omission. ResearchRubberProduction (also retired
+  2026-11-06) is used for Synthetic Rubber; ResearchCp2Packing
+  for Construction II.
 - Census proto labels beyond the early-game fixture (AssemblyManual,
   MaintenanceDepotT1, FarmT1, MineT1, KilnT1, ConcreteMixerT1,
   OilPumpT1, DistillerT1, RubberMakerT1, ElectrolysisT1) are plausible
@@ -161,44 +164,44 @@ LOCKED_EXTRA = ["Product_ConstructionParts2"]
 # (researched list after this month, current (id, progressPerc, steps,
 # cost) or None, queue)
 RESEARCH = {
-    1: ([], ("ResearchCp1Production", 43750, 35, 80),
+    1: ([], ("ResearchCpPacking", 43750, 35, 80),
         ["ResearchPowerAndMaintenance"]),
-    2: (["ResearchCp1Production"],
+    2: (["ResearchCpPacking"],
         ("ResearchPowerAndMaintenance", 55000, 44, 80), ["ResearchTradeDock"]),
-    3: (["ResearchCp1Production"],
+    3: (["ResearchCpPacking"],
         ("ResearchPowerAndMaintenance", 86250, 69, 80), ["ResearchTradeDock"]),
-    4: (["ResearchCp1Production", "ResearchPowerAndMaintenance"],
+    4: (["ResearchCpPacking", "ResearchPowerAndMaintenance"],
         ("ResearchTradeDock", 50000, 30, 60), ["ResearchVehicleAndMining"]),
-    5: (["ResearchCp1Production", "ResearchPowerAndMaintenance",
+    5: (["ResearchCpPacking", "ResearchPowerAndMaintenance",
          "ResearchTradeDock"],
         ("ResearchVehicleAndMining", 45000, 36, 80), ["ResearchBeacon"]),
-    6: (["ResearchCp1Production", "ResearchPowerAndMaintenance",
+    6: (["ResearchCpPacking", "ResearchPowerAndMaintenance",
          "ResearchTradeDock", "ResearchVehicleAndMining"],
         ("ResearchBeacon", 62500, 25, 40), ["ResearchTools"]),
-    7: (["ResearchCp1Production", "ResearchPowerAndMaintenance",
+    7: (["ResearchCpPacking", "ResearchPowerAndMaintenance",
          "ResearchTradeDock", "ResearchVehicleAndMining", "ResearchBeacon"],
         ("ResearchTools", 55000, 33, 60), ["ResearchBasicDiesel"]),
-    8: (["ResearchCp1Production", "ResearchPowerAndMaintenance",
+    8: (["ResearchCpPacking", "ResearchPowerAndMaintenance",
          "ResearchTradeDock", "ResearchVehicleAndMining", "ResearchBeacon",
          "ResearchTools"],
-        ("ResearchBasicDiesel", 55000, 44, 80), ["ResearchRubber"]),
-    9: (["ResearchCp1Production", "ResearchPowerAndMaintenance",
+        ("ResearchBasicDiesel", 55000, 44, 80), ["ResearchRubberProduction"]),
+    9: (["ResearchCpPacking", "ResearchPowerAndMaintenance",
          "ResearchTradeDock", "ResearchVehicleAndMining", "ResearchBeacon",
          "ResearchTools"],
-        ("ResearchBasicDiesel", 87500, 70, 80), ["ResearchRubber"]),
-    10: (["ResearchCp1Production", "ResearchPowerAndMaintenance",
+        ("ResearchBasicDiesel", 87500, 70, 80), ["ResearchRubberProduction"]),
+    10: (["ResearchCpPacking", "ResearchPowerAndMaintenance",
           "ResearchTradeDock", "ResearchVehicleAndMining", "ResearchBeacon",
           "ResearchTools", "ResearchBasicDiesel"],
-         ("ResearchRubber", 60000, 36, 60), ["ResearchCopperRefinement"]),
-    11: (["ResearchCp1Production", "ResearchPowerAndMaintenance",
+         ("ResearchRubberProduction", 60000, 36, 60), ["ResearchCopperRefinement"]),
+    11: (["ResearchCpPacking", "ResearchPowerAndMaintenance",
           "ResearchTradeDock", "ResearchVehicleAndMining", "ResearchBeacon",
-          "ResearchTools", "ResearchBasicDiesel", "ResearchRubber"],
-         ("ResearchCopperRefinement", 55000, 44, 80), ["ResearchCp2"]),
-    12: (["ResearchCp1Production", "ResearchPowerAndMaintenance",
+          "ResearchTools", "ResearchBasicDiesel", "ResearchRubberProduction"],
+         ("ResearchCopperRefinement", 55000, 44, 80), ["ResearchCp2Packing"]),
+    12: (["ResearchCpPacking", "ResearchPowerAndMaintenance",
           "ResearchTradeDock", "ResearchVehicleAndMining", "ResearchBeacon",
-          "ResearchTools", "ResearchBasicDiesel", "ResearchRubber",
+          "ResearchTools", "ResearchBasicDiesel", "ResearchRubberProduction",
           "ResearchCopperRefinement"],
-         ("ResearchCp2", 30000, 24, 80), []),
+         ("ResearchCp2Packing", 30000, 24, 80), []),
 }
 
 # ------------------------------------------------------------ census
