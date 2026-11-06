@@ -2188,15 +2188,16 @@ struct OrderDecision {
     reason: Option<String>,
 }
 
-/// Decide one order under the runner's recording rules. PREPARED
-/// only when `do` names a catalogue command (and is not the
-/// policy-excluded one) and its args are fully concrete: no §4.5
-/// placeholder objects and no §6.2 `$entity` selectors. Everything
-/// else is SKIPPED with the reason that applies, checked in this
-/// order: non-command kind / manual class, excluded or unknown
-/// command, placeholder research id, $entity selector, any other
-/// placeholder.
-fn decide_order(order: &Value) -> OrderDecision {
+/// Decide one order under the runner's recording rules, against the
+/// state at the step the order is recorded. PREPARED only when `do`
+/// names a catalogue command (and is not the policy-excluded one)
+/// and its args are fully concrete: no §4.5 placeholder objects and
+/// no §6.2 `$entity` selectors. Everything else is SKIPPED with the
+/// reason that applies, checked in this order: non-command kind /
+/// manual class, excluded or unknown command, placeholder research
+/// id, already-researched research node, $entity selector, any
+/// other placeholder.
+fn decide_order(order: &Value, st: &State) -> OrderDecision {
     let do_ = order
         .get("do")
         .map(fmt_val)
@@ -2238,6 +2239,22 @@ fn decide_order(order: &Value) -> OrderDecision {
         if let Some(node) = args.get("nodeId") {
             if contains_placeholder(node) {
                 return skipped("placeholder research id (unsourced)".to_string());
+            }
+            // Already-researched hold: starting a node the capture's
+            // completed list already contains would start nothing —
+            // the plan's own order notes call such orders "skipped
+            // by its verify". Positive evidence only: a capture with
+            // no `researched` list (pre-v0.6.2 bridge) cannot hold an
+            // order — unknown is not researched, mirroring
+            // research.completed's UNEVALUABLE discipline.
+            if let Some(node_id) = node.as_str() {
+                if let Some(Value::Array(done)) = get(&st.research, "researched") {
+                    if done.iter().any(|v| v.as_str() == Some(node_id)) {
+                        return skipped(format!(
+                            "research node {node_id} already researched — nothing to start"
+                        ));
+                    }
+                }
             }
         }
     }
@@ -2455,7 +2472,7 @@ pub fn play_cmd(args: &[String]) -> i32 {
                             .get("id")
                             .map(fmt_val)
                             .unwrap_or_else(|| "<no-id>".to_string());
-                        let dec = decide_order(order);
+                        let dec = decide_order(order, &states[k]);
                         ids.push(oid.clone());
                         if dec.prepared {
                             let payload = dec.payload.clone().unwrap_or(Value::Null);
@@ -2708,4 +2725,72 @@ pub fn play_cmd(args: &[String]) -> i32 {
         None => print!("{transcript}"),
     }
     0
+}
+
+// ---------------------------------------------------------------- tests
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    /// Build a State from a temp capture dir holding only the given
+    /// bridge-research.json payload (every other capture file is
+    /// optional in State::load).
+    fn state_with_research(research_json: &str) -> (State, PathBuf) {
+        let dir = std::env::temp_dir().join(format!(
+            "coi-plan-decide-test-{}-{}",
+            std::process::id(),
+            research_json.len()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("bridge-research.json"), research_json).unwrap();
+        let st = State::load(&dir).unwrap();
+        (st, dir)
+    }
+
+    fn research_order(node: &str) -> Value {
+        serde_json::json!({
+            "id": "t-research",
+            "do": "ResearchStartCmd",
+            "args": {"nodeId": node},
+            "class": "research",
+        })
+    }
+
+    #[test]
+    fn decide_order_holds_already_researched_node() {
+        let (st, dir) = state_with_research(
+            r#"{"researched": ["ResearchCpPacking"], "researchedCount": 1}"#,
+        );
+        let dec = decide_order(&research_order("ResearchCpPacking"), &st);
+        assert!(!dec.prepared, "already-researched node must not prepare");
+        let reason = dec.reason.unwrap_or_default();
+        assert!(
+            reason.contains("already researched"),
+            "reason must name the hold, got: {reason}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn decide_order_prepares_unresearched_node() {
+        let (st, dir) = state_with_research(
+            r#"{"researched": ["ResearchCpPacking"], "researchedCount": 1}"#,
+        );
+        let dec = decide_order(&research_order("ResearchTradeDock"), &st);
+        assert!(dec.prepared, "unresearched node must prepare");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn decide_order_without_researched_list_cannot_hold() {
+        // Pre-v0.6.2 capture shape: no `researched` list at all.
+        // Unknown is not researched — the order still prepares.
+        let (st, dir) = state_with_research(r#"{"researchedCount": 127}"#);
+        let dec = decide_order(&research_order("ResearchCpPacking"), &st);
+        assert!(dec.prepared, "missing researched list must not hold");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

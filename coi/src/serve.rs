@@ -95,6 +95,18 @@ struct State {
     prepared_jobs: Mutex<HashMap<String, PreparedJob>>,
 }
 
+/// Poison-tolerant lock for the session/prepared maps (audit R1):
+/// if a request ever panicked while holding one of these mutexes,
+/// plain `.lock().unwrap()` would panic in every later request and
+/// wedge the whole website until restart. The maps hold per-entry
+/// state (single-use tokens with expiry checks), so recovering the
+/// guard from the poison error and serving on is safe.
+fn lock_map<T>(
+    m: &Mutex<HashMap<String, T>>,
+) -> std::sync::MutexGuard<'_, HashMap<String, T>> {
+    m.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 fn now_unix() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -400,7 +412,7 @@ fn store(state: &State) -> Result<Store, String> {
 
 fn session_of(state: &State, req: &Request) -> Option<(String, Session)> {
     let token = req.cookies.get("coi_session")?;
-    let sessions = state.sessions.lock().unwrap();
+    let sessions = lock_map(&state.sessions);
     let s = sessions.get(token)?;
     if s.expires < now_unix() {
         return None;
@@ -423,7 +435,7 @@ fn route(state: &State, req: &Request) -> Response {
         ("POST", "/login") => do_login(state, req),
         ("POST", "/logout") => {
             if let Some(token) = req.cookies.get("coi_session") {
-                state.sessions.lock().unwrap().remove(token);
+                lock_map(&state.sessions).remove(token);
             }
             Response::redirect("/login")
                 .with_cookie("coi_session=; Path=/; Max-Age=0; HttpOnly".into())
@@ -448,6 +460,9 @@ fn route(state: &State, req: &Request) -> Response {
                 ("GET", "/place") => page_place(state, &session),
                 ("POST", "/place/prepare") => do_place_prepare(state, &session, req),
                 ("POST", "/place/confirm") => do_place_confirm(state, &session, req),
+                ("GET", "/designate") => page_designate(state, &session),
+                ("POST", "/designate/prepare") => do_designate_prepare(state, &session, req),
+                ("POST", "/designate/confirm") => do_designate_confirm(state, &session, req),
                 ("GET", "/research") => page_research(state, &session),
                 ("GET", "/actions") => page_actions(state, &session),
                 ("POST", "/actions/prepare") => do_prepare(state, &session, req),
@@ -739,6 +754,12 @@ fn nav_active(title: &str) -> &'static str {
         | "Confirmation expired" | "Unknown blueprint" | "Bad anchor" | "Bad placement"
         | "Prepare refused — game unreachable" | "Prepare refused — no game id"
         | "Game unreachable" | "No game id" => "Place",
+        "Designate" | "Confirm designation" | "Designation job written"
+        | "Designation job write failed" | "Designation confirmation expired"
+        | "Bad pad" | "Plan refused" | "Nothing selected" | "Stale selection"
+        | "Designation prepare refused — game unreachable"
+        | "Designation prepare refused — no game id"
+        | "Designation prepare refused — bridge unavailable" => "Designate",
         "Actions" | "Confirm command" | "Command result" | "Expired" => "Actions",
         "Command catalogue" => "Catalogue",
         "Guides" => "Guides",
@@ -753,7 +774,7 @@ fn layout(state: &State, session: &Session, title: &str, body: &str) -> String {
 }
 
 fn layout_nav(state: &State, session: &Session, title: &str, active: &str, body: &str) -> String {
-    const NAV: [(&str, &str, &str); 14] = [
+    const NAV: [(&str, &str, &str); 15] = [
         ("Monitor", "Overview", "/"),
         ("Monitor", "Issues", "/issues"),
         ("Monitor", "Products", "/products"),
@@ -764,6 +785,7 @@ fn layout_nav(state: &State, session: &Session, title: &str, active: &str, body:
         ("Game", "Plans", "/plans"),
         ("Game", "Actions", "/actions"),
         ("Game", "Place", "/place"),
+        ("Game", "Designate", "/designate"),
         ("Library", "Guides", "/guides"),
         ("Library", "Catalogue", "/catalogue"),
         ("System", "Snapshots", "/snapshots"),
@@ -1136,7 +1158,7 @@ fn do_login(state: &State, req: &Request) -> Response {
         csrf: rand_hex(16),
         expires: now_unix() + 12 * 3600,
     };
-    state.sessions.lock().unwrap().insert(token.clone(), session);
+    lock_map(&state.sessions).insert(token.clone(), session);
     Response::redirect("/").with_cookie(format!(
         "coi_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={}",
         12 * 3600
@@ -2219,7 +2241,7 @@ fn do_prepare(state: &State, session: &Session, req: &Request) -> Response {
 /// shows the exact JSON before anything is sent.
 fn finish_prepare(state: &State, session: &Session, cmd_type: &str, args: &Value, summary: &str) -> Response {
     let token = rand_hex(16);
-    state.prepared.lock().unwrap().insert(
+    lock_map(&state.prepared).insert(
         token.clone(),
         Prepared {
             cmd_type: cmd_type.to_string(),
@@ -2483,7 +2505,7 @@ fn do_apply(state: &State, session: &Session, req: &Request) -> Response {
         return r;
     }
     let token = req.form.get("token").cloned().unwrap_or_default();
-    let prepared = state.prepared.lock().unwrap().remove(&token);
+    let prepared = lock_map(&state.prepared).remove(&token);
     let prepared = match prepared {
         Some(p) if now_unix() - p.created <= 120 => p,
         _ => {
@@ -2510,42 +2532,63 @@ fn do_apply(state: &State, session: &Session, req: &Request) -> Response {
         Err(e) => (0, e.clone(), false),
     };
     let after_g = get_json(&client(state), "/api/v1/game-info").unwrap_or(Value::Null);
-    if let Ok(st) = store(state) {
-        let _ = st.audit_add(
-            now_unix() as i64,
-            &prepared.cmd_type,
-            &format!(
-                "{} · args {} · HTTP {} · {}",
-                prepared.summary,
-                prepared.args,
-                http,
-                if ok { "success" } else { "FAILED" }
-            ),
+    // §12's guarantee IS the audit trail: what reached the game must
+    // leave a record. Audit/activity write failures are therefore
+    // never swallowed (audit D1) — they are collected here and
+    // surfaced on the result page as an error state; the user must
+    // never see a clean success for an unaudited apply.
+    let mut audit_err: Option<String> = None;
+    match store(state) {
+        Ok(st) => {
+            if let Err(e) = st.audit_add(
+                now_unix() as i64,
+                &prepared.cmd_type,
+                &format!(
+                    "{} · args {} · HTTP {} · {}",
+                    prepared.summary,
+                    prepared.args,
+                    http,
+                    if ok { "success" } else { "FAILED" }
+                ),
+            ) {
+                audit_err = Some(format!("audit row: {e}"));
+            }
+            // Addendum XVI: the same attempt as a rich activity event —
+            // exact envelope, game response, session user, game context.
+            let ctx = if before.is_object() { &before } else { &after_g };
+            if let Err(e) = st.activity_add(&ActivityEvent {
+                event_key: format!("apply-{}-{}", now_unix(), rand_hex(8)),
+                recorded_ts_unix: now_unix() as i64,
+                source: "companion".to_string(),
+                actor: Some(session.user.clone()),
+                category: Some("command".to_string()),
+                action: prepared.cmd_type.clone(),
+                summary: Some(prepared.summary.clone()),
+                game_id: ctx["gameId"].as_str().map(|s| s.to_string()),
+                game_date: ctx["date"].as_str().map(|s| s.to_string()),
+                game_tick: ctx["tick"].as_i64(),
+                outcome: Some(if ok { "success" } else { "failed" }.to_string()),
+                payload_json: Some(
+                    json!({
+                        "envelope": envelope,
+                        "httpStatus": http,
+                        "responseBody": result_text,
+                    })
+                    .to_string(),
+                ),
+            }) {
+                audit_err.get_or_insert_with(|| format!("activity row: {e}"));
+            }
+        }
+        Err(e) => {
+            audit_err = Some(format!("audit store unavailable: {e}"));
+        }
+    }
+    if let Some(e) = &audit_err {
+        eprintln!(
+            "serve: §12 apply of {} by {} left NO audit record: {e}",
+            prepared.cmd_type, session.user
         );
-        // Addendum XVI: the same attempt as a rich activity event —
-        // exact envelope, game response, session user, game context.
-        let ctx = if before.is_object() { &before } else { &after_g };
-        let _ = st.activity_add(&ActivityEvent {
-            event_key: format!("apply-{}-{}", now_unix(), rand_hex(8)),
-            recorded_ts_unix: now_unix() as i64,
-            source: "companion".to_string(),
-            actor: Some(session.user.clone()),
-            category: Some("command".to_string()),
-            action: prepared.cmd_type.clone(),
-            summary: Some(prepared.summary.clone()),
-            game_id: ctx["gameId"].as_str().map(|s| s.to_string()),
-            game_date: ctx["date"].as_str().map(|s| s.to_string()),
-            game_tick: ctx["tick"].as_i64(),
-            outcome: Some(if ok { "success" } else { "failed" }.to_string()),
-            payload_json: Some(
-                json!({
-                    "envelope": envelope,
-                    "httpStatus": http,
-                    "responseBody": result_text,
-                })
-                .to_string(),
-            ),
-        });
     }
     let after = if after_g.is_object() {
         let g = &after_g;
@@ -2558,14 +2601,37 @@ fn do_apply(state: &State, session: &Session, req: &Request) -> Response {
     } else {
         String::new()
     };
+    let audit_banner = match &audit_err {
+        Some(e) => format!(
+            "<div class=\"callout callout--danger\"><b>AUDIT WRITE FAILED.</b> {} Recording the attempt in the §12 audit log failed: {} — <b>this action is missing from the audit trail</b>. Do not re-run it blindly; check the game state first.</div>",
+            if ok {
+                "The command WAS applied to the game."
+            } else {
+                "The command did not succeed, and the attempt itself could not be recorded either."
+            },
+            esc(e),
+        ),
+        None => String::new(),
+    };
     let body = format!(
-        "{}\
+        "{}{}\
          <div class=\"{}\"><b>{}</b> — {}<p style=\"margin-top:8px\"><a href=\"/log\">See it in the Log →</a></p></div>\
          <div class=\"card\"><div class=\"cardhead\"><h2>Game response</h2><span class=\"right badge {}\">HTTP {}</span></div><pre>{}</pre><p class=\"sub\">{}</p>\
          <p><a class=\"btn\" href=\"/actions\">Back to Actions</a> <a class=\"btn btn--secondary\" href=\"/\">Overview</a></p></div>",
         page_head("Game", "Command result", &prepared.summary, ""),
-        if ok { "callout callout--ok" } else { "callout callout--danger" },
-        if ok { "Command executed" } else { "Command failed" },
+        audit_banner,
+        if ok && audit_err.is_none() {
+            "callout callout--ok"
+        } else {
+            "callout callout--danger"
+        },
+        if ok && audit_err.is_none() {
+            "Command executed"
+        } else if ok {
+            "Command executed — NOT audited"
+        } else {
+            "Command failed"
+        },
         esc(&prepared.summary),
         if ok { "badge--ok" } else { "badge--critical" },
         http,
@@ -2929,7 +2995,7 @@ fn do_place_prepare(state: &State, session: &Session, req: &Request) -> Response
         kinds["transports"].as_i64().unwrap_or(0),
     );
     let token = rand_hex(16);
-    state.prepared_jobs.lock().unwrap().insert(
+    lock_map(&state.prepared_jobs).insert(
         token.clone(),
         PreparedJob {
             job_id: job_id.clone(),
@@ -2977,7 +3043,7 @@ fn do_place_confirm(state: &State, session: &Session, req: &Request) -> Response
         return r;
     }
     let token = req.form.get("token").cloned().unwrap_or_default();
-    let job = state.prepared_jobs.lock().unwrap().remove(&token);
+    let job = lock_map(&state.prepared_jobs).remove(&token);
     let job = match job {
         Some(j) if now_unix() - j.created <= 120 => j,
         _ => {
@@ -2999,41 +3065,76 @@ fn do_place_confirm(state: &State, session: &Session, req: &Request) -> Response
         std::fs::rename(&tmp, &path).map_err(|e| format!("rename job: {e}"))?;
         Ok(())
     })();
-    if let Ok(st) = store(state) {
-        let outcome = if write.is_ok() { "job-written" } else { "write-failed" };
-        let _ = st.audit_add(
-            now_unix() as i64,
-            "PlaceBlueprintJob",
-            &format!(
-                "{} · job {} · game {} · {}",
-                job.summary, job.job_id, job.game_id, outcome
-            ),
-        );
-        let _ = st.activity_add(&ActivityEvent {
-            event_key: format!("place-{}-{}", now_unix(), rand_hex(8)),
-            recorded_ts_unix: now_unix() as i64,
-            source: "companion".into(),
-            actor: Some(session.user.clone()),
-            category: Some("placement".into()),
-            action: "PlaceBlueprintJob".into(),
-            summary: Some(job.summary.clone()),
-            game_id: Some(job.game_id.clone()),
-            game_date: job.game_date.clone(),
-            game_tick: job.game_tick,
-            outcome: Some(outcome.into()),
-            payload_json: Some(job.file_json.clone()),
-        });
+    // Same §12 discipline as do_apply (audit D1): the confirm's
+    // audit/activity rows are part of the guarantee, so a failed
+    // write is collected and surfaced on the outcome page — never
+    // a silent `let _`, in either outcome branch.
+    let outcome = if write.is_ok() { "job-written" } else { "write-failed" };
+    let mut audit_err: Option<String> = None;
+    match store(state) {
+        Ok(st) => {
+            if let Err(e) = st.audit_add(
+                now_unix() as i64,
+                "PlaceBlueprintJob",
+                &format!(
+                    "{} · job {} · game {} · {}",
+                    job.summary, job.job_id, job.game_id, outcome
+                ),
+            ) {
+                audit_err = Some(format!("audit row: {e}"));
+            }
+            if let Err(e) = st.activity_add(&ActivityEvent {
+                event_key: format!("place-{}-{}", now_unix(), rand_hex(8)),
+                recorded_ts_unix: now_unix() as i64,
+                source: "companion".into(),
+                actor: Some(session.user.clone()),
+                category: Some("placement".into()),
+                action: "PlaceBlueprintJob".into(),
+                summary: Some(job.summary.clone()),
+                game_id: Some(job.game_id.clone()),
+                game_date: job.game_date.clone(),
+                game_tick: job.game_tick,
+                outcome: Some(outcome.into()),
+                payload_json: Some(job.file_json.clone()),
+            }) {
+                audit_err.get_or_insert_with(|| format!("activity row: {e}"));
+            }
+        }
+        Err(e) => {
+            audit_err = Some(format!("audit store unavailable: {e}"));
+        }
     }
+    if let Some(e) = &audit_err {
+        eprintln!(
+            "serve: place-confirm of job {} left NO audit record: {e}",
+            job.job_id
+        );
+    }
+    let audit_banner = match &audit_err {
+        Some(e) => format!(
+            "<div class=\"callout callout--danger\"><b>AUDIT WRITE FAILED.</b> The job file WAS written — QoSBuilder will act on it at the next in-game day end — but recording it in the audit log failed: {} — <b>this placement is missing from the audit trail</b>.</div>",
+            esc(e),
+        ),
+        None => String::new(),
+    };
+    let audit_note = match &audit_err {
+        Some(e) => format!(
+            "Nothing was placed. The audit write failed too ({}) — so this failure is NOT in the audit log either.",
+            esc(e)
+        ),
+        None => "Nothing was placed and the failure is in the audit log.".to_string(),
+    };
     match write {
         Ok(()) => Response::html(
             200,
             layout(state, session,
                 "Job written",
                 &format!(
-                    "<h1>Job written</h1><div class=\"panel\"><p><b>{}</b></p>\
+                    "<h1>Job written</h1>{}<div class=\"panel\"><p><b>{}</b></p>\
                      <p class=\"sub\">File: <code>{}</code> · job <code>{}</code></p>\
                      <p>QoSBuilder picks it up at the <b>next in-game day end</b> — if the mod is installed and its <code>enabled</code> setting is on. Watch the <a href=\"/log\">Log page</a> for <code>JobClaimed</code> / <code>JobScheduled</code> (or a refusal with its reason), then take a snapshot: the census change is the honest placement verdict, since the batch is per-item in-game.</p>\
                      <p><a href=\"/place\">← Place another</a></p></div>",
+                    audit_banner,
                     esc(&job.summary),
                     esc(&path.display().to_string()),
                     esc(&job.job_id),
@@ -3045,8 +3146,927 @@ fn do_place_confirm(state: &State, session: &Session, req: &Request) -> Response
             layout(state, session,
                 "Job write failed",
                 &format!(
-                    "<h1>Job write failed</h1><div class=\"panel\"><p>{}</p><p>Nothing was placed and the failure is in the audit log. Check the jobs folder path (shown on the Place page; override it with <code>[builder] jobs_dir</code> in coi.toml if the companion runs somewhere other than the game PC).</p><p><a href=\"/place\">← Back to the library</a></p></div>",
-                    esc(&e)
+                    "<h1>Job write failed</h1><div class=\"panel\"><p>{}</p><p>{} Check the jobs folder path (shown on the Place page; override it with <code>[builder] jobs_dir</code> in coi.toml if the companion runs somewhere other than the game PC).</p><p><a href=\"/place\">← Back to the library</a></p></div>",
+                    esc(&e),
+                    audit_note,
+                ),
+            ),
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Designate — terrain designations via QoSBuilder job files (schema 2)
+// ---------------------------------------------------------------------------
+//
+// The designation sibling of Place (DESIGNATION-DESIGN-NOTE.md,
+// SPEC Addendum XX): Prepare plans a flatten/dump pad from the
+// bridge's live terrain region — or a removal picked from the
+// live /designations read-back, never free-typed origins — and
+// renders the exact schema-2 job; Confirm, the only step that
+// writes anything, writes ONE sealed job file into the same QoS
+// jobs folder. QoSBuilder 0.2.0 executes it as a single
+// AddTerrainDesignationsCmd / RemoveDesignationsCmd batch at the
+// next in-game day end. The mod attests "scheduled"; the verdict
+// is the read-back diff against /designations — exact with
+// bridge 0.6.6 corners, band-level (labelled partial) without
+// them. No file, no designation.
+
+/// Cell cap written into every designation job (the mod's own
+/// config can only lower its side further; design note §2.3).
+const DESIGNATE_MAX_CELLS: i64 = 200;
+
+fn designate_proto_label(proto: &str) -> &'static str {
+    match proto {
+        "MiningDesignator" => "Mining",
+        "DumpingDesignator" => "Dumping",
+        "LevelDesignator" => "Levelling",
+        _ => "Designation",
+    }
+}
+
+/// The live designation read-back (bridge 0.6.5+; corners with
+/// 0.6.6). None = the bridge did not answer.
+fn fetch_designations(state: &State) -> Option<Vec<crate::designate::ExistingDesignation>> {
+    bridge_json(state, "/coi/v1/designations")
+        .map(|v| crate::designate::existing_from_json(&v))
+}
+
+/// The read-back verdict for one confirmed designation job file.
+/// The mod attests "scheduled", so this diff against the CURRENT
+/// /designations is the only landing evidence there is — it is
+/// recomputed from the live read-back on every render, and it
+/// never claims more than the read-back shows.
+fn designation_verdict_panel(
+    heading: &str,
+    file_json: &str,
+    existing: Option<&[crate::designate::ExistingDesignation]>,
+) -> String {
+    let mut h = String::new();
+    h.push_str(&format!(
+        "<div class=\"card\"><div class=\"cardhead\"><h2>{}</h2></div>",
+        esc(heading)
+    ));
+    let Ok(job) = serde_json::from_str::<Value>(file_json) else {
+        h.push_str("<p class=\"sub\">The recorded job payload could not be parsed; no verdict can be computed.</p></div>");
+        return h;
+    };
+    let Some(existing) = existing else {
+        h.push_str("<p class=\"sub\">Read-back unavailable — the bridge did not answer just now, so no verdict can be computed. The job stands as written; revisit when the game is up.</p></div>");
+        return h;
+    };
+    match job["jobType"].as_str() {
+        Some("designations-add") => {
+            let proto = job["protoId"].as_str().unwrap_or("");
+            let cells: Vec<crate::designate::Cell> = job["cells"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|c| {
+                            Some(crate::designate::Cell::new(
+                                c["x"].as_i64()?,
+                                c["y"].as_i64()?,
+                                [
+                                    c["origin"].as_i64()?,
+                                    c["plusX"].as_i64()?,
+                                    c["plusXY"].as_i64()?,
+                                    c["plusY"].as_i64()?,
+                                ],
+                            ))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            let d = crate::designate::diff_add(&cells, proto, existing);
+            let total = d.total();
+            let (word, text) = if total == 0 {
+                ("paused", "No cells in the job — nothing to verify.".to_string())
+            } else if d.all_landed() && d.band_only == 0 {
+                (
+                    "ok",
+                    "LANDED — every cell reads back exactly as confirmed (origin, proto and all four corners).".to_string(),
+                )
+            } else if d.all_landed() {
+                (
+                    "ok",
+                    format!(
+                        "LANDED (band-level for {} of {}) — every cell reads back, but those cells are verified by height band only: this bridge serves no corners (0.6.6 serves them). Two different corner assignments can share a band, so this verdict is partial.",
+                        d.band_only, total
+                    ),
+                )
+            } else if d.landed() > 0 {
+                (
+                    "warning",
+                    format!(
+                        "PARTIALLY LANDED — {} of {} cells read back as confirmed.",
+                        d.landed(),
+                        total
+                    ),
+                )
+            } else {
+                (
+                    "info",
+                    "SCHEDULED — verdict pending. Nothing reads back yet: QoSBuilder acts at the next in-game day end, and only while its <code>enabled</code> setting is on. This is not a placement claim — the panel recomputes from the live read-back on every visit.".to_string(),
+                )
+            };
+            h.push_str(&format!("<p>{} <b>{}</b></p>", badge(word, "verdict"), text));
+            h.push_str(&format!(
+                "<p class=\"sub\">Read-back counts: exact {} · band-only {} · different designation there {} · nothing there {} — of {} cells.</p>",
+                d.exact, d.band_only, d.different, d.absent, total
+            ));
+            let mut details: Vec<String> = Vec::new();
+            for c in &cells {
+                match crate::designate::cell_match(c, proto, existing) {
+                    crate::designate::CellMatch::Different => {
+                        let e = crate::designate::existing_at(existing, c.x, c.y);
+                        details.push(format!(
+                            "({}, {}) — a different designation sits there{}",
+                            c.x,
+                            c.y,
+                            e.map(|e| format!(" ({} / {})", esc(&e.kind), esc(&e.proto)))
+                                .unwrap_or_default()
+                        ));
+                    }
+                    crate::designate::CellMatch::Absent => {
+                        details.push(format!("({}, {}) — nothing designated there yet", c.x, c.y));
+                    }
+                    _ => {}
+                }
+                if details.len() >= 12 {
+                    break;
+                }
+            }
+            if !details.is_empty() {
+                h.push_str("<ul>");
+                for line in &details {
+                    h.push_str(&format!("<li>{}</li>", line));
+                }
+                h.push_str("</ul>");
+            }
+        }
+        Some("designations-remove") => {
+            let origins: Vec<(i64, i64)> = job["origins"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|o| Some((o["x"].as_i64()?, o["y"].as_i64()?)))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let still = crate::designate::diff_remove(&origins, existing);
+            let n = origins.len();
+            let (word, text) = if n == 0 {
+                ("paused", "No origins in the job — nothing to verify.".to_string())
+            } else if still == 0 {
+                (
+                    "ok",
+                    format!("LANDED — all {} origins are clear; nothing is designated there now.", n),
+                )
+            } else if still < n {
+                (
+                    "warning",
+                    format!(
+                        "PARTIALLY LANDED — {} of {} origins cleared; {} still designated.",
+                        n - still,
+                        n,
+                        still
+                    ),
+                )
+            } else {
+                (
+                    "info",
+                    "SCHEDULED — verdict pending. Every origin is still designated: QoSBuilder acts at the next in-game day end, and only while its <code>enabled</code> setting is on. This is not a removal claim — the panel recomputes from the live read-back on every visit.".to_string(),
+                )
+            };
+            h.push_str(&format!("<p>{} <b>{}</b></p>", badge(word, "verdict"), text));
+            if still > 0 && still < n.max(1) {
+                h.push_str("<ul>");
+                for (x, y) in &origins {
+                    if crate::designate::existing_at(existing, *x, *y).is_some() {
+                        h.push_str(&format!("<li>({}, {}) — still designated</li>", x, y));
+                    }
+                }
+                h.push_str("</ul>");
+            }
+        }
+        _ => {
+            h.push_str("<p class=\"sub\">Not a designation job payload.</p>");
+        }
+    }
+    h.push_str("</div>");
+    h
+}
+
+/// The verdict panel for the most recent confirmed designation
+/// job, reconstructed from its activity record (the payload IS
+/// the job file). Empty when no designation job was ever
+/// confirmed through this companion.
+fn latest_designation_panel(
+    state: &State,
+    existing: Option<&[crate::designate::ExistingDesignation]>,
+) -> String {
+    let Ok(st) = store(state) else {
+        return String::new();
+    };
+    let Ok(rows) = st.activity_recent(Some("companion"), Some("PlaceDesignationJob"), 10, 0)
+    else {
+        return String::new();
+    };
+    let Some(row) = rows.iter().find(|r| {
+        r.category.as_deref() == Some("designation")
+            && r.outcome.as_deref() == Some("job-written")
+    }) else {
+        return String::new();
+    };
+    let Some(payload) = row.payload_json.as_deref() else {
+        return String::new();
+    };
+    let is_designation = serde_json::from_str::<Value>(payload)
+        .map(|v| v["jobType"].as_str().is_some())
+        .unwrap_or(false);
+    if !is_designation {
+        return String::new();
+    }
+    let mut panel = designation_verdict_panel(
+        "Latest designation job — read-back verdict",
+        payload,
+        existing,
+    );
+    if let Some(summary) = &row.summary {
+        panel = panel.replacen(
+            "</h2></div>",
+            &format!("</h2></div><p class=\"sub\">{}</p>", esc(summary)),
+            1,
+        );
+    }
+    panel
+}
+
+fn page_designate(state: &State, session: &Session) -> Response {
+    let mut body = page_head(
+        "Game",
+        "Designate",
+        "Plan terrain designations — mining, dumping and levelling pads, and removals — as confirmed QoSBuilder jobs.",
+        "",
+    );
+    let game = match get_json(&client(state), "/api/v1/game-info") {
+        Ok(g) => g,
+        Err(e) => {
+            body.push_str(&degraded_game(&e));
+            body.push_str("<div class=\"card\"><p>Designation planning needs the live game: the job is pinned to its id, pads are planned from the bridge's live terrain, and removals are picked from the live read-back. Nothing can be prepared while it is down.</p></div>");
+            return Response::html(200, layout(state, session, "Designate", &body));
+        }
+    };
+    let jobs_dir = builder_jobs_dir(&state.db_path);
+    body.push_str("<div class=\"card\">");
+    body.push_str("<p>Say where a pad goes (a tile rectangle + a target height + a kind) and <b>Prepare</b>: the companion fetches the live terrain, snaps the rectangle outward to whole 4×4 cells, and shows the exact job — cells, volumes, edge-step warnings, replacements — before anything is written. Only <b>Confirm</b> writes: one schema-2 job file into the QoS jobs folder. <b>QoSBuilder</b> (0.2.0, the in-game mod) validates it — untampered, unexpired, pinned to the running game, cell-capped — and executes it as one batch at the next in-game day end, <b>if the mod is enabled</b>. The mod only attests <i>scheduled</i>; whether a designation actually landed is read back from the game and shown below — never assumed.</p>");
+    body.push_str(&format!(
+        "<p class=\"sub\">Game reachable: {} · {} · gameId {}</p>",
+        esc(&sv(&game["date"])),
+        if game["isPaused"].as_bool() == Some(true) {
+            "paused"
+        } else {
+            "running"
+        },
+        esc(&sv(&game["gameId"]))
+    ));
+    body.push_str(&format!(
+        "<p class=\"sub\">Jobs folder: <code>{}</code></p></div>",
+        esc(&jobs_dir.display().to_string())
+    ));
+
+    let existing = fetch_designations(state);
+    body.push_str(&latest_designation_panel(state, existing.as_deref()));
+
+    // Pad planner form.
+    body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>New pad</h2></div>");
+    body.push_str(&format!(
+        "<form method=\"post\" action=\"/designate/prepare\">\
+         <input type=\"hidden\" name=\"csrf\" value=\"{}\"><input type=\"hidden\" name=\"op\" value=\"pad\">\
+         <div class=\"field\"><label for=\"dg-x0\">x from</label><input id=\"dg-x0\" type=\"number\" name=\"x0\" required></div>\
+         <div class=\"field\"><label for=\"dg-y0\">y from</label><input id=\"dg-y0\" type=\"number\" name=\"y0\" required></div>\
+         <div class=\"field\"><label for=\"dg-x1\">x to (exclusive)</label><input id=\"dg-x1\" type=\"number\" name=\"x1\" required></div>\
+         <div class=\"field\"><label for=\"dg-y1\">y to (exclusive)</label><input id=\"dg-y1\" type=\"number\" name=\"y1\" required></div>\
+         <div class=\"field\"><label for=\"dg-t\">target height (whole tiles)</label><input id=\"dg-t\" type=\"number\" name=\"target\" required></div>\
+         <div class=\"field\"><label for=\"dg-proto\">kind</label><select id=\"dg-proto\" name=\"proto\">\
+         <option value=\"MiningDesignator\">Mining</option>\
+         <option value=\"DumpingDesignator\">Dumping</option>\
+         <option value=\"LevelDesignator\">Levelling</option></select></div>\
+         <div class=\"field\"><label for=\"dg-name\">plan name</label><input id=\"dg-name\" type=\"text\" name=\"name\" maxlength=\"120\" placeholder=\"optional — shown on the confirmation page\"></div>\
+         <button type=\"submit\">Prepare…</button></form>",
+        session.csrf
+    ));
+    body.push_str("<p class=\"sub\">The rectangle snaps OUTWARD to whole cells (origins on the 4-grid). Prepare fetches the rectangle plus a one-cell margin of live terrain, levels every cell to the target, and lists every boundary vertex whose step to the terrain outside breaks the 0/±1 snapping rule — the game accepts such cells silently, so the warning is yours to read before confirming. Pit planning from deposits is not offered yet: the bridge serves no per-column rock layers, and a pit without the spike/purity gates would be a worse plan, not a faster one.</p></div>");
+
+    // Current designations + remove flow (origins from read-back only).
+    match &existing {
+        None => body.push_str(&degraded_bridge("Designation read-back", "0.6.6")),
+        Some(rows) => {
+            body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Current designations</h2></div>");
+            if rows.is_empty() {
+                body.push_str("<div class=\"empty\">No mining, dumping or levelling designations are currently marked.</div>");
+            } else {
+                body.push_str(&format!(
+                    "<form method=\"post\" action=\"/designate/prepare\">\
+                     <input type=\"hidden\" name=\"csrf\" value=\"{}\"><input type=\"hidden\" name=\"op\" value=\"remove\">\
+                     <table><thead><tr><th>Remove</th><th>Kind</th><th>Origin</th><th>Corners (origin, +X, +XY, +Y)</th><th>Target band</th><th>State</th><th class=\"num\">Jobs</th></tr></thead><tbody>",
+                    session.csrf
+                ));
+                for (i, r) in rows.iter().enumerate() {
+                    let kind_badge = match r.kind.as_str() {
+                        "mining" => badge("info", "Mining"),
+                        "dumping" => badge("warning", "Dumping"),
+                        _ => badge("paused", "Other"),
+                    };
+                    let state_badge = if r.is_fulfilled {
+                        badge("ok", "Fulfilled")
+                    } else {
+                        badge("starved", "Open")
+                    };
+                    let corners = match r.corners {
+                        Some(c) => format!("[{}, {}, {}, {}]", c[0], c[1], c[2], c[3]),
+                        None => "— (bridge &lt; 0.6.6)".to_string(),
+                    };
+                    let band = match r.band {
+                        Some((lo, hi)) => format!("{}–{} tiles", lo, hi),
+                        None => "—".to_string(),
+                    };
+                    body.push_str(&format!(
+                        "<tr><td><input type=\"checkbox\" name=\"sel_{}\" value=\"{},{}\"></td><td>{} <span class=\"sub mono\">{}</span></td><td>({}, {})</td><td class=\"mono\">{}</td><td>{}</td><td>{}</td><td class=\"num\">{}</td></tr>",
+                        i,
+                        r.x,
+                        r.y,
+                        kind_badge,
+                        esc(&r.proto),
+                        r.x,
+                        r.y,
+                        corners,
+                        band,
+                        state_badge,
+                        r.jobs_assigned,
+                    ));
+                }
+                body.push_str("</tbody></table>");
+                body.push_str("<p style=\"padding:0 16px\"><button type=\"submit\">Prepare removal…</button></p>");
+                body.push_str("<p class=\"sub\" style=\"padding:0 16px 12px\">Removal is prepared from this live read-back only — origins are never typed by hand, and a selection that no longer matches the read-back is refused at prepare. Remove clears whatever designation sits at an origin, of any kind.</p></form>");
+            }
+            body.push_str("</div>");
+        }
+    }
+    Response::html(200, layout(state, session, "Designate", &body))
+}
+
+/// The shared confirm sheet for both designation families: the
+/// §12 ceremony, identical in shape to /place's — band, summary,
+/// meta, family details, the exact job file, one danger button.
+#[allow(clippy::too_many_arguments)]
+fn designate_confirm_response(
+    state: &State,
+    session: &Session,
+    summary: &str,
+    details_html: &str,
+    job: &crate::designate::DesignationJob,
+    job_id: &str,
+    game_id: &str,
+    game_date: &str,
+    token: &str,
+) -> Response {
+    let pretty = serde_json::from_str::<Value>(&job.file_json)
+        .map(|v| serde_json::to_string_pretty(&v).unwrap_or_default())
+        .unwrap_or_else(|_| job.file_json.clone());
+    let jobs_dir = builder_jobs_dir(&state.db_path);
+    let expires_unix = now_unix() + JOB_TTL_SECONDS;
+    let body = format!(
+        "{}\
+         <div class=\"confirm\"><div class=\"band\">This will change your game — terrain designations, executed by the QoSBuilder mod.</div><div class=\"inner\">\
+         <p class=\"summary\">{}</p>\
+         <p class=\"meta\">Job <code>{}</code> · target gameId <code>{}</code> (game date {}) · confirmed jobs are written to <code>{}</code> and <b>expire at {}</b> ({} min) — after that the mod refuses them and you prepare again.</p>\
+         {}\
+         <p class=\"sub\">Confirming writes exactly this job file (shown pretty-printed; the file itself is the compact canonical form). Its sha256 is <code>{}</code> — QoSBuilder recomputes it in-game and refuses the job if a single byte differs. Nothing else is sent to the game; the mod executes at the <b>next in-game day end</b>, and only while its <code>enabled</code> setting is on.</p>\
+         <div class=\"caption\">Exact job file written on confirm</div>\
+         <pre>{}</pre>\
+         <form method=\"post\" action=\"/designate/confirm\"><input type=\"hidden\" name=\"csrf\" value=\"{}\"><input type=\"hidden\" name=\"token\" value=\"{}\">\
+         <div class=\"actions\"><button class=\"danger\" type=\"submit\">Write the job file</button> <a class=\"btn btn--secondary\" href=\"/designate\">Cancel</a></div></form>\
+         <p class=\"caption\">This confirmation expires in two minutes.</p></div></div>",
+        page_head("Game", "Confirm designation", "One job file, written only on confirm — the mod does the designating.", ""),
+        esc(summary),
+        esc(job_id),
+        esc(game_id),
+        esc(game_date),
+        esc(&jobs_dir.display().to_string()),
+        esc(&fmt_clock(expires_unix)),
+        JOB_TTL_SECONDS / 60,
+        details_html,
+        esc(&job.sha256),
+        esc(&pretty),
+        session.csrf,
+        token,
+    );
+    Response::html(200, layout(state, session, "Confirm designation", &body))
+}
+
+fn do_designate_prepare(state: &State, session: &Session, req: &Request) -> Response {
+    if let Err(r) = check_csrf(session, req) {
+        return r;
+    }
+    // The job is pinned to the RUNNING game: prepare refuses
+    // when the game cannot be reached or its id cannot be
+    // confirmed — the /place discipline, unchanged.
+    let game = match get_json(&client(state), "/api/v1/game-info") {
+        Ok(g) => g,
+        Err(e) => {
+            return Response::html(
+                502,
+                layout(state, session,
+                    "Designation prepare refused — game unreachable",
+                    &format!(
+                        "<h1>Prepare refused — game unreachable</h1><div class=\"panel\"><p>{}</p><p>A designation job must be pinned to the running game's id; without game-info there is nothing safe to prepare. Start the game, run <code>web_api_start</code>, and try again.</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+                        esc(&e)
+                    ),
+                ),
+            )
+        }
+    };
+    let Some(game_id) = game["gameId"].as_str().map(|s| s.to_string()) else {
+        return Response::html(
+            502,
+            layout(state, session,
+                "Designation prepare refused — no game id",
+                "<h1>Prepare refused — no game id</h1><div class=\"panel\"><p>game-info answered without a gameId; a job cannot be pinned. Nothing was prepared.</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+            ),
+        );
+    };
+    let op = req.form.get("op").map(|s| s.as_str()).unwrap_or("pad");
+    if op == "remove" {
+        designate_prepare_remove(state, session, req, &game, &game_id)
+    } else {
+        designate_prepare_pad(state, session, req, &game, &game_id)
+    }
+}
+
+fn designate_prepare_pad(
+    state: &State,
+    session: &Session,
+    req: &Request,
+    game: &Value,
+    game_id: &str,
+) -> Response {
+    let parse_i = |k: &str| req.form.get(k).and_then(|v| v.trim().parse::<i64>().ok());
+    let (Some(x0), Some(y0), Some(x1), Some(y1), Some(target)) = (
+        parse_i("x0"),
+        parse_i("y0"),
+        parse_i("x1"),
+        parse_i("y1"),
+        parse_i("target"),
+    ) else {
+        return Response::html(
+            400,
+            layout(state, session,
+                "Bad pad",
+                "<h1>Bad pad</h1><div class=\"panel\"><p>The rectangle corners and the target height must all be whole numbers (corner heights are integer tiles in the game).</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+            ),
+        );
+    };
+    let proto = req.form.get("proto").cloned().unwrap_or_default();
+    if !crate::designate::ALLOWED_PROTOS.contains(&proto.as_str()) {
+        return Response::html(
+            400,
+            layout(state, session,
+                "Bad pad",
+                "<h1>Bad pad</h1><div class=\"panel\"><p>Kind must be Mining, Dumping or Levelling (forestry designations are not offered).</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+            ),
+        );
+    }
+    // Live terrain for the rectangle + a one-cell margin (the
+    // margin is what the edge-step warnings are computed from).
+    let path = format!(
+        "/coi/v1/terrain/region?x0={}&y0={}&x1={}&y1={}",
+        x0 - 4,
+        y0 - 4,
+        x1 + 4,
+        y1 + 4
+    );
+    let grid = bridge_json(state, &path)
+        .and_then(|v| crate::designate::HeightGrid::from_region_json(&v));
+    let Some(grid) = grid else {
+        return Response::html(
+            502,
+            layout(state, session,
+                "Designation prepare refused — bridge unavailable",
+                "<h1>Prepare refused — bridge terrain unavailable</h1><div class=\"panel\"><p>The bridge did not serve a usable terrain region for that rectangle, so the pad cannot be planned from live heights. CoiBridge 0.6.5+ serves the region route. Nothing was prepared.</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+            ),
+        );
+    };
+    let plan = match crate::designate::plan_pad(
+        &grid,
+        (x0, y0, x1, y1),
+        target,
+        &proto,
+        DESIGNATE_MAX_CELLS as usize,
+    ) {
+        Ok(p) => p,
+        Err(e) => {
+            return Response::html(
+                400,
+                layout(state, session,
+                    "Plan refused",
+                    &format!(
+                        "<h1>Plan refused</h1><div class=\"panel\"><p>The pad planner refused: <b>{}</b></p><p>Nothing was prepared. Adjust the rectangle or target and prepare again.</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+                        esc(&e.to_string())
+                    ),
+                ),
+            )
+        }
+    };
+    let name = req
+        .form
+        .get("name")
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| {
+            format!(
+                "Pad ({},{})-({},{}) @ {}",
+                plan.footprint.0, plan.footprint.1, plan.footprint.2, plan.footprint.3, target
+            )
+        });
+    // Replace warnings: Add replaces ANY designation at an
+    // origin (and deletes a surface designation there).
+    let existing = fetch_designations(state);
+    let mut details = String::new();
+    details.push_str(&format!(
+        "<p><b>{} cells</b> of {} over tiles ({},{})–({},{}) at target height {} — cut {:.1} tiles³ ({:.0} m³), fill {:.1} tiles³ ({:.0} m³) against the live terrain.</p>",
+        plan.cells.len(),
+        designate_proto_label(&proto),
+        plan.footprint.0,
+        plan.footprint.1,
+        plan.footprint.2,
+        plan.footprint.3,
+        target,
+        plan.cut_tiles3,
+        plan.cut_m3(),
+        plan.fill_tiles3,
+        plan.fill_m3(),
+    ));
+    if plan.warnings.is_empty() {
+        details.push_str("<p class=\"sub\">Edge steps: every boundary vertex is within 0/±1 of the terrain just outside — no snapping warnings.</p>");
+    } else {
+        details.push_str("<div class=\"callout callout--warning\"><b>Edge-step warnings</b> — the pad's edge breaks the 0/±1 snapping rule at these vertices. The game accepts such cells silently and terrain physics settles the slope; read them before confirming:<ul>");
+        for w in &plan.warnings {
+            details.push_str(&format!(
+                "<li>Vertex ({}, {}): pad target {} vs terrain {:.2} just outside — step {:+.2} tiles</li>",
+                w.vertex.0, w.vertex.1, w.target, w.outside_height, w.step
+            ));
+        }
+        details.push_str("</ul></div>");
+    }
+    match &existing {
+        Some(rows) => {
+            let replaced: Vec<&crate::designate::ExistingDesignation> = plan
+                .cells
+                .iter()
+                .filter_map(|c| crate::designate::existing_at(rows, c.x, c.y))
+                .collect();
+            if !replaced.is_empty() {
+                details.push_str("<div class=\"callout callout--warning\"><b>This pad replaces existing designations</b> — Add replaces whatever sits at an origin, of any kind, and deletes any surface designation on the cell:<ul>");
+                for e in replaced {
+                    details.push_str(&format!(
+                        "<li>({}, {}) — currently {} (<span class=\"mono\">{}</span>)</li>",
+                        e.x,
+                        e.y,
+                        esc(&e.kind),
+                        esc(&e.proto)
+                    ));
+                }
+                details.push_str("</ul></div>");
+            }
+        }
+        None => {
+            details.push_str("<p class=\"sub\">The current designations could not be read back just now, so replace warnings are unavailable on this sheet; the after-confirm verdict still diffs against the live read-back.</p>");
+        }
+    }
+    details.push_str("<p class=\"sub\">Cells whose tiles are blocked by buildings are silently skipped by the game — the read-back verdict (shown after confirm and on the Designate page) is the honest check, not this sheet.</p>");
+
+    let now = now_unix();
+    let job_id = new_job_id();
+    let created = iso_utc(now);
+    let expires = iso_utc(now + JOB_TTL_SECONDS);
+    let meta = crate::designate::JobMeta {
+        job_id: &job_id,
+        created_utc: &created,
+        expires_utc: &expires,
+        game_id,
+        companion_user: &session.user,
+        plan_name: &name,
+    };
+    let job = crate::designate::build_add_job(&meta, &proto, &plan.cells, DESIGNATE_MAX_CELLS);
+    let summary = format!(
+        "Designation pad '{}': {} {} cells → level {} over ({},{})-({},{})",
+        name,
+        plan.cells.len(),
+        designate_proto_label(&proto),
+        target,
+        plan.footprint.0,
+        plan.footprint.1,
+        plan.footprint.2,
+        plan.footprint.3
+    );
+    let token = rand_hex(16);
+    lock_map(&state.prepared_jobs).insert(
+        token.clone(),
+        PreparedJob {
+            job_id: job_id.clone(),
+            file_json: job.file_json.clone(),
+            summary: summary.clone(),
+            game_id: game_id.to_string(),
+            game_date: game["date"].as_str().map(|s| s.to_string()),
+            game_tick: game["tick"].as_i64(),
+            created: now,
+        },
+    );
+    designate_confirm_response(
+        state,
+        session,
+        &summary,
+        &details,
+        &job,
+        &job_id,
+        game_id,
+        game["date"].as_str().unwrap_or("?"),
+        &token,
+    )
+}
+
+fn designate_prepare_remove(
+    state: &State,
+    session: &Session,
+    req: &Request,
+    game: &Value,
+    game_id: &str,
+) -> Response {
+    // Origins arrive as sel_<i> = "x,y" checkbox values rendered
+    // from the live read-back — there is no free-typed path.
+    let mut origins: Vec<(i64, i64)> = Vec::new();
+    for (k, v) in req.form.iter() {
+        if !k.starts_with("sel_") {
+            continue;
+        }
+        let Some((xs, ys)) = v.split_once(',') else {
+            continue;
+        };
+        if let (Ok(x), Ok(y)) = (xs.trim().parse::<i64>(), ys.trim().parse::<i64>()) {
+            origins.push((x, y));
+        }
+    }
+    origins.sort();
+    origins.dedup();
+    if origins.is_empty() {
+        return Response::html(
+            400,
+            layout(state, session,
+                "Nothing selected",
+                "<h1>Nothing selected</h1><div class=\"panel\"><p>Tick at least one designation in the live list, then prepare the removal.</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+            ),
+        );
+    }
+    if origins.len() as i64 > DESIGNATE_MAX_CELLS {
+        return Response::html(
+            400,
+            layout(state, session,
+                "Plan refused",
+                &format!(
+                    "<h1>Plan refused</h1><div class=\"panel\"><p>{} origins is over the {}-cell job cap. Split the removal and prepare again.</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+                    origins.len(),
+                    DESIGNATE_MAX_CELLS
+                ),
+            ),
+        );
+    }
+    // The selection must still match the live read-back —
+    // removing an origin from memory is how cells get cleared
+    // blind; refuse instead.
+    let Some(existing) = fetch_designations(state) else {
+        return Response::html(
+            502,
+            layout(state, session,
+                "Designation prepare refused — bridge unavailable",
+                "<h1>Prepare refused — bridge read-back unavailable</h1><div class=\"panel\"><p>The bridge did not serve the current designations, so the selection cannot be checked against what is actually designated. Nothing was prepared.</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+            ),
+        );
+    };
+    let stale: Vec<(i64, i64)> = origins
+        .iter()
+        .copied()
+        .filter(|&(x, y)| crate::designate::existing_at(&existing, x, y).is_none())
+        .collect();
+    if !stale.is_empty() {
+        let list = stale
+            .iter()
+            .map(|(x, y)| format!("({}, {})", x, y))
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Response::html(
+            400,
+            layout(state, session,
+                "Stale selection",
+                &format!(
+                    "<h1>Stale selection</h1><div class=\"panel\"><p>These origins are not in the live read-back any more: <b>{}</b>. The list has changed since the page rendered; nothing was prepared. Re-pick from the fresh list.</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+                    esc(&list)
+                ),
+            ),
+        );
+    }
+    let name = format!(
+        "Remove {} designation{}",
+        origins.len(),
+        if origins.len() == 1 { "" } else { "s" }
+    );
+    let mut details = String::new();
+    details.push_str(&format!(
+        "<p><b>{} origins</b> will be cleared. Remove is proto-agnostic — whatever designation sits at each origin goes:</p><ul>",
+        origins.len()
+    ));
+    for (x, y) in &origins {
+        let e = crate::designate::existing_at(&existing, *x, *y);
+        details.push_str(&format!(
+            "<li>({}, {}) — {}</li>",
+            x,
+            y,
+            e.map(|e| format!(
+                "{} (<span class=\"mono\">{}</span>){}",
+                esc(&e.kind),
+                esc(&e.proto),
+                if e.is_fulfilled { ", fulfilled" } else { ", open" }
+            ))
+            .unwrap_or_else(|| "unknown".to_string())
+        ));
+    }
+    details.push_str("</ul>");
+    details.push_str("<p class=\"sub\">Origins the game no longer designates when the mod runs are simply not there to remove; the read-back verdict after confirm is the honest check.</p>");
+
+    let now = now_unix();
+    let job_id = new_job_id();
+    let created = iso_utc(now);
+    let expires = iso_utc(now + JOB_TTL_SECONDS);
+    let meta = crate::designate::JobMeta {
+        job_id: &job_id,
+        created_utc: &created,
+        expires_utc: &expires,
+        game_id,
+        companion_user: &session.user,
+        plan_name: &name,
+    };
+    let job = crate::designate::build_remove_job(&meta, &origins, DESIGNATE_MAX_CELLS);
+    let summary = format!("Designation removal '{}': {} origins cleared", name, origins.len());
+    let token = rand_hex(16);
+    lock_map(&state.prepared_jobs).insert(
+        token.clone(),
+        PreparedJob {
+            job_id: job_id.clone(),
+            file_json: job.file_json.clone(),
+            summary: summary.clone(),
+            game_id: game_id.to_string(),
+            game_date: game["date"].as_str().map(|s| s.to_string()),
+            game_tick: game["tick"].as_i64(),
+            created: now,
+        },
+    );
+    designate_confirm_response(
+        state,
+        session,
+        &summary,
+        &details,
+        &job,
+        &job_id,
+        game_id,
+        game["date"].as_str().unwrap_or("?"),
+        &token,
+    )
+}
+
+fn do_designate_confirm(state: &State, session: &Session, req: &Request) -> Response {
+    if let Err(r) = check_csrf(session, req) {
+        return r;
+    }
+    let token = req.form.get("token").cloned().unwrap_or_default();
+    let job = lock_map(&state.prepared_jobs).remove(&token);
+    let job = match job {
+        Some(j) if now_unix() - j.created <= 120 => j,
+        _ => {
+            return Response::html(
+                400,
+                layout(state, session,
+                    "Designation confirmation expired",
+                    "<h1>Confirmation expired</h1><div class=\"panel\"><p>That designation confirmation is unknown or older than two minutes, so nothing was written. Prepare the job again.</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+                ),
+            )
+        }
+    };
+    let dir = builder_jobs_dir(&state.db_path);
+    let path = dir.join(format!("{}.json", job.job_id));
+    let write = (|| -> Result<(), String> {
+        std::fs::create_dir_all(&dir).map_err(|e| format!("create jobs folder: {e}"))?;
+        let tmp = dir.join(format!("{}.json.tmp", job.job_id));
+        std::fs::write(&tmp, job.file_json.as_bytes()).map_err(|e| format!("write job: {e}"))?;
+        std::fs::rename(&tmp, &path).map_err(|e| format!("rename job: {e}"))?;
+        Ok(())
+    })();
+    // Same §12 discipline as do_place_confirm (audit D1): the
+    // confirm's audit/activity rows are part of the guarantee,
+    // so a failed write is collected and surfaced — never a
+    // silent `let _`, in either outcome branch.
+    let outcome = if write.is_ok() { "job-written" } else { "write-failed" };
+    let mut audit_err: Option<String> = None;
+    match store(state) {
+        Ok(st) => {
+            if let Err(e) = st.audit_add(
+                now_unix() as i64,
+                "PlaceDesignationJob",
+                &format!(
+                    "{} · job {} · game {} · {}",
+                    job.summary, job.job_id, job.game_id, outcome
+                ),
+            ) {
+                audit_err = Some(format!("audit row: {e}"));
+            }
+            if let Err(e) = st.activity_add(&ActivityEvent {
+                event_key: format!("designate-{}-{}", now_unix(), rand_hex(8)),
+                recorded_ts_unix: now_unix() as i64,
+                source: "companion".into(),
+                actor: Some(session.user.clone()),
+                category: Some("designation".into()),
+                action: "PlaceDesignationJob".into(),
+                summary: Some(job.summary.clone()),
+                game_id: Some(job.game_id.clone()),
+                game_date: job.game_date.clone(),
+                game_tick: job.game_tick,
+                outcome: Some(outcome.into()),
+                payload_json: Some(job.file_json.clone()),
+            }) {
+                audit_err.get_or_insert_with(|| format!("activity row: {e}"));
+            }
+        }
+        Err(e) => {
+            audit_err = Some(format!("audit store unavailable: {e}"));
+        }
+    }
+    if let Some(e) = &audit_err {
+        eprintln!(
+            "serve: designate-confirm of job {} left NO audit record: {e}",
+            job.job_id
+        );
+    }
+    let audit_banner = match &audit_err {
+        Some(e) => format!(
+            "<div class=\"callout callout--danger\"><b>AUDIT WRITE FAILED.</b> The job file WAS written — QoSBuilder will act on it at the next in-game day end — but recording it in the audit log failed: {} — <b>this designation job is missing from the audit trail</b>.</div>",
+            esc(e),
+        ),
+        None => String::new(),
+    };
+    let audit_note = match &audit_err {
+        Some(e) => format!(
+            "Nothing was written. The audit write failed too ({}) — so this failure is NOT in the audit log either.",
+            esc(e)
+        ),
+        None => "Nothing was written and the failure is in the audit log.".to_string(),
+    };
+    match write {
+        Ok(()) => {
+            // The mod attests "scheduled" only; the verdict is
+            // the read-back diff, computed right now (it will
+            // normally read "pending" until the day turns) and
+            // recomputed on every Designate page visit.
+            let existing = fetch_designations(state);
+            let panel = designation_verdict_panel(
+                "Read-back verdict — right now",
+                &job.file_json,
+                existing.as_deref(),
+            );
+            Response::html(
+            200,
+            layout(state, session,
+                "Designation job written",
+                &format!(
+                    "<h1>Job written</h1>{}<div class=\"panel\"><p><b>{}</b></p>\
+                     <p class=\"sub\">File: <code>{}</code> · job <code>{}</code></p>\
+                     <p>QoSBuilder picks it up at the <b>next in-game day end</b> — if the mod is installed and its <code>enabled</code> setting is on. Watch the <a href=\"/log\">Log page</a> for <code>JobClaimed</code> / <code>JobScheduled</code> (or a refusal with its reason).</p>\
+                     <p><a href=\"/designate\">← Back to Designate</a></p></div>{}",
+                    audit_banner,
+                    esc(&job.summary),
+                    esc(&path.display().to_string()),
+                    esc(&job.job_id),
+                    panel,
+                ),
+            ),
+            )
+        }
+        Err(e) => Response::html(
+            500,
+            layout(state, session,
+                "Designation job write failed",
+                &format!(
+                    "<h1>Job write failed</h1><div class=\"panel\"><p>{}</p><p>{} Check the jobs folder path (shown on the Designate page; override it with <code>[builder] jobs_dir</code> in coi.toml if the companion runs somewhere other than the game PC).</p><p><a href=\"/designate\">← Back to Designate</a></p></div>",
+                    esc(&e),
+                    audit_note,
                 ),
             ),
         ),

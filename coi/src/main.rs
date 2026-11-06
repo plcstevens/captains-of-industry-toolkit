@@ -1,5 +1,6 @@
 mod catalogue;
 mod client;
+mod designate;
 mod guides;
 mod plan;
 mod productivity;
