@@ -37,10 +37,17 @@ qos/
     QoSPriorityActuatorMod.cs  IMod shell
     PriorityActuatorService.cs the policy/scheduler service
     manifest.json  config.json  readme.txt
+  QoSBuilder/              feature mod (mod id "QoSBuilder"; round 8 —
+    QoSBuilderMod.cs         built standalone, suite-pack integration
+    BuilderService.cs        pending live verification) — executes
+    BuilderJson.cs           companion-confirmed placement job files
+    manifest.json  config.json  readme.txt
   QoSTrainCargo/           (future — QOL-MOD-PREP §3)
   build/                   VM build scaffold (mirrors bridge/vm-build)
     build.sh                 one csproj per subfolder:
     {core,chickens,recovery,worldmap,actuator}/*.csproj
+    build-builder.sh         QoSBuilder standalone (round 8):
+    builder/*.csproj           dist/QoSBuilder-mod-<v>.zip only
 ```
 
 One folder per mod, one DLL per mod, one manifest per mod. Sources
