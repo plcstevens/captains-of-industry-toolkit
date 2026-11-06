@@ -1772,3 +1772,168 @@ Packaging for this round: dist/CoiBridge-mod-0.6.5.zip 27,032 B,
 sha256 3f26d817943e69244fe083bc176db848f76cb76ea0f8687b2a369ec96c238cf5; dist/coi.exe restaged 6,215,930 B, sha256
 e71ff3de9225f81cfa51c4b276812aae633a470ec01f04bd4a526a3db911d7e5
 (supersedes the 6,160,589 B redesign build).
+
+## Addendum XX — Designation jobs: pads and removals by confirmed file (QoSBuilder 0.2.0) — 2026-11-06
+
+The designation sibling of Addendum XVII, built in four stages
+(`qos/DESIGNATION-DESIGN-NOTE.md`): the same sealed job-file
+channel now carries terrain designations, which the web §12
+channel can never reach (recon round 14 — the commands'
+`ImmutableArray` arguments are JSON-blocked by construction;
+the mod's `IInputScheduler` route is the only executor).
+`QuickFulfillDesignationsCmd` remains excluded by posture.
+
+**Schema v2** (designation jobs only; blueprints stay v1), one
+file `<jobId>.json` in the same jobs folder: `jobId`, `schema`
+2, `jobType` (`"designations-add"` | `"designations-remove"`),
+`createdUtc` / `expiresUtc` (30-min TTL), `gameId` pin,
+`companionUser`, `planName`, `protoId` (**add only** — one of
+`MiningDesignator` / `DumpingDesignator` / `LevelDesignator`;
+the kind is a property of the batch, §1.2 of the note),
+`cells` (**add only**: `{x, y, origin, plusX, plusXY, plusY}`
+in `DesignationData` ctor order — PlusXY before PlusY; the
+centre height is game-derived and never carried) or `origins`
+(**remove only**: `[{x, y}]`), `limits.maxCells` (200 from the
+website), `sha256` over the canonical payload (field order and
+the ONE escaping rule as v1). The canonical vectors are pinned
+in `qos/BUILD-NOTES.md` round 9 and were executed on all three
+legs (C# probe harness, Rust, Python); the companion's page
+check re-verifies every written file with an independent
+Python implementation of the v2 canonical form.
+
+**Companion flow** — routes `GET /designate`,
+`POST /designate/prepare`, `POST /designate/confirm` (nav:
+Game group, beside Place):
+
+- **Pad prepare** pins the gameId exactly as /place (502
+  refusal when the game is unreachable or unidentifiable),
+  fetches `/coi/v1/terrain/region` for the rectangle plus a
+  one-cell margin, and runs `designate::plan_pad`: the
+  rectangle snaps OUTWARD to whole 4×4 cells, every cell
+  levelled to the target. The confirm sheet shows the cell
+  count, cut/fill volumes (`terrain::estimate` arithmetic),
+  **every edge-step warning verbatim** (|target − terrain
+  just outside| > 1 at a boundary vertex — the game accepts
+  such cells silently, so snapping is planner discipline,
+  surfaced at confirm), and **every replaced designation**
+  (Add replaces any kind at an origin and deletes a surface
+  designation there). The sheet also states the blocked-cell
+  expectation: cells over blocking buildings are silently
+  skipped in-game.
+- **Remove prepare** takes origins ONLY from the live
+  `/designations` read-back (checkboxes rendered from it;
+  there is no free-typed origin path), and refuses a
+  selection that no longer matches the read-back ("Stale
+  selection").
+- **Confirm** reuses the `PreparedJob` token store (120 s,
+  single-use) and writes exactly ONE file tmp-then-rename
+  into `builder_jobs_dir`, with audit + activity rows
+  (`PlaceDesignationJob`, category `designation`) under the
+  remediation round's fail-loud pattern — an audit failure
+  is surfaced on the outcome page, never swallowed.
+- **Verdict**: the mod attests *scheduled* only — its Add
+  result cannot distinguish placed from silently refused
+  cells (note §1.3). The companion diffs the job against the
+  CURRENT `/designations` on the confirm outcome page and on
+  every /designate visit (latest-job panel, reconstructed
+  from the activity payload): exact per-cell corner equality
+  with bridge 0.6.6 (Addendum XXI); band-level, labelled
+  partial, on older bridges. Statuses: LANDED / PARTIALLY
+  LANDED / SCHEDULED — verdict pending. The page never claims
+  placement from the write alone.
+
+**Executor** — QoSBuilder 0.2.0 (stage 2): family dispatch
+after the shared v1 refusal ladder, then the designation
+rungs (`unsupported-proto` → `malformed-cells` →
+`duplicate-cells` → `over-cell-cap` →
+`nothing-to-designate`); ONE `AddTerrainDesignationsCmd` /
+`RemoveDesignationsCmd` per job; QoSEventLog kind
+`"designation"`. No new fields on `BuilderService` — the
+hand-written serializer pair and the mod's save surface are
+untouched.
+
+**Not in v1**: pit *generation* from live data (the bridge
+serves no per-column layer stacks — the planner core in
+`coi/src/designate.rs` is fixture-fed and ready; flagged
+decision 2 in the note), forestry designations, mixed-kind
+single confirms (one job file per kind).
+
+**Synthetic capture**: `live-synthetic-v065/
+bridge-designations.json` regenerated to the 0.6.6 route
+shape (per-cell rows, proto `"MiningDesignator"`, corners +
+centerRaw); the 0.6.5-era file carried merged areas and
+display-name proto strings, and predated Addendum XXI.
+
+Verification: cargo build 0 warnings; cargo test 41/41 (25
+pre-existing + 13 designate stage-3 + 3 read-back verdict);
+`tools/check_designate_page.sh` PASS (prepare pins gameId,
+warnings render, confirm writes exactly one file whose hash
+re-verifies in Python, replay refused, remove flow verified,
+latest-job panel renders, bridge-down prepare 502,
+/designate degrades 200-with-notice);
+`check_place_page.sh`, `check_log_page.sh` and
+`check_audit_fail_loud.sh` still PASS. Live proof is the
+weekend shakedown (design note §6) — deliberately not part
+of code completion.
+
+Packaging for this round: dist/coi.exe = 6,345,284 B,
+sha256 33f063cea7ee5e6b485e42bc3aa0e52fbee0e8a992d2c9350c
+259e171306dd1d (Windows release build, 0 warnings);
+QoSBuilder-mod-0.2.0.zip = 47,373 B, sha256
+680d81eac4e68afa5d8e7a1354f5548891b63e56b33dffe07c4a74aa03005131
+(stage 2). The weekend bundle carries both plus CoiBridge
+0.6.6 (Addendum XXI).
+
+## Addendum XXI — Designation read-back made exact: corners + centre (CoiBridge v0.6.6) — 2026-11-06
+
+Micro-fix round, approved by Philip 2026-11-06 ("yes fix more"),
+closing flagged decision 1 of the designation design note
+(`qos/DESIGNATION-DESIGN-NOTE.md` §1.4/§4). ONE route changes;
+additive only — every existing field keeps its name and shape.
+
+- `GET /coi/v1/designations` rows now also carry:
+  - `corners`: the designation's four corner target heights as
+    integer tiles, in `DesignationData` ctor order —
+    `[origin, plusX, plusXY, plusY]` (PlusXY before PlusY, the
+    standing ctor-order trap; the route reads them from
+    `TerrainDesignation.Data`, which the runtime object retains
+    in full — verified in the shipped `Mafi.Core.dll`).
+  - `centerRaw`: the centre target height as raw Fix32
+    (`HeightTilesF.Value.RawValue`; 65536 = 1 tile).
+- Why: with only the min/max band (≤0.6.5), a read-back verdict
+  was exact for flat cells but merely band-level for sloped
+  cells — two different corner assignments can share a band.
+  With corners + centre served, the companion can verify
+  `DesignationData` equality per origin for sloped cells too,
+  which is the verdict the QoSBuilder designation jobs
+  (stages 2–4) rely on.
+- Design-note open question 4, settled from the code path
+  (labelled code-derived until a live capture proves it): the
+  route appends `d.ProtoId.Value`, and `TerrainDesignation
+  .ProtoId => Prototype.Id`; `TerrainDesignationsData
+  .RegisterData` registers the protos under `IdsCore
+  .TerrainDesignators.*`, whose string values are
+  `"MiningDesignator"`, `"DumpingDesignator"`,
+  `"LevelDesignator"`, `"ForestryDesignator"`. So `proto`
+  emits e.g. `"MiningDesignator"` — NOT the
+  `"MiningDesignation"` of the v065 synthetic capture (that
+  string resembles the protos' *display* names, "Mining
+  designation"). `kind` is unchanged: partition-derived
+  (`"mining"` / `"dumping"` / `"other"`).
+- **The v065 synthetic designations capture predates this
+  change** (and already disagreed with the route on areas and
+  the proto string): stage 4 must regenerate
+  `live-synthetic-v065/bridge-designations.json` against the
+  0.6.6 route shape before its page checks mean anything.
+
+Verification: bridge builds 0 warnings / 0 errors; the compiled
+DLL carries the new field strings (the 0.6.5 DLL does not). LIVE
+verification is outstanding by design (game PC off): the first
+real /designations capture joins the weekend checklist.
+
+Packaging for this round: dist/CoiBridge-mod-0.6.6.zip
+27,399 B, sha256
+806b7a9e33559ce15e8f53728b33a73a98a69e184af7b1d3094aac92ebcffe10.
+The 0.6.5 zip is untouched (27,032 B, sha256
+3f26d817943e69244fe083bc176db848f76cb76ea0f8687b2a369ec96c238cf5,
+re-verified after this build).

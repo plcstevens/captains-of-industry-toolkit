@@ -1327,3 +1327,602 @@ The fresh-start plan is now the operative plan for Philip's new 4.3 run (he star
 ## 2026-11-05 (evening) — Design system v1 implemented across the companion website
 
 Philip called the UI "fucking awful" and delegated the last design decisions; adopted defaults: dark only, comfortable density, blue accent #5b9dff. The whole of serve.rs is restated on DESIGN.md: sidebar shell with the four nav groups + always-visible status strip (fetches game-info per render; OFFLINE is a state, never a fabricated "last known"), token stylesheet, token badges (UNVERIFIED/UNEVALUABLE dashed), the §3.9 confirm sheet verbatim (warning/danger band, summary, exact JSON, Run + Cancel peers), server-SVG charts (sparklines, flow pairs, runway bars with basis verbatim, machine-state stacked bars, power bars with UNVERIFIED average mini-bars, storage fill bars), the Log as a day-grouped feed, degraded states in-shell (D1–D3). Functionality frozen throughout — routes, fields, CSRF, tokens, §12 semantics, audit/activity writes untouched; layout() now takes &State for the strip, which was the one structural change. Deviations are listed in SPEC Addendum XVIII (Place in the Game nav group, no nav pills, productivity verdict lines kept as text under the bars, issue Act tables full-width, no runway hatching — no seasonal flag exists on Forecast). Verified: build clean 0 warnings, tests 17/17, check_place_page.sh + check_log_page.sh PASS, stub sweep all-200 populated + degraded in-shell, screenshots inspected (after-overview / after-issues / after-confirm in design-mock/). Stub gained a /coi/v1/power route (v06 synthetic capture) so the power panel is sweep-verifiable. dist/coi.exe restaged 6,160,589 B (sha256 9976089f…) — install alongside suite 0.5.1 + QoSBuilder when Philip's PC is back.
+
+## 2026-11-06 (terrain sensing round) — CoiBridge 0.6.5 + companion Terrain page
+
+Philip: "work towards that then" — closing the layout blind spot
+(heights / earthworks / on-map ore). Recon round 13
+(qol-recon/11-terrain-deposits.md, MODDING-NOTES round 13) found:
+TerrainManager holds per-tile Fix32 heights (index = y*w + x,
+65536 = 1 tile; tile = 2 m, TILE_VOLUME_M = 8 m3); entity Z IS
+the floored terrain height in the same grid (WithHeightFloored ->
+ExtendHeight) — terrain and topology are one coordinate space.
+On-map deposits are terrain MATERIAL LAYERS, not entities:
+remaining quantity = the game's own ToPartialProductQuantity
+over today's layers, depletion-exact. Designations partition
+cleanly via the mining/dumping managers.
+
+Built: CoiBridge 0.6.5 (BridgeRoutesTerrain.cs, own DI class,
+own try/catch; routes /terrain summary ~96x96 max,
+/terrain/region capped 16,384 tiles, /deposits with 30 s scan
+cache + connected regions, /designations; 0 warnings / 0 errors;
+zip 27,032 B, sha256
+3f26d817943e69244fe083bc176db848f76cb76ea0f8687b2a369ec96c238cf5).
+Companion: fetch_live best-effort terrain+deposits; store schema
+v4 deposit_state; Terrain page (Monitor) with SVG heatmap,
+on-demand region fetch, earthworks estimator (cut/fill in
+tiles-cubed and m3 x8; pure, 5 unit tests; CLI `coi terrain
+deposits|region|estimate` + documented JSON shape). 22/22 cargo
+tests; page verified against a synthetic v0.6.5 stub capture
+(live-synthetic-v065; estimator numbers cross-checked
+independently) and degrades cleanly on the v0.6.4 capture;
+check_log_page + check_place_page PASS. SPEC Addendum XIX.
+dist/coi.exe restaged (see SPEC addendum for size/sha).
+Outstanding (weekend checklist): first live payloads from all
+four routes on a real save; TerrainManager/designation DI in
+game; region query binding live.
+
+## [2026-11-06, morning] Earthworks guidance round (dump / flatten / mine)
+
+Philip: "we need to write guidance on how to dump, how to flatten
+and how to mine effectively" — plus his refinement that PLACEMENT /
+snapping of designation grids is core, not garnish. Documentation
+only; no code changed.
+
+Verified from the 0.8.8 assemblies (ilspycmd) before writing:
+- Designations are 4x4-tile cells on the global 4-grid
+  (TerrainDesignation.SIZE_TILES=4, DesignationDataFactory
+  GetOrigin = v*4); target = bilinear plane over 4 corner heights;
+  mining + dumping fulfilment are separate per-vertex bitmaps on
+  the same cell.
+- Neighbour snapping is a HARD rule (TryCreateSnapToNeighbors):
+  shared corners must match exactly, edge steps only 0 or ±1 tile,
+  else placement refused. Ramp cells step exactly 1 tile per cell
+  (CreateRampArea) — the game's sanctioned vehicle grade.
+- Collapse physics (TerrainPhysicsSimulator): per-material
+  [Min,Max]CollapseHeightDiff, probability ramps min->max, each
+  slide moves half the excess diff; floor 0.125. Bands from
+  TerrainMaterialsData: landfill 0.4/1.5, dirt 0.6/1.2, gravel
+  0.7/1.6, sand 0.8/1.0, disrupted rock/ore 0.8/2.0, grass 0.9/1.8,
+  coal 1.4/4.0, rock+bedrock+Fe/Cu/Au ore 2.0/5.0, hardened rock
+  4.1/5.0, Ti/U ore 2.5/6.0. (Wiki's old slope table agrees on
+  dirt — same physics.)
+- Retaining walls (RetainingWallsData): RETAINED_HEIGHT_TILES=5,
+  wall tiles DisableTerrainPhysics, placement window -5..0;
+  Long = one cell edge. Costs from wiki (Short 4Fe+10, Corner
+  6+12, Long 12+40).
+- Buildings on landfill (UnstableTerrainValidator): only Landfill
+  materials carry UnstableTerrainMaterialParam; >0.25 tiles of it
+  in top layers without 0.75 stable cover => placement refused.
+- Excavators (ExcavatorsData): T1 bucket 6, reach 2-5, dig
+  thickness 1.5/1.0/0.5; T2 20, 3-7, 2.0/1.5/1.0/0.5; T3 60, 4-9
+  (thickness array runtime-initialised — NOT traced, named as a
+  gap); Amphibious 16, 4-9, MaxMiningOceanDepth 5.
+- Dumping is a TRUCK job (DumpingJob.Factory builds for Truck);
+  mining is excavators on tower-managed designations only;
+  MAX_DUMP_HEIGHT_IN_OCEAN = 0 (TerrainDesignation static ctor).
+- Wiki/community (labelled in the guides): tower control area max
+  49 designations/side; tower-vs-global dumping-settings
+  precedence; 5-down wall staircase pattern; port pads +2..+5.
+
+Deliverables: guides-earthworks.md (three guides, placement as a
+first-class section in each, "with our data" checks throughout);
+new skill ~/workspace/custom-skills/local-coi-earthworks/SKILL.md
+(decision rules, dump/flatten/mine checklists, and the agent's
+9-step snapping procedure); one cross-pointer section appended to
+local-coi-strategy ("Earthworks in the triage order").
+
+## [11:06 Paris] Wiki Knowledge Programme — offline library + 7 new player skills
+
+Philip's direction (2026-11-06): the whole CoI wiki readable at any time, especially patch notes, with skills and guidance written up for the Muse player. Built by a coordinator + 15 workers; documentation only — no game contact, no uploads, no GitHub pushes.
+
+- **Mirror:** `~/workspace/coi-wiki-mirror/` — the full official wiki (wiki.coigame.com, MediaWiki 1.45.6) via its API (wikitext → markdown, tables/numbers preserved, images NOT mirrored — `[image: …]` text refs only). **683/683 main-namespace titles** (602 articles + 71 redirects = the wiki's own siteinfo counts; 670 files — 13 documented case-only slug collisions), proven complete by a final `refresh.py --dry-run` reconciliation: 0 missing, 0 stale, 0 extra. Per-page provenance in `manifest.tsv` (source URL, revision ts, words, status). `INDEX.md` = topic map grouped by game system + honest gaps section (pre-v0.7.1c patch notes absent from the source index; two verbatim wikitext tables; nested-recipe bullet artifact on a few machine pages).
+- **Patch notes:** `changelog/` — 43 files, v0.7.1c (2025-05-18) → v0.8.8b (2026-11-05), + `changelog/INDEX.md` (version/date/headline). Current version from coigame.com (Changelog page + Update 4.3 blog post); v0.8.3 full notes recovered from the official Update 4.1 blog after the Steam-mirror page proved announcement-only; older versions from the Steam news archive, cross-checked.
+- **Refresh tool:** `~/workspace/coi-wiki-mirror/refresh.py` — idempotent, re-fetches only pages whose wiki revision changed, `--dry-run`/`--limit`/`--titles`; removed pages are reported, never deleted. Recommendation (in `SKILLS-PLAN.md`, NOT applied): fold the weekly refresh into the existing `coi-patch-watch` cron.
+- **Gap inventory:** `~/workspace/coi-wiki-mirror/SKILLS-PLAN.md` — wiki topic space vs the 14 existing skills; 7 P1 gaps, 5 P2 deferrals (water, forestry, nuclear deep-dive, silicon/computing, smelting-alloys).
+- **7 new skills** in `~/workspace/custom-skills/` (family shape: SKILL.md + skill.yaml + references/, numbers sourced from mirror pages and cited, judgement labelled inline): `local-coi-farming-food`, `local-coi-maintenance`, `local-coi-population-housing`, `local-coi-logistics-vehicles`, `local-coi-trade-shipping`, `local-coi-pollution-health`, `local-coi-research-strategy`.
+- **Wire-up:** `local-coi-playing` SKILL.md gained a "The Offline Library" section (mirror location, grep patterns, changelog location, refresh tool, trust order: live game > mirror snapshot > skill > memory). No other existing skill touched; `local-coi-earthworks` untouched.
+- Notable worker findings: wiki has no "Ground Pollution" page (channel = Landfill Pollution); air-pollution 0.044 is a *Health* effect (growth is indirect); several wiki pages carry pre-U4 data flagged stale in the skills' sources; one mirror worker retried a rate-limited (429) request once after a ~95 s pause and recovered the batch fully — no content lost.
+
+---
+
+## 2026-11-06 — Mod ecosystem survey (MOD-SURVEY.md)
+
+Philip: "explore all major popular mods and see what we want to
+use / re-use / change", with mine-structuring mods flagged.
+
+- Ecosystem = the official CoI Hub, full stop (~230+ mods,
+  in-game Mod Manager since 4.2). Steam Workshop/Nexus/mod.io
+  are empty for this game; GitHub is source hosting only.
+  COI:Extended's Modding Exception was revoked 2026-04 — it is
+  banned, not abandoned; all pre-2026 "top mods" lists are
+  obsolete.
+- Headline: Kayser's Auto Terrain Designations (49.5k / 89%,
+  MIT) is the mine-structuring mod Philip sensed — contour-
+  following designation generation, spike/quality filtering,
+  median floor flattening, generated ramps, collapse overlay.
+  BUT its manifest calls 4.3 support experimental (Build 625+,
+  limited validation) — Hub "Stable" badge overstates it.
+  Verdict: install (scratch-save shakedown first) + port its
+  planner parameters into the companion/QoSBuilder side (MIT
+  permits it; zero-Harmony posture means algorithms, not its
+  Harmony inspector layer).
+- Overlap audit: CoI_PriorityManager (iScripters, MIT, zero-
+  Harmony) is MANUAL group management — complement, not rival,
+  to QoSPriorityActuator; never both on the same fields in one
+  save. Smart Mining Dump (Unlicense) is QOL-MODS #7/#8 in
+  miniature → QoS feature sketch. UNMA's alarm model (MIT) is
+  the reference for companion alerting (#5). Farm Optimiser's
+  solver is companion-shaped, but no LICENSE file → ideas only.
+- Save-safety red flag of the survey: Multi-Priority Balancers
+  has a documented save-load crash (with ++ mods) and its
+  hotfix shipped only via Discord pins. MZ Mining Fleet and
+  Concrete Retaining Cube are not-removable-after-use. Our
+  serializer paranoia is ecosystem-validated.
+- Mine-structuring principles distilled (MOD-SURVEY §5) and a
+  clearly-labelled community-practice addendum added to
+  guides-earthworks.md: 5-level wall terraces, setback =
+  ceil(depth/5)+1 sections, ramps = 1 section per level,
+  spike filtering, median floors, local overburden sinks.
+- Deliverable: MOD-SURVEY.md (21 mods categorised, top-5
+  recommendations, UNVERIFIED register). Research only —
+  nothing installed, no code changed.
+
+---
+
+## 2026-11-06 — Behaviour Distillation round (BEHAVIOURS.md)
+
+Philip's framing: avoid mods that crash; the good mods are TEACHERS,
+not dependencies — "we just want to figure out how to train YOU the
+AI to behave similarly." Coordinator + 3 source-extraction workers;
+documentation + one recon only — no builds, no installs, no game
+contact, no pushes.
+
+- **Deliverable:** `~/workspace/coi-companion/BEHAVIOURS.md` — six
+  distilled behaviours, each as an agent-executable policy (inputs
+  mapped to our bridge/companion surfaces, numbered decision rules
+  with real numbers + file:symbol provenance, action channel,
+  explicit LIMITS): (1) ATD pit planning (MIT, full source read);
+  (2) Smart Mining Dump prefer-local-sink (Unlicense) — policy only,
+  its reflection truck-decorator is NOT reproduced and no channel
+  in our stack routes truck jobs, so it lands as a planning rule +
+  an unbuilt QoS sketch; (3) PriorityManager manual groups (MIT) —
+  group values 9/8/8/9 on the internal 0–14 scale, manual change
+  ejects the building and wins, removal restores native defaults,
+  plus the standing XOR rule vs QoSPriorityActuator; actuation =
+  §12 prepares of the three shipped priority commands; (4) UNMA
+  alarm model (MIT, targets 0.8.6c — not 0.8.8-verified) — 4
+  severities, flat AND/OR, per-condition hysteresis,
+  K/KQ/KG/KGQ acknowledgement lifecycle, shipped default
+  thresholds; advisory, companion Issues layer (QOL-MODS #5);
+  (5) Auto Forestry Designations (MIT) — tower-area scan,
+  all-16-subtiles eligibility, fail-closed sustainable-yield
+  sizing floor(capacity/yr ÷ 12), equal-split truck quota;
+  (6) Research Queue — prerequisite-clamped ordering as a
+  plan/runner policy; vanilla silently discards out-of-order
+  completions and vanilla cancel wipes the queue; reordering has
+  no shipped-command channel (advisory).
+- **ATD headline parameters (all CODE-verified):** spike filter =
+  bedrock top >4 below the median of all 8 neighbours (all 8 must
+  have bedrock; NO thickness criterion in the shipped detector —
+  the survey's open question is settled: there isn't one); purity
+  arrays L1–L4 (0.25/0.05/0.05/2 → 3.0/0.75/0.75/40), bottom-density
+  walk stops at the first failing seam; MaxLayers default 30 from
+  the cell-minimum surface; floor = component percentile, strength
+  default 5 = median, lower-only at purity Off (the MOD-SURVEY
+  "5/10 median" figure is verified); MaxHeightDiff default 1
+  (1–3), smoothing deepens only; corridor clearance effective
+  default 1 under Auto (source carries two stale "2" defaults in
+  dead paths — flagged in BEHAVIOURS.md, not papered over); safety
+  presets Min(0.8,0)…Max(1.1,4), Med(0.9,2) default, building
+  buffer constant 3 tiles, iterative fail-closed removal loop;
+  legacy ramp = exactly 1 level per 4-tile cell; routed-ramp
+  width/slope NOT PUBLISHED (runtime-derived from vanilla
+  pathfinding params); mining body = ONE AddTerrainDesignationsCmd
+  batch + per-origin read-back verification (BATCH_SIZE=30 does
+  NOT chunk it).
+- **Earthworks skill v2:** `local-coi-earthworks` snapping
+  procedure upgraded 9 → 13 steps, geology-aware (deposit columns
+  → spike filter → purity gates → depth caps + median floor →
+  corner smoothing → iterative landslide safety → estimator →
+  local-sink-first → single-batch placement + read-back).
+  Distilled content in a clearly-marked community-derived section
+  with ATD citations; all prior code-verified content preserved.
+- **Recon round 14 (MODDING-NOTES):** designations are
+  EXECUTABLE-BY-AGENT via the QoS scheduler route —
+  `AddTerrainDesignationsCmd` / `RemoveDesignationsCmd` ship in
+  the 0.8.8 assemblies (modify = Add at same origin);
+  `QuickFulfillDesignationsCmd` excluded by posture; web §12
+  channel blocked by the round-10 collection rule; AFD + ATD
+  both ship this exact channel in the wild. Executor (QoSBuilder
+  job-type extension) is Philip's build decision — not built.
+- **Playing skill:** new "Learned Behaviours" section pointing at
+  BEHAVIOURS.md + earthworks v2 + the round-14 verdict.
+- **Not distillable (named in BEHAVIOURS.md):** vanilla sink
+  selection inside DumpingJob.Factory (not in SMD's repo); ATD
+  routed-ramp numeric width/slope, material slope numbers,
+  flattening blends, batch ordering (runtime-derived or
+  nonexistent); RQ queue cap / paused-research handling (absent);
+  UNMA 0.8.8 verification (teacher targets 0.8.6c).
+
+## 2026-11-06 (evening) — Code Quality Audit (QUALITY-AUDIT.md)
+
+Read-only audit at Philip's ask ("are we effective, do we have
+equiv tests, are we writing high quality?"): 3 parallel workers —
+C# style/practices, Rust style/practices (incl. a live
+`cargo test` run: 22/22 pass, 0 build warnings), effectiveness +
+test-equivalence matrix — synthesised into
+`QUALITY-AUDIT.md`; `qos/ARCHITECTURE.md` gains a tight
+"Coding standards" section (incl. the saved-state law superseding
+its own stale blanket `can_remove: true` claim). No code changed,
+no artefact restaged.
+
+Headline: discipline is high and uniform (DI pattern, serializer
+pairs 4/4 correct, game-constants-only money, zero TODO/FIXME),
+but **verification is inversely correlated with blast radius** —
+plan evaluation/productivity (advisory) carry dual engines +
+parity + fixtures, while the save/mutation tier (QoS guard
+arithmetic, serializer pairs, Builder's C# hash) is
+compile+inspection only, with zero C# tests repo-wide. Two real
+defects in serve.rs: §12 audit writes are best-effort
+(`serve.rs:2513-2528` — an applied command can leave no audit
+row), and 7 `.lock().unwrap()`s + no `catch_unwind` make a
+mutex-poison cascade a full-website wedge (R1). ARCHITECTURE's
+stale `can_remove` rule is a doc DEFECT (code is right).
+
+Remediation (12 items, sequenced in the audit): before the
+weekend session — (1) serializer-pair lint in build.sh,
+(2) §12 audit fails loudly, (3) execute the C# canonical-hash
+vector via the probe harness, (4) poison-tolerant locking.
+Guard-arithmetic extraction+tests gate *unsupervised* enabling;
+CI wiring, clean-build proof, DiscoveryReport retirement and
+serve.rs helper extraction follow. QoSBuilder findings are
+provisional — designation round was editing it concurrently.
+
+## 2026-11-06 (evening) — Weekend self-sufficiency pack: placeholder retired, runbook v2, bundle
+
+Philip: "You do it all yourself — the point is you play" + "have the
+stuff updated for all of it". Documentation/prep only; no game
+contact.
+
+**1. The "Construction" placeholder is RETIRED — from the shipped
+assemblies.** Decompiled `refs/Mafi.Base.dll` / `Mafi.Core.dll`
+(ilspycmd, ~/.tmp/coibase + coicore). Every research node registers
+via `ResearchNodeProtoBuilder.Start(displayName, Ids.Research.X)` —
+the display→id map is primary source. "Construction" =
+**ResearchCpPacking** (ConstructionResearchData.cs: Start("Construction",
+Ids.Research.CpPacking), cost 4 RP; unlocks AssemblyManual + the
+CpAssembly/MechPartsIronAssembly/ElectronicsAssembly recipes — the
+plan's exact unlock list). The October candidate ResearchCp1Production
+is a GOAL id (GoalsData.cs: GoalToResearchNode "ResearchCp1Production"
+targets Ids.Research.CpPacking) — that is why it sat among goal
+strings in the extracted list behind coi/data/research_ids.txt.
+Live cross-check: Philip's bridge-research.json (127 researched)
+contains the exact string "ResearchCpPacking". The wiki mirror and
+the dataset JSON carry no node ids — assemblies were the only
+source that could settle it. Five siblings retired from the same
+registrations + one asserted id CORRECTED:
+Construction II = ResearchCp2Packing · Synthetic Rubber =
+ResearchRubberProduction · "Concrete Production" =
+ResearchConcreteAdvanced (shipped display "Advanced concrete";
+unlocks RotaryKiln + ConcreteMixer + Crusher) ·
+ResearchPowerAndMaintenance confirmed (display "Maintenance";
+"ResearchPowerMaintenance" is not a node) · Groundwater Pump =
+ResearchUndergroundWater · **ResearchShipDockRepair → ResearchRepairDock**
+(the phase-6 order named another goal id and would have failed at
+prepare; the plan's old note had the relationship backwards).
+
+**2. Plan fresh-start-v1 → v1.3.0.** All seven ids written into the
+orders/gates with sourced notes + verify blocks; assumptions
+rewritten; JSON regenerated (84,316 B). Fixtures repaired:
+gen_growth_fixtures.py RESEARCH table + honesty notes (goal ids
+ResearchCp1Production / ResearchRubber / ResearchCp2 →
+ResearchCpPacking / ResearchRubberProduction / ResearchCp2Packing),
+early-game fixture + README, all 12 growth months regenerated.
+Verification: validate_plan PASS, 0 errors, **placeholder research
+ids: 0** (16 concrete). Python + Rust walks agree: phases complete
+at months 1/3/5/8; phase 2's entry gate is EVALUABLE for the first
+time (was UNEVALUABLE by design under the placeholder); phase-4
+ACTIVE, halt unchanged on diesel stock 220 < 300 (scripted fixture
+pace — a plan finding, not a defect). Sessions + all four dryrun
+reports regenerated at v1.3.0; p1-research-construction now
+PREPARES `{"nodeId":"ResearchCpPacking"}` (growth walk: 11
+prepared / 16 skipped).
+**Parity caveat (engine finding, not a plan defect):**
+check_plan_parity now FAILS on exactly one order against the live/
+capture: with ResearchCpPacking already researched, the Python
+reference HELDs p1-research-construction while the Rust runner
+would still PREPARE it (the placeholder previously masked this by
+holding both). Gates all match; dragon-isle parity OK. Aligning
+the already-researched hold into the Rust runner is a future code
+round — deliberately not touched here.
+
+**3. Runbook v2** (plans/WEEKEND-RUNBOOK.md): PHILIP section is the
+physical minimum only (files across + wholesale folder replace with
+the 0.1.1 warning, Hub installs, game+mods on, `web_api_start`, the
+exact tailscale serve line from ACCESS.md, start coi.exe, say
+"up"). Everything else is Claudius's, including the NEW pre-run
+sequence: Hub-mod shakedown on a scratch save (ATD is
+self-declared experimental on 4.3 — designation read-back + queue
+smoke tests, drop-on-doubt) BEFORE gate zero (save+reload proof on
+the fresh New Haven run). The in-game Construction-id reading step
+is deleted — obsolete. §12 confirm-each-step posture, Log watch
+list and stop conditions carried over.
+
+**4. Bundle** dist/weekend-bundle/ + BUNDLE-README.md (install
+card: order, destinations, quit-game-first, 0.1.1 warning):
+coi.exe 6,215,930 B e71ff3de… · CoiBridge-mod-0.6.5.zip 27,032 B
+3f26d817… · QoS-suite-0.5.1.zip 126,268 B a2ed9232… ·
+QoSBuilder-mod-0.1.0.zip 35,184 B 1e5aa745…. Exe + bridge verified
+against the SPEC.md packaging record; suite + builder sizes match
+their NIGHT-LOG records (shas first recorded in the bundle readme,
+measured from the files). **QoSBuilder is 0.1.0 — no 0.2.0 zip
+exists in dist/, so designation jobs are NOT in this bundle**
+(flagged in the readme). INSTALL.md checked: already current
+(6,215,930 B / bridge 0.6.5) — no edit needed.
+
+Still owed (unchanged): suite 0.5.1 save+reload live proof, bridge
+0.6.5 terrain routes live, first QoSBuilder job end-to-end — all
+weekend checklist items in runbook v2, sections A/B/D.
+
+QoSBuilder designation jobs — STAGE 1 of 4 done (read-only
+scoping; no code changed, nothing built). Design note:
+qos/DESIGNATION-DESIGN-NOTE.md. Assembly-verified (0.8.8
+Mafi.Core.dll, ilspycmd): DesignationData = origin + 4 integer
+corner heights (HeightTilesI) + Fix32 centre; CTOR ORDER is
+Origin, PlusX, PlusXY, PlusY (PlusXY before PlusY — field
+declarations disagree); centre is the corner mean, so the job
+file derives it, never carries it. Kind = the Add command's
+single Proto.ID per batch (MiningDesignator / DumpingDesignator
+/ LevelDesignator; Forestry excluded v1). Manager semantics:
+Add result reports SUCCESS WITH ALL ORIGINS even when cells are
+silently refused (not allowed / out of limits / blocking
+building) — read-back is the only verdict; Add replaces any
+kind + deletes surface designations at the origin; duplicate
+origins in a batch = last wins; Remove is proto-agnostic and
+its result is always empty (game-side Lyst never populated).
+Bridge gap: /designations emits min/max band only, no corners —
+flat-cell verdicts exact, sloped-cell verdicts partial until a
+0.6.6 corners addition (flagged decision). The v065 synthetic
+designations capture disagrees with the route code (merged
+areas, "MiningDesignation" vs code's "MiningDesignator") —
+correct in stage 4. Planner reality: pads fully plannable from
+/terrain/region today; ATD pit generation is NOT computable
+from /deposits (no per-column layers served) — pit core is
+specified fixture-fed, generation gated on a layers route
+(flagged decision). Schema v2 + cell cap 200 proposed; mapping
+reuses the v1 ladder/folder/events/token ceremony wholesale,
+with NO new BuilderService fields (serializer pair untouched).
+Stages 2–4 planned in the note (mod C# / designate.rs / serve
++ checks). Nine open questions recorded, incl. shipped-build
+assert behaviour (unprovable from the DLL).
+2026-11-06 19:24 UTC
+
+## 2026-11-06 (evening) — Bridge 0.6.6: designation read-back made exact
+
+Philip approved the design note's flagged decision 1 ("yes fix
+more", 20:20 Paris). Micro-fix, one route: /coi/v1/designations
+rows now also carry `corners` (four corner target heights,
+integer tiles, DesignationData ctor order origin/+X/+XY/+Y)
+and `centerRaw` (centre target, raw Fix32) — read from
+TerrainDesignation.Data, which the runtime object retains in
+full. Additive only; every existing field unchanged. With
+corners served, the companion's before/after verdict for
+QoSBuilder designation jobs is exact for sloped cells too,
+not just band-level. Design-note open question 4 settled from
+the code path: proto emits "MiningDesignator" (IdsCore
+constants via RegisterData), NOT the v065 synthetic's
+"MiningDesignation" — code-derived until a live capture.
+SPEC Addendum XXI + MODDING-NOTES round 15 written; the v065
+synthetic designations capture predates the change and stage
+4 must regenerate it. Build 0 warnings / 0 errors.
+dist/CoiBridge-mod-0.6.6.zip 27,399 B, sha256
+806b7a9e33559ce15e8f53728b33a73a98a69e184af7b1d3094aac92ebcffe10;
+0.6.5 zip re-verified untouched (3f26d817…38cf5). Live
+verification joins the weekend checklist.
+2026-11-06 19:23 UTC
+
+## 2026-11-06 (evening) — QoSBuilder 0.2.0: designation jobs (stage 2 of 4)
+
+Stage 2 of the designation programme built, per the stage-1 design
+note: the mod gains the schema-2 designation job family alongside
+blueprints (dispatch on `jobType`; v1 path behaviour-identical).
+ONE AddTerrainDesignationsCmd (kind = the command's Proto.ID,
+allowlist Mining/Dumping/LevelDesignator) or ONE
+RemoveDesignationsCmd per job; cells built via the 5-arg ctor —
+corners only, centre game-derived. Same claim-before-schedule /
+single-use / expiry / gameId / sha256 discipline; events kind
+"designation"; refusal ladder per the note (structural
+malformed-cells pre-hash by construction — the canonical is
+rebuilt from the parsed cells; remove duplicates deduped, add
+duplicates refused). Config gains max_cells_per_job (default
+200). NO new fields on BuilderService — serializer pair verified
+untouched in the compiled DLL (ilspycmd: five fields, calendar
+only). Canonical v2 vectors EXECUTED on the C# leg this time
+(qos/build/canonprobe, source-compiled AND the packaged net48 DLL
+by reflection) against independent Python expectations — v1
+a8b4498e…cbf, v2-add e4166dd3…7f7, v2-remove 78fb273c…fa4, all
+MATCH (the v1 C# leg's first execution closes that audit
+finding). Build 0 warnings / 0 errors.
+dist/QoSBuilder-mod-0.2.0.zip 47,373 B, sha256
+680d81eac4e68afa5d8e7a1354f5548891b63e56b33dffe07c4a74aa03005131;
+all 31 prior dist artefacts sha-verified untouched. Live proof
+(first designation job + read-back diff + save/reload) joins the
+stage-4 shakedown. Detail: qos/BUILD-NOTES.md round 9.
+2026-11-06 19:31 UTC
+
+## 2026-11-06 (evening) — Designation planner: stage 3 of 4 (coi/src/designate.rs)
+
+Stage 3 built standalone, per the design note: `coi/src/designate.rs`
+(std + serde_json + sha2 only; NOT wired into the crate — stage 4
+adds `mod designate;` + the serve routes once the remediation round
+clears main.rs/serve.rs; no dist restage). Canonical v2 acceptance
+gate PASSED: the Rust mirror of BuilderJson.CanonicalDesignation
+reproduces both published round-9 hashes exactly (add e4166dd3…7f7,
+remove 78fb273c…fa4) via the low-level function and the typed
+build_add_job / build_remove_job builders (job file = canonical +
+trailing sha256 field, the v1 assembly). Pad planner complete:
+outward snap, level cells, terrain::estimate volume arithmetic,
+boundary-vertex edge-step warnings, typed refusal ladder
+(EmptyRectangle → UnsupportedProto → ImplausibleTarget →
+OutsideGrid → OverCellCap). Pit core as pure functions over a
+Column/ColumnGrid input type: spike cutoffs (residual 4, all-8
+neighbours), visible-thickness intervals, L0–L4 purity gates +
+evaluate_origin, the bottom-density dig walk (first failure stops),
+rule-4 depth caps, components + size filter, percentile component
+floors (strength default 5 = median), corner build + MaxHeightDiff
+smoothing (deepen-only). 13 tests, all passing, zero warnings, run
+standalone in a scratch cargo project by #[path] include
+(cargo test --offline) — the corner test caught a real off-by-one
+in build_corners' vertex-grid bounds on first run; fixed in code.
+Four interpretation points the distilled ATD text doesn't pin are
+recorded in the note's new §5 (even-count median convention,
+density-walk visible-thickness basis, per-origin depth =
+deepest column dig, true mean vs ATD's running average for
+CornerInit::Mean). Stage 4's wiring list is written out in full
+in DESIGNATION-DESIGN-NOTE §5. Detail: that note.
+2026-11-06 19:31 UTC
+
+## 2026-11-06 (evening) — Audit remediation: items 1/2/4 + runner parity fix
+
+Philip approved the fix round ("yes fix more"). Four items landed,
+all verified; QUALITY-AUDIT.md gained a "Remediation status"
+addendum with the full evidence table.
+
+(1) SERIALIZER-PAIR LINT (audit #1 / T1): new
+tools/check_serializer_pairs.py discovers calendar subscribers by
+the `.Add(this, ...)` pattern — no hardcoded list; attribution to
+the outermost class (nested RecoveryMark/Observation helpers tried
+to steal it during development; fixed) and the attribute check
+requires a real attribute line (the first red-proof attempt passed
+on a doc-comment mention; fixed — a lint that passes on prose is
+worse than none). Asserts attribute + static Serialize/Deserialize
+pair + owning manifest can_remove_from_saved_game:false. Wired
+into qos/build/build.sh, qos/build/build-builder.sh and
+bridge/vm-build/build.sh. Green on the real tree (4/4), red on a
+scratch copy for each break class (attribute / Serialize /
+Deserialize / manifest flag), scratch deleted. Suite build
+re-run live with the lint: C# 0/0; every pre-existing dist zip
+byte-identical afterwards (the one transient diff — suite 0.5.1
+re-packed around the since-updated SUITE-README — was restored
+from backup; DLL payloads were identical throughout).
+
+(2) FAIL-LOUD §12 AUDIT WRITES (audit #2 / D1): do_apply and
+do_place_confirm in serve.rs no longer swallow store errors.
+Failures collect into an audit_err surfaced as an AUDIT WRITE
+FAILED danger banner ("this action is missing from the audit
+trail"), the apply headline degrades to "Command executed — NOT
+audited", the place write-failed page's audit sentence is now
+conditional (it previously asserted a record that might not
+exist), and the server logs "left NO audit record". Healthy path
+unchanged: check_log_page + check_place_page PASS; new
+tools/check_audit_fail_loud.sh proves the failure path (stub
+game, DB file swapped for a directory after prepare — chmod does
+not bite as root — both pages surface the error). The snapshot
+activity write (old serve.rs:5007) was deliberately left: not a
+§12 apply.
+
+(3) POISON-TOLERANT LOCKING (audit #4 / R1): one lock_map helper
+in serve.rs recovers the guard from PoisonError; all 7 former
+.lock().unwrap() sites (sessions/prepared/prepared_jobs) use it.
+No unwrap remains outside the helper's doc comment.
+
+(4) RUNNER PARITY FIX (self-sufficiency pack caveat): decide_order
+now takes the recording step's State and SKIPs a ResearchStartCmd
+whose node already appears in the capture's `researched` list —
+positive evidence only, so pre-0.6.2 captures without the list can
+never hold an order (mirrors research.completed's UNEVALUABLE
+discipline). 3 new unit tests; cargo test 25/25. Two corrections
+to the pack's account, established from the tree: the parity
+failure's mechanism was the committed Python reference
+plans/fresh-start-v1.dryrun.md being STALE (header: plan v1.1.0,
+placeholder args; the pack regenerated every other report) — the
+fix regenerates that reference from the current plan with the
+Python engine; no render_order semantics changed in either
+engine. And the order the hold actually changes is not
+p1-research-construction (recorded at step 0, before CpPacking
+completes — correctly still PREPARED) but growth-walk
+p3-research-trading-dock: prepared → skipped, the single changed
+outcome across all 33 walked orders; phase histories/finals
+identical; sessions + transcripts regenerated.
+check_plan_parity: PARITY PASS on both plans (fresh 44 gate items
+26/26/13; continuation 49 items 31/35/7).
+
+RESTAGE: dist/coi.exe = 6,219,897 B, sha256 01397c50…ae2924
+(Windows release build 0 warnings); weekend-bundle exe copy +
+BUNDLE-README row updated to match. Audit items 3 (C# hash
+vector) and 5 (QoS guard test extraction) remain open — owned by
+the QoSBuilder stage-2 round and the next wave respectively.
+
+## 2026-11-06 (evening) — Designation serve integration: stage 4 of 4 (round complete)
+
+The final designation stage. coi/src/designate.rs is wired
+into the crate (mod designate in main.rs; the pit core's
+production dead code is allowed at module level with the
+reason in the file header — it is fixture-fed until the
+bridge per-column layers route exists).
+
+SERVE: routes GET /designate, POST /designate/prepare,
+POST /designate/confirm; nav entry in the Game group beside
+Place (NAV 14 -> 15) + nav_active titles. Pad prepare pins
+the gameId like /place (502 refusals), fetches
+/coi/v1/terrain/region as rect + 1-cell margin, runs
+plan_pad, and renders the section-12 confirm sheet: cells,
+cut/fill volumes, EVERY edge-step warning verbatim, EVERY
+replaced designation (Add replaces any kind + deletes
+surface designations), blocked-cell expectation stated.
+Remove prepare takes origins ONLY as sel_<i> checkbox
+values rendered from the live /designations read-back; a
+selection that no longer matches is refused (Stale
+selection) — no free-typed origin path. Confirm reuses
+PreparedJob (120 s single-use), writes ONE file
+tmp-then-rename via build_add_job / build_remove_job, and
+writes audit + activity rows (PlaceDesignationJob /
+category designation) under the remediation round's
+fail-loud pattern — no if-let-Ok swallowing reintroduced.
+
+VERDICT: designation_verdict_panel diffs the job against
+the CURRENT /designations (new designate.rs helpers:
+existing_from_json, cell_match, diff_add, diff_remove;
+corner-exact on bridge 0.6.6, band-only counted + labelled
+partial on older bridges). Rendered on the confirm outcome
+page and as the latest-job panel on every /designate visit
+(reconstructed from the activity payload). The write alone
+never claims placement: statuses LANDED / PARTIALLY LANDED
+/ SCHEDULED — verdict pending.
+
+SYNTHETIC FIRST: live-synthetic-v065/bridge-designations
+.json regenerated to the 0.6.6 route shape (per-cell rows,
+proto "MiningDesignator", corners [6, 9, 9, 6], centerRaw
+491520); correction noted in SYNTHETIC.txt + SPEC XX.
+
+VERIFY: cargo build 0 warnings; cargo test 41/41 (25
+pre-existing + 13 designate stage-3 + 3 new read-back
+verdict tests). tools/check_designate_page.sh PASS
+(gameId pin, 6-cell pad with edge warnings, exactly one
+add file re-verified under an independent Python v2
+canonical, replay refused, latest-job panel, remove flow
++ remove file verified, /log carries PlaceDesignationJob,
+bridge-down prepare 502, /designate 200-with-notice).
+check_place_page.sh, check_log_page.sh and
+check_audit_fail_loud.sh still PASS.
+
+DOCS: SPEC Addendum XX (contract as built);
+DESIGNATION-DESIGN-NOTE.md section 6 (as-built + the
+weekend shakedown that closes the round: scratch-save pad
+add, remove, save+reload, one replace case — see there);
+BEHAVIOURS.md recon-verdict status updated (executor
+built; pads executable, pit generation stays advisory
+until the layers route); INSTALL.md refreshed (builder
+0.2.0 + /designate, bridge 0.6.6, exe size).
+
+RESTAGE + BUNDLE: dist/coi.exe = 6,345,284 B, sha256
+33f063cea7ee5e6b485e42bc3aa0e52fbee0e8a992d2c9350c
+259e171306dd1d (Windows release build 0 warnings).
+weekend-bundle refreshed: CoiBridge-mod-0.6.6.zip
+(27,399 B, 806b7a9e...ffe10) replaces 0.6.5,
+QoSBuilder-mod-0.2.0.zip (47,373 B, 680d81ea...5131)
+replaces 0.1.0, exe replaced; BUNDLE-README rows
+re-measured from the files + the designation install
+line (builder 0.2.0 includes designation jobs, ships
+disabled). The follow-up push carries all of it.

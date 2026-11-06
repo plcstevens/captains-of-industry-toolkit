@@ -79,12 +79,18 @@ Evidence (GAME-CODE, recon round 14 — see bridge/MODDING-NOTES.md):
 executor) carrying Add/Remove designation batches — single-use,
 expiring, gameId-pinned, sha256-sealed job files, written by the
 companion only at a §12-style confirm step — is the sanctioned route.
-**That executor is NOT built in this round** (build decision for
-Philip). Until it exists and passes the sandbox-first rule, all
-designation behaviours below are **ADVISORY / plan-producing**: the
-agent computes the full designation set (origins + corner heights)
-and Philip (or ATD itself, if installed) places it. Per-action-class
-authorisation still applies once built.
+**BUILT 2026-11-06** (designation stages 1–4; SPEC Addendum XX):
+QoSBuilder 0.2.0 executes schema-2 designation jobs, and the
+companion's /designate page plans from live bridge data with a
+read-back verdict. **Pads are executable end-to-end** (pending
+the live scratch-save shakedown that closes the round);
+**pit generation below stays ADVISORY / plan-producing** — the
+planner core in `coi/src/designate.rs` implements the rules
+over per-column inputs, but the bridge serves no per-column
+layer stacks yet, so the full ATD set is computed only once
+that route exists (the agent computes origins + corner heights
+and Philip — or ATD itself, if installed — places them until
+then). Per-action-class authorisation still applies.
 
 ---
 
