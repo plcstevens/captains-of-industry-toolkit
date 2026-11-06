@@ -1,6 +1,6 @@
 # Installing the toolkit on the game PC
 
-Three downloads, three destinations. Quit the game before swapping any
+Downloads go to three destinations. Quit the game before swapping any
 mod files — relaunch afterwards.
 
 ## 1. The companion program
@@ -13,6 +13,11 @@ your browser. (On this repo, the Actions tab's companion-release
 workflow also builds the current program — Run workflow on main, then
 download the artifact it produces.)
 
+The current build is 6,160,589 bytes. It adds the /place page
+(blueprint placement through the QoSBuilder mod, section 4 below)
+and the redesigned interface: sidebar navigation, an always-visible
+game status strip, and server-drawn charts throughout.
+
 ## 2. The CoiBridge mod (archive: CoiBridge-mod-0.6.4)
 
 Unzip into the game's Mods folder:
@@ -22,7 +27,7 @@ Unzip into the game's Mods folder:
 The archive contains a single CoiBridge folder. Replace the old
 CoiBridge folder there completely — do not merge old and new files.
 
-## 3. The QoS suite (archive: QoS-suite-0.4.0)
+## 3. The QoS suite (archive: QoS-suite-0.5.1)
 
 Unzip into the same Mods folder. The archive creates five folders
 alongside CoiBridge:
@@ -32,7 +37,35 @@ alongside CoiBridge:
 
 QoSCore must be present — the other four depend on it.
 
-## 4. Back in the game
+**WARNING — replacing the feature folders is not optional.** Suite
+0.5.1 carries the three daily feature mods at version 0.1.2, which fix
+a save-breaking bug: the 0.1.1 versions of QoSChickens,
+QoSVehicleRecovery and QoSPriorityActuator make the game fail to save
+(their calendar subscriptions could not be serialized). Delete the old
+0.1.1 folders and put the 0.1.2 folders in their place — never keep
+both versions side by side. Saves written by the fixed versions need
+these mods present to load; the game will refuse removal rather than
+corrupt a save.
+
+## 4. The QoSBuilder mod (archive: QoSBuilder-mod-0.1.0)
+
+A separate archive. Unzip into the same Mods folder; it creates one
+more folder:
+
+    QoSBuilder
+
+QoSBuilder places whole blueprints (buildings, belts and pipes in one
+batch) — but only from job files the companion writes after you
+confirm a placement on its /place page. Job files land in:
+
+    %APPDATA%\Captain of Industry\QoS\jobs
+
+The mod ships switched OFF; nothing executes until you enable it under
+Settings. Each job is single-use, expires after 30 minutes, is pinned
+to one specific saved game, and is hash-sealed — a job edited after
+confirmation is refused and logged.
+
+## 5. Back in the game
 
 1. Relaunch, and confirm mods are enabled under
    Settings → Miscellaneous.
