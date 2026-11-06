@@ -1483,3 +1483,192 @@ live install (the standing suite class): the feed file itself is
 only written by the mods in-game; QoSCoreService's new ICalendar
 constructor injection resolves by the same DI pattern the feature
 services already use, but has not been observed live.
+
+### Addendum XVII — The QoSBuilder job-file contract: placement by confirmed file (2026-11-05)
+
+Recon round 10 closed the web channel for placement: the game's
+JSON command index can never construct `BuildTransportCmd` or
+`BatchCreateStaticEntitiesCmd` (collection arguments are blocked
+by the builder), so blueprints, belts and pipes cannot be placed
+through `/command` — ever, by construction. Philip approved the
+alternative (2026-11-05): **QoSBuilder**, an in-game QoS mod that
+executes placement *job files*. This addendum is the contract
+between the companion (writer) and the mod (executor).
+
+**The file IS the confirmed order.** The companion writes a job
+file ONLY at the §12 confirm step of the Place flow (below) — the
+file is to placement what the POSTed envelope is to a command.
+The mod has no other trigger: no chat command, no hot folder
+semantics beyond this schema, no network surface.
+
+**Schema v1** (one JSON object, one file `<jobId>.json`):
+
+| Field | Meaning |
+|---|---|
+| `jobId` | GUID (lowercase, hyphenated). The single-use key. |
+| `schema` | `1`. Anything else is refused. |
+| `createdUtc` / `expiresUtc` | ISO-8601 UTC (`...Z`). TTL at issue: **30 minutes**. |
+| `gameId` | The gameId string from `/api/v1/game-info` at prepare time. The mod compares it to the running game's own `IGameIdProvider` value. |
+| `companionUser` | The companion session user who confirmed. Attribution only. |
+| `blueprintName` | Display name (attribution + event readability). |
+| `blueprintString` | The blueprint string. The mod parses it with the game's own `BlueprintsLibrary.TryParseFromString` — a pure parse; the player's library is untouched. |
+| `anchor` | `{x, y, z}` — the world tile the blueprint's origin lands on. |
+| `rotationDeg` | 0 / 90 / 180 / 270 — quarter-turn rotation about the origin, applied before the anchor offset. |
+| `applyConfiguration` | Passed to the batch command (recipes / storage products / priorities apply, as with an in-game paste). |
+| `limits.maxItems` | The job's own item cap (500 from the website). |
+| `sha256` | Lowercase hex SHA-256 of the canonical payload (below). |
+
+**Canonical payload + hash.** The hash covers every field above
+except `sha256` itself, serialized in the fixed field order
+shown, compact (no spaces), integers bare, strings escaped by
+ONE rule: `"` → `\"`, `\` → `\\`, control chars (< 0x20) →
+`\u00xx` (lowercase hex), everything else raw UTF-8. Hash =
+SHA-256 over the UTF-8 bytes. The mod rebuilds the canonical
+form from the PARSED job (unknown extra fields are ignored;
+numbers canonicalize through integer truncation — a `90.0`
+re-serialization hashes as `90`), so any post-confirm edit to a
+covered field fails the check while innocent reformatting of
+the file cannot. Both writers and the check are pinned by a
+shared test vector (companion unit test + the stub check
+script's independent Python implementation).
+
+**Claim / consume semantics (single-use, crash-safe).** The mod
+scans `%APPDATA%\Captain of Industry\QoS\jobs\` at each in-game
+day end, ONLY while its `enabled` config is on (it ships OFF —
+while off, the folder is not even scanned and jobs simply
+expire). A processed-ids record (`processed.txt`, one jobId per
+line, same folder) is re-read every pass. A job whose id is
+already recorded is filed to `.done` untouched. Otherwise, in
+order: a validation refusal (malformed / unsupported-schema /
+bad-hash / expired / wrong-game / unsupported-rotation /
+reflection-unsupported / blueprint-unparseable / not-a-blueprint
+/ over-item-cap — the cap is min(job cap, mod config
+`max_items_per_job`, default 500) / track-rotation-unsupported /
+item-transform-failed / nothing-to-place) appends the id to the
+record, renames the file `.failed`, records a `JobRefused`
+activity event with the reason, and takes NO other action. A
+valid job is CLAIMED first (renamed `.claimed`, id appended,
+`JobClaimed` event) and only then scheduled — one
+`BatchCreateStaticEntitiesCmd` via `IInputScheduler`
+(`DeferToProto`, validation suppression always off,
+`applyConfiguration` from the job) — then renamed `.done` with a
+`JobScheduled` event (item counts, skipped counts,
+surfaces/decals-ignored counts, anchor, rotation). A scheduling
+exception renames `.failed` + `JobScheduleFailed`. Because the
+claim precedes scheduling, no crash can re-run a job.
+
+**Placement semantics** mirror the game's own blueprint placer:
+per item — copy, clear `OriginalEntityId`, skip
+auto-built-by-parent protos, rotate about the anchor (anchor
+added after rotation; blueprint coordinates are origin-relative),
+rebuild transport trajectories from rotated pivots, offset
+pillars. Buildings, belts and pipes appear as ordinary
+construction sites; nothing is charged at placement. Mirroring
+is refused in v1; train-track items place only at rotation 0;
+surfaces and decals are not placed in v1 (counted in the event).
+
+**Honesty rule.** The mod attests *scheduled*, never *placed*:
+the batch is per-item in-game (one bad item errors, the rest
+still place), so the placement verdict is the companion's
+before/after census (bridge `/coi/v1/census` + topology) on the
+next snapshot — the same discipline as §12's read-back rule,
+one level up.
+
+**The companion flow** (the writer side, §12 shape): GET /place
+lists the embedded pack library (82 layouts; strings
+decode-verified at generation time by `tools/
+gen_blueprint_library.py`; the page carries the pack's
+not-in-game-tested honesty line). POST /place/prepare refuses
+when the game is unreachable or its gameId cannot be confirmed —
+no pin, no job — and otherwise renders the confirm page: summary,
+target gameId, expiry, the sha256, and the exact job JSON.
+POST /place/confirm (120 s single-use token, as §12) writes the
+file — tmp-then-rename into the jobs folder — and records audit
++ activity rows (action `PlaceBlueprintJob`, outcome
+`job-written` / `write-failed`, payload = the exact job JSON).
+There is NO other write path. Jobs folder resolution:
+`[builder] jobs_dir` in coi.toml (search order as
+[productivity]), default `%APPDATA%\Captain of Industry\QoS\
+jobs` — zero-configuration on the game PC, where companion and
+mod share the machine.
+
+**Versions.** QoSBuilder 0.1.0 (standalone zip — suite-pack
+integration after live verification); QoSCore ≥ 0.2.0 required;
+companion rebuilt (dist/coi.exe = 6,062,808 B). Verified: C#
+0 warnings / 0 errors; Rust 17/17 tests incl. the canonical
+vector; `tools/check_place_page.sh` PASS against the stub game
+(prepare pins, confirm writes a hash-verified file, replay
+refused, game-down prepare refuses). Unverified until live: DI
+resolution of the two game surfaces in the mod's constructor,
+the first real job end-to-end, and save+reload with the mod's
+serializer pair (the round-7 pattern, applied from birth).
+
+---
+
+## Addendum XVIII — Design system v1 implemented (2026-11-05, evening)
+
+The companion website is restyled end-to-end on the design system in
+DESIGN.md. Philip delegated the open design decisions ("make and do
+the last decisions please"); the defaults adopted and built are:
+**dark theme only, comfortable density only, blue accent #5b9dff**.
+Presentation only — every route, form field, CSRF/token mechanic, the
+§12 prepare → confirm → apply flow, and the audit/activity writes are
+behaviourally unchanged.
+
+**As built.** One embedded token stylesheet (five-layer surface
+stair, border-first elevation, system fonts); the app shell is a
+232 px sidebar with the four nav groups (Monitor / Game / Library /
+System) and an always-visible game status strip (date, PAUSED/RUNNING
+badge, speed, tick, population; OFFLINE variant when the game does not
+answer, fetched per render — there is no fabricated "last known"
+state). All 13 pages + login + the generic Prepare form + the /place
+flow are restated on the class contracts (.btn tiers, token .badge
+set with UNVERIFIED / UNEVALUABLE dashed variants, .table/.num,
+.callout, .filterbar, .field, stat tiles, cards, .detail grid,
+.feed for the Log). The §12 confirm sheet follows DESIGN §3.9
+exactly: warning band ("This will change your game."; danger band
+"This cannot be undone." for irreversible command types), 17 px
+summary, the state line unchanged, caption "Exact command sent to
+the game" over the exact JSON, Run + Cancel as full-size peers,
+expiry caption. Charts are server-generated inline SVG per DESIGN
+§4: product sparklines (Products, Product detail, Snapshots trends),
+TM/LM flow pairs (Products Net LM), forecast runway bars (basis
+string verbatim, 12-month cap, quarter tick), machine-state stacked
+bars (Overview, Issues productivity), power balance bars with the
+averages as UNVERIFIED mini-bars, storage fill bars, research
+progress fillbars. Degraded states render in-shell: D1 callout +
+checks on game-unreachable pages (HTTP behaviour unchanged — the
+pages that returned 200 still do, game_unreachable keeps its 502),
+D2 placeholder cards where a bridge section is absent, D3 chips on
+partial data.
+
+**Deviations from DESIGN.md as written** (each deliberate, recorded
+here): Place sits in the nav's Game group (the page map predates
+/place); nav count pills are omitted (nothing is computed in the
+shell to source them); the productivity section keeps its verdict
+lines as text under the new per-proto stacked bars (the eval structs
+are private to productivity.rs — bars come from the store's
+machine-state aggregates instead); Issue-detail's Act-on-it tables
+render full-width below the detail grid (the per-entity tables do
+not fit the 320 px rail); Actions' bridge-absent panel keeps its
+richer copy rather than collapsing to a D2 one-liner; runway bars
+have no seasonal hatching (Forecast carries no seasonal flag —
+seasonality lives in the basis strings, printed verbatim, and in
+the seasonal captions); Product sources keep both periods stacked
+instead of a .seg switch; the Machines table's state cell shows the
+token word (Starved/Blocked) — text search matches the token words,
+the state dropdown still filters on the raw state via data-state.
+
+**Verification.** cargo build clean (0 warnings), cargo test 17/17,
+tools/check_place_page.sh PASS, tools/check_log_page.sh PASS
+(its verbatim import sentence preserved). Full page sweep against
+the stub game (live-synthetic-v064 capture + the v06 power capture):
+all routes 200 and populated; degraded sweep (stub down) renders
+in-shell with the OFFLINE strip. The stub gained a /coi/v1/power
+route so the power panel is sweep-verifiable. Screenshots:
+design-mock/after-overview.png, after-issues.png, after-confirm.png
+(inspected). dist/coi.exe restaged: 6,160,589 B, sha256
+9976089fc6d45bd185e2afce759f0d1758752c9fb759e8e976b94c66677c2072.
+Not covered by the stub: product-history sparklines against real
+history (the stub serves empty series by design) — the code path is
+the same one the Snapshots trends render through, which is covered.

@@ -74,11 +74,25 @@ struct Prepared {
     created: u64,
 }
 
+/// A prepared blueprint-placement job (QoSBuilder, SPEC Addendum
+/// XVII): the exact job-file bytes a confirm will write, plus the
+/// game context captured at prepare for the activity record.
+struct PreparedJob {
+    job_id: String,
+    file_json: String,
+    summary: String,
+    game_id: String,
+    game_date: Option<String>,
+    game_tick: Option<i64>,
+    created: u64,
+}
+
 struct State {
     cfg: Config,
     db_path: String,
     sessions: Mutex<HashMap<String, Session>>,
     prepared: Mutex<HashMap<String, Prepared>>,
+    prepared_jobs: Mutex<HashMap<String, PreparedJob>>,
 }
 
 fn now_unix() -> u64 {
@@ -357,6 +371,7 @@ pub fn cmd(cfg: &Config, db_path: &str, args: &[String]) -> i32 {
         db_path: db_path.to_string(),
         sessions: Mutex::new(HashMap::new()),
         prepared: Mutex::new(HashMap::new()),
+        prepared_jobs: Mutex::new(HashMap::new()),
     });
     for stream in listener.incoming() {
         match stream {
@@ -429,6 +444,9 @@ fn route(state: &State, req: &Request) -> Response {
                 ("GET", "/entities") => page_entities(state, &session, req),
                 ("GET", "/trade") => page_trade(state, &session, req),
                 ("GET", "/plans") => page_plans(state, &session, req),
+                ("GET", "/place") => page_place(state, &session),
+                ("POST", "/place/prepare") => do_place_prepare(state, &session, req),
+                ("POST", "/place/confirm") => do_place_confirm(state, &session, req),
                 ("GET", "/research") => page_research(state, &session),
                 ("GET", "/actions") => page_actions(state, &session),
                 ("POST", "/actions/prepare") => do_prepare(state, &session, req),
@@ -494,58 +512,475 @@ fn esc(s: &str) -> String {
 }
 
 const CSS: &str = "
-body{background:#12141a;color:#e8eaf0;font:14px/1.5 system-ui,sans-serif;margin:0}
-header{background:#171b25;padding:10px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-header .brand{font-weight:700;font-size:16px}
-nav a{color:#a8c7fa;text-decoration:none;margin-right:14px}
-nav a:hover{text-decoration:underline}
-header form{margin-left:auto}
-main{padding:20px;max-width:1200px;margin:0 auto}
-h1{font-size:20px;margin:0 0 4px} h2{font-size:16px;margin:22px 0 8px}
-.sub{color:#9aa3b2} .badge{padding:1px 8px;border-radius:8px;background:#2a2f3a}
-.paused{color:#ffb020}.running{color:#4ade80}
-.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
-.col{background:#1a1e28;border-radius:10px;padding:12px 14px}
+:root{
+  --bg-0:#0b0e14; --bg-1:#10141d; --surface:#151a26; --surface-2:#1b2130; --surface-3:#232b3e;
+  --border:#263048; --border-strong:#37466a; --border-subtle:#1a2132;
+  --text-1:#e9edf6; --text-2:#a9b3c7; --text-3:#6d7990; --text-disabled:#49536a;
+  --accent:#5b9dff; --accent-strong:#3b78e0; --accent-soft:rgba(91,157,255,.13); --on-accent:#fff;
+  --ok:#4cc38a; --ok-soft:rgba(76,195,138,.13);
+  --starved:#e8933c; --starved-soft:rgba(232,147,60,.14);
+  --blocked:#e5534b; --blocked-soft:rgba(229,83,75,.13);
+  --paused:#8494ab; --paused-soft:rgba(132,148,171,.14);
+  --warning:#e5c33b; --warning-soft:rgba(229,195,59,.12);
+  --critical:#f85149; --critical-soft:rgba(248,81,73,.12);
+  --info:#5b9dff; --info-soft:rgba(91,157,255,.13);
+  --unverified:#a371f7; --unverified-soft:rgba(163,113,247,.12);
+  --chart-grid:#232c42; --chart-track:#232b3e;
+  --font-ui:system-ui,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;
+  --font-mono:ui-monospace,\"Cascadia Mono\",Consolas,\"SF Mono\",Menlo,monospace;
+  --r-sm:6px; --r-md:10px; --r-lg:14px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-0);color:var(--text-1);font:14px/1.5 var(--font-ui)}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+h1{font-size:22px;line-height:28px;margin:0 0 4px;font-weight:650}
+h2{font-size:15px;line-height:20px;font-weight:650;margin:22px 0 8px}
+h3{font-size:14px;line-height:20px;font-weight:600;margin:16px 0 6px}
+p{margin:0 0 10px}
+.mono,code{font-family:var(--font-mono);font-size:12.5px}
+.num{font-variant-numeric:tabular-nums;text-align:right}
+.u{color:var(--text-3);font-size:12px}
+.sub,.caption{color:var(--text-2);font-size:12px}
+.caption{margin-top:6px}
+.lock{color:var(--text-3)}
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+aside{background:var(--bg-1);border-right:1px solid var(--border-subtle);padding:16px 12px;display:flex;flex-direction:column;gap:16px}
+.brand{font-weight:700;font-size:16px;padding:0 8px}
+.brand .ver{color:var(--text-3);font-size:12px;font-weight:400;margin-top:2px}
+.statusbox{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px}
+.statusbox .date{font-size:15px;font-weight:650}
+.statusbox .meta{color:var(--text-2);font-size:12px;margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.statusbox--down{border-color:var(--critical)}
+nav .group{color:var(--text-3);font-size:12px;letter-spacing:.02em;padding:10px 8px 4px}
+.navitem{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r-sm);color:var(--text-2);margin-bottom:2px}
+.navitem:hover{background:var(--surface-2);text-decoration:none}
+.navitem.active{background:var(--accent-soft);color:var(--text-1);font-weight:600;box-shadow:inset 2px 0 0 var(--accent)}
+.sidefoot{margin-top:auto;border-top:1px solid var(--border-subtle);padding:10px 8px 0;color:var(--text-2);font-size:13px;display:flex;gap:8px;align-items:center}
+.sidefoot form{margin-left:auto}
+main{padding:24px;max-width:1280px;width:100%}
+.eyebrow{color:var(--text-3);font-size:12px;letter-spacing:.02em}
+.pagehead{display:flex;align-items:flex-end;gap:16px;margin-bottom:20px}
+.pagehead h1{margin:2px 0 4px}
+.pagehead .summary{color:var(--text-2)}
+.pagehead .actions{margin-left:auto}
+@media(max-width:900px){.shell{grid-template-columns:1fr}aside{flex-direction:row;flex-wrap:wrap;align-items:flex-start}nav{display:flex;overflow-x:auto;flex-wrap:nowrap}.sidefoot{margin:0;border:0}main{padding:16px}}
+/* ---------- buttons ---------- */
+button,.btn{background:var(--accent-strong);color:var(--on-accent);border:1px solid transparent;border-radius:var(--r-sm);padding:6px 14px;font-size:14px;font-family:inherit;cursor:pointer;display:inline-block;text-decoration:none;transition:background .12s}
+button:hover,.btn:hover{background:#4a86ec;text-decoration:none}
+.btn--secondary,button.ghost,button.secondary{background:var(--surface-2);border-color:var(--border-strong);color:var(--text-1)}
+.btn--secondary:hover,button.ghost:hover,button.secondary:hover{background:var(--surface-3)}
+.btn--danger,button.danger{background:var(--critical);color:#fff}
+.btn--danger:hover,button.danger:hover{background:#ff6b64}
+.btn--ghost{background:transparent;color:var(--text-2);border-color:transparent}
+.btn--ghost:hover{background:var(--surface-2)}
+.btn--sm,button.sm{padding:4px 10px;font-size:13px}
+button:disabled,.btn.disabled{background:var(--surface-3);color:var(--text-disabled);cursor:not-allowed;border-color:transparent}
+/* ---------- badges ---------- */
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent;white-space:nowrap;background:var(--surface-2);color:var(--text-2)}
+.badge--ok{background:var(--ok-soft);color:var(--ok)}
+.badge--starved{background:var(--starved-soft);color:var(--starved)}
+.badge--blocked{background:var(--blocked-soft);color:var(--blocked)}
+.badge--paused{background:var(--paused-soft);color:var(--paused)}
+.badge--warning{background:var(--warning-soft);color:var(--warning)}
+.badge--critical{background:var(--critical-soft);color:var(--critical)}
+.badge--info{background:var(--info-soft);color:var(--info)}
+.badge--unverified{background:transparent;color:var(--unverified);border:1px dashed var(--unverified)}
+.badge--unev{background:var(--paused-soft);color:var(--paused);border:1px dashed var(--paused)}
+.badge--solid-paused{background:var(--paused);color:#0b0e14}
+.badge--solid-ok{background:var(--ok);color:#0b0e14}
+.badge--src-companion{background:var(--info-soft);color:var(--info)}
+.badge--src-qos{background:var(--ok-soft);color:var(--ok)}
+.badge--src-system{background:var(--paused-soft);color:var(--paused)}
+.paused{color:var(--paused)}.running{color:var(--ok)}
+/* ---------- cards / panels ---------- */
+.card,.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;margin-bottom:16px}
+.panel h2:first-child,.card h2:first-child{margin-top:0}
+.card .cardhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.card .cardhead h2{margin:0}.card .cardhead .right{margin-left:auto}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:16px}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.cols2{grid-template-columns:1fr}}
+.col{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px}
 .col h2{margin-top:0}
-.card{background:#222836;border-radius:8px;padding:9px 11px;margin-bottom:9px}
-.card .p{font-weight:600}.card .t{color:#c7cede}.card .e{color:#9aa3b2;font-size:13px}
-.card .f{color:#a8c7fa;font-size:13px}
-.fn{border-left:4px solid #f44336}.fl{border-left:4px solid #ff9800}
-.wa{border-left:4px solid #ffc107}.ig{border-left:4px solid #5b6472}
-table{border-collapse:collapse;width:100%}
-th,td{padding:5px 8px;text-align:right;border-bottom:1px solid #262c3a;vertical-align:top}
-th:first-child,td:first-child{text-align:left}
-button,.btn{background:#2b4acb;color:#fff;border:0;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:14px;text-decoration:none;display:inline-block}
-button:hover,.btn:hover{background:#3a5ce0}
-button:disabled{background:#39405a;color:#8b93a5;cursor:not-allowed}
-button.ghost{background:#2a2f3a}
-input[type=password],input[type=text]{background:#0e1015;border:1px solid #39405a;border-radius:6px;color:#e8eaf0;padding:7px 10px;width:260px}
-.panel{background:#1a1e28;border-radius:10px;padding:16px 18px;margin-bottom:16px}
-.lock{color:#8b93a5}
-pre{background:#0e1015;border-radius:8px;padding:12px;overflow:auto;font-size:13px}
-img.shot{max-width:100%;border-radius:10px;margin-top:14px}
-.err{background:#4a2020;border:1px solid #a33;border-radius:8px;padding:10px 14px;margin-bottom:14px}
-.ok{background:#1e4028;border:1px solid #2e7d32;border-radius:8px;padding:10px 14px;margin-bottom:14px}
-a{color:#a8c7fa}
-.login-wrap{max-width:420px;margin:60px auto}
-.spark{color:#9aa3b2;font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px}
+.stat .label{color:var(--text-2);font-size:12px;letter-spacing:.02em}
+.stat .value{font-size:24px;line-height:28px;font-weight:650;font-variant-numeric:tabular-nums;margin:2px 0}
+.stat .ctx{color:var(--text-2);font-size:12px}
+.stat--critical{border-color:var(--critical)}
+.issue{background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px}
+.issue .p{font-weight:600}.issue .t{color:var(--text-1)} .issue .e{color:var(--text-2);font-size:13px}
+.issue .f{color:var(--accent);font-size:13px}
+.fn,.issue--fn{box-shadow:inset 2px 0 0 var(--critical)} .fl,.issue--fl{box-shadow:inset 2px 0 0 var(--warning)}
+.wa,.issue--wa{box-shadow:inset 2px 0 0 var(--info)} .ig,.issue--ig{box-shadow:inset 2px 0 0 var(--paused)}
+.quadhead{display:flex;gap:8px;align-items:center;margin:14px 0 8px}
+.quadhead:first-child{margin-top:0}
+.empty{border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:16px;text-align:center;color:var(--text-2);font-size:12px;margin-bottom:16px}
+/* ---------- callouts ---------- */
+.callout{border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;background:var(--surface)}
+.callout--info{background:var(--info-soft);border-color:var(--accent)}
+.callout--warn{background:var(--warning-soft);border-color:var(--warning)}
+.callout--danger,.err{background:var(--critical-soft);border:1px solid var(--critical);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px}
+.callout--ok,.ok{background:var(--ok-soft);border:1px solid var(--ok);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px}
+.callout details,.err details{margin-top:8px}
+/* ---------- tables ---------- */
+table{border-collapse:collapse;width:100%;margin-bottom:16px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--border-subtle);vertical-align:middle;text-align:left;font-size:13px}
+th{background:var(--surface-2);color:var(--text-2);font-size:12px;font-weight:600}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--surface-2)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.mono,th.mono{font-family:var(--font-mono);font-size:12.5px}
+tr.row--critical{box-shadow:inset 2px 0 0 var(--critical)}
+tr.row--blocked{box-shadow:inset 2px 0 0 var(--blocked)}
+tr.row--starved{box-shadow:inset 2px 0 0 var(--starved)}
+.tablecard{padding:0;overflow:hidden}
+.tablecard table{margin-bottom:0}
+.tablecard table th:first-child,.tablecard table td:first-child{padding-left:16px}
+.tablecard table th:last-child,.tablecard table td:last-child{padding-right:16px}
+.tablecard .cardhead{padding:16px 16px 0}
+.filterbar{display:flex;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-subtle);flex-wrap:wrap}
+.filterbar input[type=text],.filterbar input[type=search]{flex:1;min-width:160px}
+.filterbar .count{margin-left:auto;color:var(--text-2);font-size:12px}
+/* ---------- forms ---------- */
+input[type=text],input[type=password],input[type=search],input[type=number],select,textarea{background:var(--surface-3);border:1px solid var(--border-strong);border-radius:var(--r-sm);color:var(--text-1);padding:8px 10px;font-size:14px;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+label{font-size:13px}
+.field{margin-bottom:12px;max-width:420px}
+.field label{display:block;font-weight:600;font-size:13px;margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%}
+.field .hint{color:var(--text-3);font-size:12px;margin-top:4px}
+.field .ferr{color:var(--critical);font-size:12px;margin-top:4px}
+/* ---------- misc components ---------- */
+.fillbar{height:6px;background:var(--chart-track);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle}
+.fillbar>i{display:block;height:100%}
+.stackbar{display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--chart-track)}
+.stackbar>i{display:block;height:100%}
+.kv{display:flex;gap:8px;flex-wrap:wrap;color:var(--text-2);font-size:13px}
+.kvrow{display:flex;gap:12px;padding:4px 0;border-bottom:1px solid var(--border-subtle);font-size:13px}
+.kvrow .k{color:var(--text-3);font-size:12px;min-width:150px}
+pre{background:var(--surface-3);border-radius:var(--r-sm);padding:12px;overflow:auto;font-family:var(--font-mono);font-size:12.5px}
+details.payload summary{cursor:pointer;color:var(--text-2);font-size:12px}
+img.shot{max-width:100%;border-radius:var(--r-md);margin-top:0}
+.shotwrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;margin-bottom:16px}
+.seg{display:inline-flex;background:var(--surface-3);border-radius:999px;padding:2px;gap:2px}
+.seg a,.seg span{padding:3px 12px;border-radius:999px;color:var(--text-2);font-size:13px}
+.seg a:hover{text-decoration:none;background:var(--surface-2)}
+.seg .on{background:var(--surface);color:var(--text-1);font-weight:600}
+.pager{display:flex;gap:10px;align-items:center;margin-top:14px}
+.phase{border:1px solid var(--border-subtle);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px;background:var(--surface-2)}
+.phase .ev{color:var(--text-3);font-family:var(--font-mono);font-size:12px;margin-top:4px}
+.feed-day{color:var(--text-3);font-size:12px;letter-spacing:.02em;margin:18px 0 6px}
+.spark{color:var(--text-2);font-size:13px}
+/* ---------- confirm sheet (SS12 safety surface) ---------- */
+.confirm{max-width:640px;margin:24px auto;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r-lg);box-shadow:0 8px 28px rgba(0,0,0,.45);overflow:hidden}
+.confirm .band{padding:12px 20px;font-weight:650;background:var(--warning-soft);color:var(--warning);border-bottom:1px solid var(--warning)}
+.confirm .band--danger{background:var(--critical-soft);color:var(--critical);border-bottom-color:var(--critical)}
+.confirm .inner{padding:20px}
+.confirm .summary{font-size:17px;line-height:24px;margin-bottom:8px}
+.confirm .meta{color:var(--text-2);font-size:13px;margin-bottom:14px}
+.confirm .actions{display:flex;gap:12px;margin-top:16px}
+.confirm .actions .btn,.confirm .actions button{flex:0 0 auto;padding:8px 20px}
+/* ---------- login ---------- */
+.login-wrap{max-width:420px;margin:60px auto;padding:0 16px}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:24px}
+.login-card .brand{font-size:18px;padding:0;margin-bottom:12px}
+/* detail layout (SS2.4): main column + right rail */
+.detail{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+@media(max-width:900px){.detail{grid-template-columns:1fr}}
 ";
 
-fn layout(session: &Session, title: &str, body: &str) -> String {
+/// The always-visible game status strip (DESIGN §2.1): game date,
+/// PAUSED/RUNNING, speed, tick, population — from data the game-info
+/// route and the bridge status route already serve. When the game
+/// does not answer, the strip flips to its "Game unreachable" state
+/// instead of vanishing, and the page body carries the D1 callout.
+fn status_strip(state: &State) -> String {
+    match get_json(&client(state), "/api/v1/game-info") {
+        Ok(g) => {
+            let paused = g["isPaused"].as_bool().unwrap_or(false);
+            let pop = bridge_json(state, "/coi/v1/status")
+                .map(|s| format!(" · pop {}", fmt_num(&s["population"])))
+                .unwrap_or_default();
+            format!(
+                "<div class=\"statusbox\"><div class=\"date\">{}</div>\
+                 <div class=\"meta\"><span class=\"badge {}\">{}</span><span>speed {}×</span></div>\
+                 <div class=\"meta\"><span class=\"mono\">tick {}</span><span>{}</span></div></div>",
+                esc(&sv(&g["date"])),
+                if paused { "badge--solid-paused" } else { "badge--solid-ok" },
+                if paused { "PAUSED" } else { "RUNNING" },
+                g["speed"],
+                g["tick"],
+                pop,
+            )
+        }
+        Err(_) => "<div class=\"statusbox statusbox--down\"><div class=\"date\">Game unreachable</div>\
+             <div class=\"meta\"><span class=\"badge badge--critical\">OFFLINE</span><span>no answer from the game API</span></div></div>"
+            .to_string(),
+    }
+}
+
+/// Which nav item a page title belongs to (DESIGN §2.2). Detail and
+/// result pages map back to their section; unknown titles get none.
+fn nav_active(title: &str) -> &'static str {
+    match title {
+        "Overview" => "Overview",
+        "Issues" | "Issue detail" | "Issue gone" => "Issues",
+        "Products" => "Products",
+        "Entities" => "Entities",
+        "Research" => "Research",
+        "Trade" => "Trade",
+        "Plans" => "Plans",
+        "Place a blueprint" | "Confirm placement" | "Job written" | "Job write failed"
+        | "Confirmation expired" | "Unknown blueprint" | "Bad anchor" | "Bad placement"
+        | "Prepare refused — game unreachable" | "Prepare refused — no game id"
+        | "Game unreachable" | "No game id" => "Place",
+        "Actions" | "Confirm command" | "Command result" | "Expired" => "Actions",
+        "Command catalogue" => "Catalogue",
+        "Guides" => "Guides",
+        "Snapshots" => "Snapshots",
+        "Log" => "Log",
+        _ => "",
+    }
+}
+
+fn layout(state: &State, session: &Session, title: &str, body: &str) -> String {
+    layout_nav(state, session, title, nav_active(title), body)
+}
+
+fn layout_nav(state: &State, session: &Session, title: &str, active: &str, body: &str) -> String {
+    const NAV: [(&str, &str, &str); 13] = [
+        ("Monitor", "Overview", "/"),
+        ("Monitor", "Issues", "/issues"),
+        ("Monitor", "Products", "/products"),
+        ("Monitor", "Entities", "/entities"),
+        ("Game", "Research", "/research"),
+        ("Game", "Trade", "/trade"),
+        ("Game", "Plans", "/plans"),
+        ("Game", "Actions", "/actions"),
+        ("Game", "Place", "/place"),
+        ("Library", "Guides", "/guides"),
+        ("Library", "Catalogue", "/catalogue"),
+        ("System", "Snapshots", "/snapshots"),
+        ("System", "Log", "/log"),
+    ];
+    let mut nav = String::new();
+    let mut group = "";
+    for (g, name, href) in NAV {
+        if g != group {
+            group = g;
+            nav.push_str(&format!("<div class=\"group\">{}</div>", g.to_uppercase()));
+        }
+        nav.push_str(&format!(
+            "<a class=\"navitem{}\" href=\"{}\">{}</a>",
+            if name == active { " active" } else { "" },
+            href,
+            name,
+        ));
+    }
     format!(
         "<!doctype html><html><head><meta charset=\"utf-8\">\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
          <title>{title} — CoI Companion</title><style>{CSS}</style></head><body>\
-         <header><span class=\"brand\">🏛️ CoI Companion</span>\
-         <nav><a href=\"/\">Overview</a><a href=\"/issues\">Issues</a><a href=\"/guides\">Guides</a>\
-         <a href=\"/products\">Products</a><a href=\"/entities\">Entities</a><a href=\"/trade\">Trade</a><a href=\"/research\">Research</a><a href=\"/plans\">Plans</a><a href=\"/actions\">Actions</a><a href=\"/catalogue\">Catalogue</a>\
-         <a href=\"/snapshots\">Snapshots</a><a href=\"/log\">Log</a></nav>\
-         <form method=\"post\" action=\"/logout\"><button class=\"ghost\" type=\"submit\">Log out ({})</button></form></header>\
-         <main>{body}</main></body></html>",
+         <div class=\"shell\"><aside>\
+         <div class=\"brand\">🏛️ CoI Companion<div class=\"ver\">local companion · design system v1</div></div>\
+         {}\
+         <nav>{}</nav>\
+         <div class=\"sidefoot\"><span>{}</span><form method=\"post\" action=\"/logout\"><button class=\"ghost btn--sm\" type=\"submit\">Log out</button></form></div>\
+         </aside><main>{body}</main></div></body></html>",
+        status_strip(state),
+        nav,
         esc(&session.user)
     )
 }
 
+// ---------------------------------------------------------------------------
+// Design-system component helpers (DESIGN §3)
+// ---------------------------------------------------------------------------
+
+/// Status pill (DESIGN §3.2): the word is the status; colour is never
+/// the only carrier. `variant` is one of the token-bound names in
+/// the CSS badge set (ok/starved/blocked/paused/warning/critical/
+/// info/unverified/unev).
+fn badge(variant: &str, word: &str) -> String {
+    format!("<span class=\"badge badge--{}\">{}</span>", variant, esc(word))
+}
+
+fn stat_tile(label: &str, value_html: &str, ctx_html: &str, critical: bool) -> String {
+    format!(
+        "<div class=\"stat{}\"><div class=\"label\">{}</div><div class=\"value\">{}</div><div class=\"ctx\">{}</div></div>",
+        if critical { " stat--critical" } else { "" },
+        esc(label),
+        value_html,
+        ctx_html,
+    )
+}
+
+/// Page header pattern (DESIGN §2.3): group eyebrow, H1, one-line
+/// summary, optional right-aligned actions.
+fn page_head(group: &str, title: &str, summary: &str, actions: &str) -> String {
+    format!(
+        "<div class=\"pagehead\"><div><div class=\"eyebrow\">{}</div><h1>{}</h1><div class=\"summary\">{}</div></div><div class=\"actions\">{}</div></div>",
+        esc(&group.to_uppercase()),
+        esc(title),
+        esc(summary),
+        actions,
+    )
+}
+
+/// D1 degraded state (DESIGN §2.4): the game did not answer — the
+/// three checks plus the raw error in a collapsed details block.
+fn degraded_game(e: &str) -> String {
+    format!(
+        "<div class=\"callout callout--danger\"><b>Game unreachable.</b> The game API did not answer. \
+         Check: the game is running · a save is loaded · <code>web_api_start</code> is active.\
+         <details><summary>Raw error</summary><pre>{}</pre></details></div>",
+        esc(e)
+    )
+}
+
+/// D2 degraded state: a section that needs a newer CoiBridge.
+fn degraded_bridge(what: &str, version: &str) -> String {
+    format!(
+        "<div class=\"empty\">{} arrive with <b>CoiBridge {}</b> — update the mod to see them here.</div>",
+        esc(what),
+        esc(version),
+    )
+}
+
+/// §4.6 fill bar: `pct` is 0..=100, `color` a CSS colour expression
+/// (usually a var(--token)). Always paired with the number as text
+/// by the caller.
+fn fillbar(pct: f64, color: &str, width_px: u32) -> String {
+    let pct = pct.clamp(0.0, 100.0);
+    format!(
+        "<span class=\"fillbar\" style=\"width:{}px\"><i style=\"width:{:.1}%;background:{}\"></i></span>",
+        width_px, pct, color
+    )
+}
+
+/// §4.1 sparkline: quantity points → inline SVG polyline. Flat
+/// series render as a flat line; the caller adds the min → max
+/// caption (the numbers always also exist as text).
+fn svg_sparkline(points: &[f64], color: &str) -> String {
+    if points.len() < 2 {
+        return String::new();
+    }
+    let (w, h, pad) = (96.0_f64, 28.0_f64, 3.0_f64);
+    let min = points.iter().cloned().fold(f64::INFINITY, f64::min);
+    let max = points.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let span = if (max - min).abs() < f64::EPSILON { 1.0 } else { max - min };
+    let step = (w - 2.0 * pad) / (points.len() - 1) as f64;
+    let mut pts = String::new();
+    let mut last = (0.0, 0.0);
+    for (i, v) in points.iter().enumerate() {
+        let x = pad + i as f64 * step;
+        let y = pad + (1.0 - (v - min) / span) * (h - 2.0 * pad);
+        last = (x, y);
+        pts.push_str(&format!("{:.1},{:.1} ", x, y));
+    }
+    format!(
+        "<svg width=\"96\" height=\"28\" viewBox=\"0 0 96 28\" role=\"img\"><polyline points=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"2\"/><circle cx=\"{:.1}\" cy=\"{:.1}\" r=\"2.5\" fill=\"{}\"/></svg>",
+        pts.trim(),
+        color,
+        last.0,
+        last.1,
+        color
+    )
+}
+
+/// §4.4 machine-state stacked bar: (token colour, label, count).
+/// Segments ≥12% get an inside label; the caller prints the full
+/// counts line as text beside it.
+fn svg_stacked(segments: &[(&str, &str, i64)]) -> String {
+    let total: i64 = segments.iter().map(|s| s.2).sum();
+    if total <= 0 {
+        return "<div class=\"stackbar\"></div>".to_string();
+    }
+    let mut h = String::from("<div class=\"stackbar\">");
+    for (color, label, n) in segments {
+        if *n <= 0 {
+            continue;
+        }
+        let pct = *n as f64 / total as f64 * 100.0;
+        let inside = if pct >= 12.0 {
+            format!("<span style=\"color:#0b0e14;font-size:11px;font-weight:600;padding-left:6px;line-height:14px\">{}</span>", esc(label))
+        } else {
+            String::new()
+        };
+        h.push_str(&format!(
+            "<i style=\"width:{:.1}%;background:{}\">{}</i>",
+            pct, color, inside
+        ));
+    }
+    h.push_str("</div>");
+    h
+}
+
+/// §4.3 runway bar: months of runway against the 12-month cap with
+/// the quarter (3-month) tick. Colour by forecast kind per DESIGN.
+fn svg_runway(months: f64, kind: &str) -> String {
+    let color = match kind {
+        "fill" => "var(--blocked)",
+        "stall-runway" if months < 3.0 => "var(--critical)",
+        "stall-runway" => "var(--starved)",
+        _ => "var(--starved)",
+    };
+    let pct = (months / 12.0 * 100.0).clamp(0.0, 100.0);
+    format!(
+        "<span style=\"position:relative;display:inline-block;vertical-align:middle\">{}\
+         <span style=\"position:absolute;left:25%;top:-2px;bottom:-2px;width:1px;background:var(--text-3)\" title=\"quarter (3 months)\"></span></span>",
+        fillbar(pct, color, 110)
+    )
+}
+
+/// §4.1 large variant for the Product detail chart (100% × 120).
+fn svg_sparkline_big(points: &[f64], color: &str) -> String {
+    if points.len() < 2 {
+        return String::new();
+    }
+    let (w, h, pad) = (720.0_f64, 120.0_f64, 6.0_f64);
+    let min = points.iter().cloned().fold(f64::INFINITY, f64::min);
+    let max = points.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let span = if (max - min).abs() < f64::EPSILON { 1.0 } else { max - min };
+    let step = (w - 2.0 * pad) / (points.len() - 1) as f64;
+    let mut pts = String::new();
+    let mut last = (0.0, 0.0);
+    for (i, v) in points.iter().enumerate() {
+        let x = pad + i as f64 * step;
+        let y = pad + (1.0 - (v - min) / span) * (h - 2.0 * pad);
+        last = (x, y);
+        pts.push_str(&format!("{:.1},{:.1} ", x, y));
+    }
+    format!(
+        "<svg width=\"100%\" height=\"120\" viewBox=\"0 0 720 120\" preserveAspectRatio=\"none\" role=\"img\"><polyline points=\"720,{h} {pts} {lx},{h}\" fill=\"var(--accent-soft)\" stroke=\"none\"/><polyline points=\"{pts}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"2\"/><circle cx=\"{lx:.1}\" cy=\"{ly:.1}\" r=\"3.5\" fill=\"{color}\"/></svg>",
+        h = h,
+        pts = pts.trim(),
+        lx = last.0,
+        ly = last.1,
+        color = color,
+    )
+}
+
+/// §4.2 compact flow bars for one product row: produced vs consumed
+/// on a shared scale (TM by default pair with LM in the text next to
+/// it). Produced = info/accent, consumed = neutral slate — a deficit
+/// only colours when a finding already flags it (caller's badge).
+fn svg_flow_pair(produced: i64, consumed: i64) -> String {
+    let max = produced.max(consumed).max(1) as f64;
+    let pw = produced as f64 / max * 100.0;
+    let cw = consumed as f64 / max * 100.0;
+    format!(
+        "<span style=\"display:inline-block;vertical-align:middle\">\
+         <span class=\"fillbar\" style=\"width:64px;display:block;margin-bottom:2px\"><i style=\"width:{:.1}%;background:var(--info)\"></i></span>\
+         <span class=\"fillbar\" style=\"width:64px;display:block\"><i style=\"width:{:.1}%;background:var(--paused)\"></i></span></span>",
+        pw, cw
+    )
+}
+
+/// f64 view of a stats flow array entry (values are i64 in the API).
 fn bare_page(title: &str, body: &str) -> String {
     format!(
         "<!doctype html><html><head><meta charset=\"utf-8\">\
@@ -566,24 +1001,26 @@ fn page_login(state: &State, req: &Request) -> Response {
     };
     let body = if user.is_none() {
         format!(
-            "<div class=\"login-wrap\"><div class=\"panel\">\
-             <h1>Welcome to CoI Companion</h1>\
+            "<div class=\"login-wrap\"><div class=\"login-card\">\
+             <div class=\"brand\">🏛️ CoI Companion</div>\
+             <h1>Welcome</h1>\
              <p class=\"sub\">No account exists yet on this machine. Choose the password for the local account — it is stored salted + hashed in the local database, never in the open.</p>{err}\
              <form method=\"post\" action=\"/login\">\
              <input type=\"hidden\" name=\"mode\" value=\"setup\">\
-             <p><label>Username<br><input type=\"text\" name=\"username\" value=\"captain\" required></label></p>\
-             <p><label>Password (min 8 chars)<br><input type=\"password\" name=\"password\" required></label></p>\
-             <p><label>Repeat password<br><input type=\"password\" name=\"password2\" required></label></p>\
+             <div class=\"field\"><label for=\"lu\">Username</label><input id=\"lu\" type=\"text\" name=\"username\" value=\"captain\" required></div>\
+             <div class=\"field\"><label for=\"lp\">Password</label><input id=\"lp\" type=\"password\" name=\"password\" required><div class=\"hint\">Minimum 8 characters.</div></div>\
+             <div class=\"field\"><label for=\"lp2\">Repeat password</label><input id=\"lp2\" type=\"password\" name=\"password2\" required></div>\
              <button type=\"submit\">Create account & log in</button></form></div></div>"
         )
     } else {
         format!(
-            "<div class=\"login-wrap\"><div class=\"panel\">\
-             <h1>CoI Companion — log in</h1>{err}\
+            "<div class=\"login-wrap\"><div class=\"login-card\">\
+             <div class=\"brand\">🏛️ CoI Companion</div>\
+             <h1>Log in</h1>{err}\
              <form method=\"post\" action=\"/login\">\
              <input type=\"hidden\" name=\"mode\" value=\"login\">\
-             <p><label>Username<br><input type=\"text\" name=\"username\" required></label></p>\
-             <p><label>Password<br><input type=\"password\" name=\"password\" required></label></p>\
+             <div class=\"field\"><label for=\"lu\">Username</label><input id=\"lu\" type=\"text\" name=\"username\" required></div>\
+             <div class=\"field\"><label for=\"lp\">Password</label><input id=\"lp\" type=\"password\" name=\"password\" required></div>\
              <button type=\"submit\">Log in</button></form></div></div>"
         )
     };
@@ -662,15 +1099,20 @@ fn check_csrf(session: &Session, req: &Request) -> Result<(), Response> {
     }
 }
 
-fn game_unreachable(e: &str) -> Response {
+fn game_unreachable(state: &State, session: &Session, e: &str) -> Response {
+    // D1 (DESIGN §2.4): the bare error page is retired — the shell
+    // renders, the status strip shows OFFLINE, and the body carries
+    // the checks + the raw error in a collapsed details block.
     Response::html(
         502,
-        bare_page(
+        layout(
+            state,
+            session,
             "Game unreachable",
             &format!(
-                "<main><div class=\"err\">The game API did not answer: {}</div>\
-                 <p>Is the game running with a save loaded and <code>web_api_start</code> active?</p></main>",
-                esc(e)
+                "{}<div class=\"pagehead\"><div><div class=\"eyebrow\">DEGRADED</div><h1>Game unreachable</h1>\
+                 <div class=\"summary\">This page needs live game data; stored pages (Snapshots, Log, Plans) still work.</div></div></div>",
+                degraded_game(e)
             ),
         ),
     )
@@ -701,24 +1143,6 @@ fn fmt_clock(unix: u64) -> String {
 // Content pages
 // ---------------------------------------------------------------------------
 
-fn game_header(live: &Live) -> String {
-    let g = &live.game;
-    let paused = g["isPaused"].as_bool().unwrap_or(false);
-    format!(
-        "<h1>{}</h1><div class=\"sub\">tick {} · <span class=\"badge {}\">{}</span> · speed {}x · game {}</div>",
-        esc(&sv(&g["date"])),
-        g["tick"],
-        if paused { "paused" } else { "running" },
-        if paused { "PAUSED" } else { "RUNNING" },
-        g["speed"],
-        esc(&sv(&g["gameId"])),
-    )
-}
-
-/// Prepare-form whose confirmation page carries a human-written
-/// summary (used by the entity pages, where the label names the exact
-/// machine/storage the command addresses). The args JSON itself is
-/// still shown verbatim on the confirmation page.
 fn prepare_form_labeled(session: &Session, cmd_type: &str, args: Value, summary: &str, label: &str) -> String {
     format!(
         "<form method=\"post\" action=\"/actions/prepare\" style=\"display:inline\">\
@@ -726,7 +1150,7 @@ fn prepare_form_labeled(session: &Session, cmd_type: &str, args: Value, summary:
          <input type=\"hidden\" name=\"type\" value=\"{}\">\
          <input type=\"hidden\" name=\"args\" value=\"{}\">\
          <input type=\"hidden\" name=\"label\" value=\"{}\">\
-         <button type=\"submit\">{}</button></form>",
+         <button class=\"btn--sm\" type=\"submit\">{}</button></form>",
         esc(&session.csrf),
         esc(cmd_type),
         esc(&args.to_string()),
@@ -741,11 +1165,15 @@ fn prepare_form(session: &Session, cmd_type: &str, args: Value, label: &str, dis
          <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
          <input type=\"hidden\" name=\"type\" value=\"{}\">\
          <input type=\"hidden\" name=\"args\" value=\"{}\">\
-         <button type=\"submit\" {}>{}</button></form>",
+         <button class=\"btn--sm\" type=\"submit\" {}>{}</button></form>",
         esc(&session.csrf),
         esc(cmd_type),
         esc(&args.to_string()),
-        if disabled { "disabled" } else { "" },
+        if disabled {
+            "disabled title=\"Already the current setting\""
+        } else {
+            ""
+        },
         esc(label),
     )
 }
@@ -754,7 +1182,7 @@ fn controls_html(session: &Session, live: &Live) -> String {
     let g = &live.game;
     let paused = g["isPaused"].as_bool().unwrap_or(false);
     let speed = g["speed"].as_i64().unwrap_or(1);
-    let mut h = String::from("<div class=\"panel\"><h2 style=\"margin-top:0\">Game controls</h2><p>");
+    let mut h = String::from("<div class=\"card\"><div class=\"cardhead\"><h2>Game controls</h2></div><p>");
     if paused {
         h.push_str(&prepare_form(session, "SetSimPauseStateCmd", json!({"isPaused": false}), "▶ Resume game", false));
     } else {
@@ -770,48 +1198,113 @@ fn controls_html(session: &Session, live: &Live) -> String {
     h
 }
 
-fn issues_html(issues: &[Issue], compact: bool) -> String {
-    let cols: [(&str, &str); 4] = [
-        ("Fix now", "fn"),
-        ("Fix later", "fl"),
-        ("Watch", "wa"),
-        ("Ignore for now", "ig"),
-    ];
-    let mut h = String::from("<div class=\"cols\">");
-    for (q, cls) in cols {
-        let items: Vec<&Issue> = issues.iter().filter(|i| i.quadrant == q).collect();
-        h.push_str(&format!("<div class=\"col\"><h2>{} ({})</h2>", q, items.len()));
-        let show = if compact { 4 } else { usize::MAX };
-        for i in items.iter().take(show) {
+/// Quadrant → (card inset class, badge variant) per DESIGN §1.1:
+/// Fix now = critical, Fix later = warning, Watch = info, Ignore
+/// for now = paused/neutral.
+fn quadrant_style(q: &str) -> (&'static str, &'static str) {
+    match q {
+        "Fix now" => ("issue--fn", "critical"),
+        "Fix later" => ("issue--fl", "warning"),
+        "Watch" => ("issue--wa", "info"),
+        _ => ("issue--ig", "paused"),
+    }
+}
+
+fn issue_card(i: &Issue, forecasts: Option<&[Forecast]>) -> String {
+    let (cls, _) = quadrant_style(i.quadrant);
+    let mut runway = String::new();
+    if let Some(f) = forecasts.and_then(|fs| fs.iter().find(|f| f.product == i.product)) {
+        let label = match f.kind {
+            "fill" => format!("storage full in ≈ {:.1} months", f.months),
+            "stall-runway" => format!("stock lasts ≈ {:.1} months (production stalled)", f.months),
+            _ => format!("stock lasts ≈ {:.1} months", f.months),
+        };
+        runway = format!(
+            "<div style=\"margin-top:6px\">{} <span class=\"sub\">{}</span></div>",
+            svg_runway(f.months, f.kind),
+            esc(&label)
+        );
+    }
+    format!(
+        "<div class=\"issue {cls}\"><div class=\"p\">{}</div><div class=\"t\"><a href=\"/issue?p={}&t={}\">{}</a></div>\
+         <div class=\"e\">{}</div><div class=\"f\">Fix: {}</div>{}</div>",
+        esc(&i.product),
+        url_enc(&i.product),
+        url_enc(&i.title),
+        esc(&i.title),
+        esc(&i.evidence),
+        esc(&i.fix),
+        runway,
+    )
+}
+
+fn issues_html(issues: &[Issue], compact: bool, forecasts: Option<&[Forecast]>) -> String {
+    let quads = ["Fix now", "Fix later", "Watch", "Ignore for now"];
+    let mut h = String::new();
+    if compact {
+        // Overview form: one card, quadrant heads inside, empty
+        // quadrants skipped, at most 4 cards per quadrant.
+        h.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>What needs attention</h2><span class=\"right\"><a href=\"/issues\">All issues →</a></span></div>");
+        let mut any = false;
+        for q in quads {
+            let items: Vec<&Issue> = issues.iter().filter(|i| i.quadrant == q).collect();
+            if items.is_empty() {
+                continue;
+            }
+            any = true;
+            let (_, variant) = quadrant_style(q);
             h.push_str(&format!(
-                "<div class=\"card {cls}\"><div class=\"p\">{}</div><div class=\"t\"><a href=\"/issue?p={}&t={}\">{}</a></div>\
-                 <div class=\"e\">{}</div><div class=\"f\">Fix: {}</div></div>",
-                esc(&i.product),
-                url_enc(&i.product),
-                url_enc(&i.title),
-                esc(&i.title),
-                esc(&i.evidence),
-                esc(&i.fix),
+                "<div class=\"quadhead\">{}<span class=\"caption\" style=\"margin:0\">{}</span></div>",
+                badge(variant, q),
+                items.len()
             ));
+            for i in items.iter().take(4) {
+                h.push_str(&issue_card(i, forecasts));
+            }
+            if items.len() > 4 {
+                h.push_str(&format!(
+                    "<div class=\"e\"><a href=\"/issues\">+ {} more…</a></div>",
+                    items.len() - 4
+                ));
+            }
         }
-        if compact && items.len() > show {
-            h.push_str(&format!(
-                "<div class=\"e\"><a href=\"/issues\">+ {} more…</a></div>",
-                items.len() - show
-            ));
-        }
-        if items.is_empty() {
-            h.push_str("<div class=\"e\">—</div>");
+        if !any {
+            h.push_str("<div class=\"empty\">Nothing needs attention — no issues on the board right now.</div>");
         }
         h.push_str("</div>");
+        return h;
     }
-    h.push_str("</div>");
+    // Full board: one headed section per quadrant, the "why this
+    // quadrant" copy as a collapsible info callout under the head.
+    for q in quads {
+        let items: Vec<&Issue> = issues.iter().filter(|i| i.quadrant == q).collect();
+        let (_, variant) = quadrant_style(q);
+        h.push_str(&format!(
+            "<div class=\"quadhead\">{}<span class=\"caption\" style=\"margin:0\">{} issue(s)</span></div>",
+            badge(variant, q),
+            items.len()
+        ));
+        h.push_str(&format!(
+            "<details class=\"callout callout--info\" style=\"padding:8px 16px\"><summary style=\"cursor:pointer\">Why this quadrant?</summary><p style=\"margin-top:8px\">{}</p></details>",
+            quadrant_why(q)
+        ));
+        if items.is_empty() {
+            h.push_str(&format!(
+                "<div class=\"empty\">No issues in \u{2018}{}\u{2019} right now.</div>",
+                q
+            ));
+        }
+        for i in items {
+            h.push_str(&issue_card(i, forecasts));
+        }
+    }
     h
 }
 
-fn pinned_table(session: &Session, live: &Live) -> String {
+fn pinned_table(session: &Session, live: &Live, issues: &[Issue]) -> String {
     let mut h = String::from(
-        "<table><tr><th>Pinned product</th><th>Quantity</th><th>Stored / cap</th><th>Prod TM/LM</th><th>Cons TM/LM</th><th></th></tr>",
+        "<div class=\"card tablecard\"><div class=\"cardhead\"><h2>Pinned products</h2><span class=\"right\"><a href=\"/products\">All products →</a></span></div>\
+         <table><thead><tr><th>Product</th><th>Trend (8 mo)</th><th class=\"num\">Quantity</th><th class=\"num\">Stored / cap</th><th class=\"num\">Prod TM/LM</th><th class=\"num\">Cons TM/LM</th><th></th></tr></thead><tbody>",
     );
     let mut ids = live.pinned_ids.clone();
     ids.sort_by_key(|id| live.names.get(id).cloned().unwrap_or_else(|| id.clone()));
@@ -821,10 +1314,34 @@ fn pinned_table(session: &Session, live: &Live) -> String {
             continue;
         }
         let name = live.names.get(id).cloned().unwrap_or_else(|| id.clone());
+        // Sparkline from the monthly history the live fetch already
+        // carries; colour follows the direction of travel.
+        let mut trend = String::new();
+        if let Some(q) = live.history["products"][id]["quantity"].as_array() {
+            let pts: Vec<f64> = q.iter().map(|v| v.as_f64().unwrap_or(0.0)).collect();
+            if pts.len() >= 2 {
+                let (first, last) = (pts[0], pts[pts.len() - 1]);
+                let color = if last < first {
+                    "var(--starved)"
+                } else if last > first {
+                    "var(--ok)"
+                } else {
+                    "var(--accent)"
+                };
+                trend = svg_sparkline(&pts, color);
+            }
+        }
+        let issue_badge = issues
+            .iter()
+            .find(|i| i.product == name)
+            .map(|i| format!(" {}", badge(quadrant_style(i.quadrant).1, i.quadrant)))
+            .unwrap_or_default();
         h.push_str(&format!(
-            "<tr><td><a href=\"/product?id={}\">{}</a></td><td>{}</td><td>{} / {}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+            "<tr><td><a href=\"/product?id={}\">{}</a>{}</td><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{} / {}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td>{}</td></tr>",
             esc(id),
             esc(&name),
+            issue_badge,
+            trend,
             fmt_num(&s["quantity"]),
             fmt_num(&s["stored"]),
             fmt_num(&s["storageCapacity"]),
@@ -833,7 +1350,7 @@ fn pinned_table(session: &Session, live: &Live) -> String {
             prepare_form(session, "PinToggleCmd", json!({"productToToggle": id}), "Unpin", false),
         ));
     }
-    h.push_str("</table>");
+    h.push_str("</tbody></table></div>");
     h
 }
 
@@ -841,7 +1358,11 @@ fn forecasts_html(forecasts: &[Forecast]) -> String {
     if forecasts.is_empty() {
         return String::new();
     }
-    let mut h = String::from("<p class=\"sub\">At current measured rates — any build, pause or trade change moves these dates.</p><table><tr><th>Product</th><th>Outlook</th><th>Advice</th></tr>");
+    let mut h = String::from(
+        "<div class=\"card tablecard\"><div class=\"cardhead\"><h2>Outlook — what happens next at current rates</h2></div>\
+         <p class=\"caption\" style=\"padding:0 16px\">At current measured rates — any build, pause or trade change moves these dates. The bar runs to the 12-month cap; the tick marks one quarter.</p>\
+         <table><thead><tr><th>Product</th><th>Outlook</th><th>Advice</th></tr></thead><tbody>",
+    );
     for f in forecasts.iter().take(8) {
         let label = match f.kind {
             "fill" => format!("storage full in ≈ {:.1} months", f.months),
@@ -849,14 +1370,15 @@ fn forecasts_html(forecasts: &[Forecast]) -> String {
             _ => format!("stock lasts ≈ {:.1} months", f.months),
         };
         h.push_str(&format!(
-            "<tr><td>{}</td><td>{}<br><span class=\"sub\">{}</span></td><td>{}</td></tr>",
+            "<tr><td>{}</td><td>{} <span class=\"sub\">{}</span><div class=\"caption\">Basis: {}</div></td><td>{}</td></tr>",
             esc(&f.product),
+            svg_runway(f.months, f.kind),
             esc(&label),
             esc(&f.basis),
             esc(&f.advice),
         ));
     }
-    h.push_str("</table>");
+    h.push_str("</tbody></table></div>");
     h
 }
 
@@ -864,67 +1386,178 @@ fn page_overview(state: &State, session: &Session) -> Response {
     let live = match fetch_live(&client(state)) {
         Ok(l) => l,
         Err(e) => {
-            // Game off / API down: still a 200 page (the power panel
-            // renders only if the bridge answers, which it won't).
-            let mut body = format!(
-                "<div class=\"err\">The game API did not answer: {}</div>\
-                 <p>Is the game running with a save loaded and <code>web_api_start</code> active? \
-                 The live panels appear here once it is.</p>",
-                esc(&e)
+            // Game off / API down: still a 200 page, D1 pattern (the
+            // power panel renders only if the bridge answers, which
+            // it won't).
+            let mut body = page_head(
+                "Monitor",
+                "Overview",
+                "The run at a glance — what needs attention, what happens next, and the products you pinned.",
+                "",
             );
+            body.push_str(&degraded_game(&e));
             body.push_str(&power_panel(state));
-            return Response::html(200, layout(session, "Overview", &body));
+            return Response::html(200, layout(state, session, "Overview", &body));
         }
     };
     let issues = compute_issues(&live);
     let forecasts = compute_forecasts(&live);
-    let mut body = game_header(&live);
-    body.push_str(&controls_html(session, &live));
-    body.push_str(&power_panel(state));
-    body.push_str("<h2>What needs attention</h2>");
-    body.push_str(&issues_html(&issues, true));
-    if !forecasts.is_empty() {
-        body.push_str("<h2>Outlook — what happens next at current rates</h2>");
-        body.push_str(&forecasts_html(&forecasts));
+    let power = power_data(state);
+    // Stat tile row (DESIGN §5 Overview): Population · Power
+    // balance · Machines working · Fix now.
+    let mut tiles = String::from("<div class=\"stats\">");
+    match bridge_json(state, "/coi/v1/status") {
+        Some(st) => {
+            let starving = st["arePeopleStarving"].as_bool().unwrap_or(false);
+            tiles.push_str(&stat_tile(
+                "POPULATION",
+                &fmt_num(&st["population"]),
+                &format!(
+                    "housing {} free · food ≈ {} months{}",
+                    fmt_num(&st["freeHousingCapacity"]),
+                    fmt_num(&st["monthsOfFood"]),
+                    if starving { " · <b>STARVING</b>" } else { "" },
+                ),
+                starving,
+            ));
+        }
+        None => tiles.push_str(&stat_tile(
+            "POPULATION",
+            "—",
+            "reported by CoiBridge — not answered right now",
+            false,
+        )),
     }
-    body.push_str("<h2>Pinned products</h2>");
-    body.push_str(&pinned_table(session, &live));
-    body.push_str("<img class=\"shot\" src=\"/screenshot.jpg\" alt=\"live screenshot\">");
-    Response::html(200, layout(session, "Overview", &body))
+    if let Some(p) = &power {
+        tiles.push_str(&stat_tile(
+            "POWER BALANCE",
+            &format!("{} <span class=\"u\">kW</span>", vi(&p["balanceKw"])),
+            &format!(
+                "{} generated · {} consumed · capacity {} kW",
+                vi(&p["generatedKw"]),
+                vi(&p["consumedKw"]),
+                vi(&p["generationCapacityKw"])
+            ),
+            vi(&p["balanceKw"]) < 0,
+        ));
+    }
+    let mut machine_rows: Option<Vec<Value>> = None;
+    if let Some(m) = bridge_json(state, "/coi/v1/machines") {
+        machine_rows = m["machines"].as_array().cloned();
+    }
+    if let Some(rows) = &machine_rows {
+        let count = |s: &str| rows.iter().filter(|r| r["state"].as_str() == Some(s)).count() as i64;
+        tiles.push_str(&stat_tile(
+            "MACHINES WORKING",
+            &format!("{} <span class=\"u\">/ {}</span>", count("Working"), rows.len()),
+            &format!(
+                "{} {}",
+                badge("starved", &format!("{} starved", count("NotEnoughInput"))),
+                badge("blocked", &format!("{} blocked", count("OutputFull")))
+            ),
+            false,
+        ));
+    }
+    let fix_now: Vec<&Issue> = issues.iter().filter(|i| i.quadrant == "Fix now").collect();
+    tiles.push_str(&stat_tile(
+        "FIX NOW",
+        &fix_now.len().to_string(),
+        &fix_now
+            .iter()
+            .map(|i| esc(&i.product))
+            .collect::<Vec<_>>()
+            .join(" · "),
+        !fix_now.is_empty(),
+    ));
+    tiles.push_str("</div>");
+
+    let mut body = page_head(
+        "Monitor",
+        "Overview",
+        "The run at a glance — what needs attention, what happens next, and the products you pinned.",
+        &format!(
+            "<form method=\"post\" action=\"/snapshots/take\"><input type=\"hidden\" name=\"csrf\" value=\"{}\"><button class=\"btn--secondary\" type=\"submit\">Take snapshot</button></form>",
+            esc(&session.csrf)
+        ),
+    );
+    body.push_str(&tiles);
+    body.push_str("<div class=\"cols2\"><div>");
+    body.push_str(&issues_html(&issues, true, Some(&forecasts)));
+    if let Some(rows) = &machine_rows {
+        let count = |s: &str| rows.iter().filter(|r| r["state"].as_str() == Some(s)).count() as i64;
+        let (w, s, b, p) = (
+            count("Working"),
+            count("NotEnoughInput"),
+            count("OutputFull"),
+            count("Paused"),
+        );
+        let other = rows.len() as i64 - w - s - b - p;
+        let pct = |n: i64| {
+            if rows.is_empty() {
+                0.0
+            } else {
+                n as f64 / rows.len() as f64 * 100.0
+            }
+        };
+        body.push_str(&format!(
+            "<div class=\"card\"><div class=\"cardhead\"><h2>Machine states</h2><span class=\"right badge badge--paused\">via CoiBridge</span></div>{}\
+             <div class=\"caption\">{} working ({:.0}%) · {} starved ({:.0}%) · {} blocked ({:.0}%) · {} paused ({:.0}%){} — of {} machines, this snapshot.</div></div>",
+            svg_stacked(&[
+                ("var(--ok)", "Working", w),
+                ("var(--starved)", "Starved", s),
+                ("var(--blocked)", "Blocked", b),
+                ("var(--paused)", "Paused", p),
+                ("var(--surface-3)", "Other", other),
+            ]),
+            w, pct(w), s, pct(s), b, pct(b), p, pct(p),
+            if other > 0 { format!(" · {} other", other) } else { String::new() },
+            rows.len(),
+        ));
+    }
+    body.push_str("</div><div>");
+    if let Some(p) = &power {
+        body.push_str(&power_panel_html(p));
+    }
+    body.push_str(&controls_html(session, &live));
+    body.push_str("</div></div>");
+    body.push_str(&forecasts_html(&forecasts));
+    body.push_str(&pinned_table(session, &live, &issues));
+    body.push_str("<div class=\"shotwrap\"><div style=\"display:flex;align-items:center;margin-bottom:10px\"><h2 style=\"margin:0\">Live screenshot</h2><span class=\"caption\" style=\"margin:0 0 0 auto\">refreshed on page load</span></div><img class=\"shot\" src=\"/screenshot.jpg\" alt=\"live screenshot\"></div>");
+    Response::html(200, layout(state, session, "Overview", &body))
 }
 
 fn page_issues(state: &State, session: &Session) -> Response {
     let live = match fetch_live(&client(state)) {
         Ok(l) => l,
         Err(e) => {
-            return Response::html(
-                200,
-                layout(
-                    session,
-                    "Issues",
-                    &format!(
-                        "<div class=\"err\">The game API did not answer: {}</div>\
-                         <p>Is the game running with a save loaded and <code>web_api_start</code> active? \
-                         The issue board appears here once it is.</p>",
-                        esc(&e)
-                    ),
-                ),
-            )
+            let mut body = page_head(
+                "Monitor",
+                "Issues",
+                "What to fix, in what order — generated live from flows and storage levels.",
+                "",
+            );
+            body.push_str(&degraded_game(&e));
+            return Response::html(200, layout(state, session, "Issues", &body));
         }
     };
     let issues = compute_issues(&live);
-    let mut body = game_header(&live);
-    body.push_str("<h2>Issue board — what to fix, in what order</h2>");
-    body.push_str("<p class=\"sub\">Generated live from production/consumption flows and storage levels. \
+    let forecasts = compute_forecasts(&live);
+    let mut body = page_head(
+        "Monitor",
+        "Issues",
+        "What to fix, in what order — generated live from flows and storage levels.",
+        "",
+    );
+    body.push_str(&issues_html(&issues, false, Some(&forecasts)));
+    body.push_str("<details class=\"callout callout--info\"><summary style=\"cursor:pointer\">How the board is built</summary><p style=\"margin-top:8px\">Generated live from production/consumption flows and storage levels. \
         Urgency comes from how soon a buffer runs dry or blocks; importance from how much of the \
         factory depends on the product. <b>Click any issue title</b> to open it in depth: why it sits \
         in its quadrant (with the numbers), the full evidence, the forecast, how to fix it — and, \
         where a fix is a game command, buttons that prepare it for the specific storages and \
-        machines involved.</p>");
-    body.push_str(&issues_html(&issues, false));
+        machines involved.</p></details>");
     body.push_str(&productivity_section(state));
-    body.push_str("<p class=\"sub\">Also available as <a href=\"/api/report.md\">markdown</a> or <a href=\"/api/snapshot.json\">raw snapshot JSON</a>.</p>");
-    Response::html(200, layout(session, "Issues", &body))
+    body.push_str("<p><a class=\"btn btn--secondary\" href=\"/api/report.md\">Report as markdown</a> <a class=\"btn btn--secondary\" href=\"/api/snapshot.json\">Raw snapshot JSON</a></p>");
+    Response::html(200, layout(state, session, "Issues", &body))
 }
 
 /// Productivity evidence section (QOL-MOD-PREP §5): read-only over
@@ -946,28 +1579,81 @@ fn productivity_section(state: &State) -> String {
         return String::new();
     }
     let mut body = String::from(
-        "<h2>Productivity evidence (§5)</h2>\
+        "<div class=\"card\"><div class=\"cardhead\"><h2>Productivity evidence (§5)</h2></div>\
          <p class=\"sub\">Machine working-share from stored snapshots (bridge census/machines), \
          judged only when the evidence class reaches ESTIMATED — below that, a line reads \
          INSUFFICIENT and means <b>unjudged</b>, not healthy. κ-free self-relative output \
-         checks ride along with snapshots.</p><ul>",
+         checks ride along with snapshots.</p>",
     );
-    for line in lines {
-        body.push_str(&format!("<li>{}</li>", esc(&line)));
+    // Per-proto stacked bars from the latest stored machine-state
+    // row per proto (same aggregates the estimator reads).
+    if let Ok(Some(gid)) = st.latest_game_id() {
+        if let Ok(series) = st.machine_state_series(&gid) {
+            let mut latest: std::collections::BTreeMap<String, (i64, i64, i64, i64, i64)> =
+                Default::default();
+            for (_, proto, w, n, o, p, ot, _, _) in &series {
+                latest.insert(proto.clone(), (*w, *n, *o, *p, *ot));
+            }
+            if !latest.is_empty() {
+                body.push_str("<table><thead><tr><th>Machine type</th><th>Working share (latest snapshot)</th><th>Counts</th></tr></thead><tbody>");
+                for (proto, (w, n, o, p, ot)) in &latest {
+                    body.push_str(&format!(
+                        "<tr><td>{}</td><td style=\"min-width:180px\">{}</td><td class=\"sub\">{} working · {} starved · {} blocked · {} paused{}</td></tr>",
+                        esc(proto),
+                        svg_stacked(&[
+                            ("var(--ok)", "Working", *w),
+                            ("var(--starved)", "Starved", *n),
+                            ("var(--blocked)", "Blocked", *o),
+                            ("var(--paused)", "Paused", *p),
+                            ("var(--surface-3)", "Other", *ot),
+                        ]),
+                        w, n, o, p,
+                        if *ot > 0 { format!(" · {} other", ot) } else { String::new() },
+                    ));
+                }
+                body.push_str("</tbody></table>");
+            }
+        }
     }
-    body.push_str("</ul>");
+    for line in lines {
+        // Evidence-class badge from the line's own class word; the
+        // line text itself is unchanged.
+        let class_badge = if line.contains("INSUFFICIENT") {
+            badge("unev", "INSUFFICIENT")
+        } else if line.contains("MEASURED") {
+            badge("ok", "MEASURED")
+        } else if line.contains("ESTIMATED") {
+            badge("info", "ESTIMATED")
+        } else if line.contains("PARKED") {
+            badge("paused", "PARKED")
+        } else if line.contains("FIRING") {
+            badge("critical", "FIRING")
+        } else {
+            String::new()
+        };
+        body.push_str(&format!(
+            "<div class=\"kvrow\"><span>{}</span><span>{}</span></div>",
+            class_badge,
+            esc(&line)
+        ));
+    }
+    body.push_str("</div>");
     body
 }
 
 fn page_products(state: &State, session: &Session) -> Response {
     let live = match fetch_live(&client(state)) {
         Ok(l) => l,
-        Err(e) => return game_unreachable(&e),
+        Err(e) => return game_unreachable(state, session, &e),
     };
-    let mut body = game_header(&live);
-    body.push_str("<h2>All products</h2>");
-    body.push_str("<p class=\"sub\">Filter: <input type=\"text\" id=\"tfilter\" placeholder=\"name, kind, id…\" oninput=\"filterTable()\"> · click a column header to sort, click again to reverse.</p>");
-    body.push_str("<table id=\"ptable\"><thead><tr><th>Product</th><th>Kind</th><th>Quantity</th><th>Stored / cap</th><th>Prod TM/LM</th><th>Cons TM/LM</th><th>Net LM</th><th>Pin</th></tr></thead><tbody>");
+    let mut body = page_head(
+        "Monitor",
+        "Products",
+        "Every product in the run — quantities, storage and monthly flows. Virtual products are excluded.",
+        "",
+    );
+    body.push_str("<div class=\"card tablecard\"><div class=\"filterbar\"><input type=\"text\" id=\"tfilter\" placeholder=\"🔍 name, kind, id…\" oninput=\"filterTable()\"><span class=\"count\">click a column header to sort, click again to reverse</span></div>");
+    body.push_str("<table id=\"ptable\"><thead><tr><th>Product</th><th>Kind</th><th class=\"num\">Quantity</th><th class=\"num\">Stored / cap</th><th class=\"num\">Prod TM/LM</th><th class=\"num\">Cons TM/LM</th><th class=\"num\">Net LM</th><th>Pin</th></tr></thead><tbody>");
     if let Some(map) = live.stats["products"].as_object() {
         let mut ids: Vec<&String> = map.keys().collect();
         ids.sort_by_key(|id| live.names.get(*id).cloned().unwrap_or_else(|| id.to_string()));
@@ -981,7 +1667,7 @@ fn page_products(state: &State, session: &Session) -> Response {
             let net_lm = crate::flow_at(&s["produced"], 1) - crate::flow_at(&s["consumed"], 1);
             let pinned = live.pinned_ids.iter().any(|p| p == id);
             body.push_str(&format!(
-                "<tr><td><a href=\"/product?id={}\">{}</a></td><td>{}</td><td>{}</td><td>{} / {}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                "<tr><td><a href=\"/product?id={}\">{}</a></td><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{} / {}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td class=\"num\">{} {}</td><td>{}</td></tr>",
                 esc(id),
                 esc(&name),
                 esc(&kind),
@@ -991,13 +1677,17 @@ fn page_products(state: &State, session: &Session) -> Response {
                 flow_pair(&s["produced"]),
                 flow_pair(&s["consumed"]),
                 net_lm,
+                svg_flow_pair(
+                    crate::flow_at(&s["produced"], 1),
+                    crate::flow_at(&s["consumed"], 1)
+                ),
                 prepare_form(session, "PinToggleCmd", json!({"productToToggle": id}), if pinned { "Unpin" } else { "Pin" }, false),
             ));
         }
     }
-    body.push_str("</tbody></table>");
+    body.push_str("</tbody></table></div>");
     body.push_str(TABLE_JS);
-    Response::html(200, layout(session, "Products", &body))
+    Response::html(200, layout(state, session, "Products", &body))
 }
 
 fn sources_table(src: &Value, pid: &str) -> String {
@@ -1008,9 +1698,9 @@ fn sources_table(src: &Value, pid: &str) -> String {
         h.push_str(&format!("<h3>{}</h3>", if side == "produced" { "Produced by" } else { "Consumed by" }));
         if let Some(arr) = rows.as_array() {
             if arr.is_empty() {
-                h.push_str("<p class=\"sub\">— none this period —</p>");
+                h.push_str("<div class=\"empty\">None this period.</div>");
             }
-            h.push_str("<table><tr><th>Source</th><th>Detail</th><th>Quantity</th></tr>");
+            h.push_str("<table><thead><tr><th>Source</th><th>Detail</th><th class=\"num\">Quantity</th></tr></thead><tbody>");
             for r in arr {
                 let (a, b) = match r["type"].as_str() {
                     Some("recipe") => (
@@ -1022,15 +1712,15 @@ fn sources_table(src: &Value, pid: &str) -> String {
                     _ => (sv(&r["type"]), String::new()),
                 };
                 h.push_str(&format!(
-                    "<tr><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    "<tr><td>{}</td><td>{}</td><td class=\"num\">{}</td></tr>",
                     esc(&a),
                     esc(&b),
                     fmt_num(&r["quantity"])
                 ));
             }
-            h.push_str("</table>");
+            h.push_str("</tbody></table>");
         } else {
-            h.push_str("<p class=\"sub\">— no data —</p>");
+            h.push_str("<div class=\"empty\">No data for this period.</div>");
         }
     }
     h
@@ -1044,72 +1734,124 @@ fn page_product(state: &State, session: &Session, req: &Request) -> Response {
     let c = client(state);
     let live = match fetch_live(&c) {
         Ok(l) => l,
-        Err(e) => return game_unreachable(&e),
+        Err(e) => return game_unreachable(state, session, &e),
     };
     let name = live.names.get(&pid).cloned().unwrap_or_else(|| pid.clone());
     let s = &live.stats["products"][&pid];
-    let mut body = format!("<h1>{}</h1><div class=\"sub\">{}</div>", esc(&name), esc(&pid));
+    let pinned = live.pinned_ids.iter().any(|p| p == &pid);
+    let mut body = page_head(
+        "Monitor",
+        &name,
+        &format!("{} · {}", pid, if pinned { "pinned on the game's list" } else { "not pinned" }),
+        &prepare_form(
+            session,
+            "PinToggleCmd",
+            json!({"productToToggle": pid}),
+            if pinned { "Unpin it" } else { "Pin it" },
+            false,
+        ),
+    );
     if !s.is_null() {
-        body.push_str(&format!(
-            "<div class=\"panel\">Quantity <b>{}</b> · stored {} / {} · produced TM/LM {} · consumed TM/LM {}</div>",
-            fmt_num(&s["quantity"]),
-            fmt_num(&s["stored"]),
-            fmt_num(&s["storageCapacity"]),
-            flow_pair(&s["produced"]),
-            flow_pair(&s["consumed"]),
+        body.push_str("<div class=\"stats\">");
+        body.push_str(&stat_tile("QUANTITY", &fmt_num(&s["quantity"]), "", false));
+        body.push_str(&stat_tile(
+            "STORED / CAP",
+            &format!("{} <span class=\"u\">/ {}</span>", fmt_num(&s["stored"]), fmt_num(&s["storageCapacity"])),
+            "",
+            false,
         ));
-    }
-    {
-        let pinned = live.pinned_ids.iter().any(|p| p == &pid);
-        body.push_str(&format!(
-            "<div class=\"panel\">{} on the game's pinned list. {}</div>",
-            if pinned { "Currently pinned" } else { "Not pinned" },
-            prepare_form(session, "PinToggleCmd", json!({"productToToggle": pid}), if pinned { "Unpin it" } else { "Pin it" }, false),
+        body.push_str(&stat_tile(
+            "PRODUCED TM/LM",
+            &flow_pair(&s["produced"]),
+            "this month / last month",
+            false,
         ));
+        body.push_str(&stat_tile(
+            "CONSUMED TM/LM",
+            &flow_pair(&s["consumed"]),
+            "this month / last month",
+            false,
+        ));
+        body.push_str("</div>");
     }
-    // Monthly history
+    // Main column: history chart + table, then sources per period.
+    let mut main = String::new();
     let hist = &live.history["products"][&pid];
     if let Some(q) = hist["quantity"].as_array() {
-        body.push_str("<h2>Monthly history</h2><table><tr><th>Month (oldest → now)</th><th>Produced</th><th>Consumed</th><th>Quantity</th></tr>");
+        let pts: Vec<f64> = q.iter().map(|v| v.as_f64().unwrap_or(0.0)).collect();
+        main.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Monthly history</h2></div>");
+        if pts.len() >= 2 {
+            main.push_str(&svg_sparkline_big(&pts, "var(--accent)"));
+            main.push_str(&format!(
+                "<div class=\"caption\">{} → {} over {} months{}</div>",
+                fmt_num(&q[0]),
+                fmt_num(&q[q.len() - 1]),
+                q.len(),
+                if !s.is_null() && crate::is_seasonal(&live, &pid, s) {
+                    " · seasonal — judged on long-window balance"
+                } else {
+                    ""
+                },
+            ));
+        }
+        main.push_str("<table><thead><tr><th>Month (oldest → now)</th><th class=\"num\">Produced</th><th class=\"num\">Consumed</th><th class=\"num\">Quantity</th></tr></thead><tbody>");
         for (i, qty) in q.iter().enumerate() {
-            body.push_str(&format!(
-                "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+            main.push_str(&format!(
+                "<tr><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td></tr>",
                 if i + 1 == q.len() { "current".to_string() } else { format!("-{}", q.len() - 1 - i) },
                 fmt_num(&hist["produced"][i]),
                 fmt_num(&hist["consumed"][i]),
                 fmt_num(qty),
             ));
         }
-        body.push_str("</table>");
+        main.push_str("</tbody></table></div>");
     }
-    // Stored-snapshot trend from the DB
+    for period in ["thisMonth", "lastMonth"] {
+        match get_json(&c, &format!("/api/v1/products/sources?ids={pid}&period={period}")) {
+            Ok(src) => {
+                main.push_str(&format!(
+                    "<div class=\"card\"><div class=\"cardhead\"><h2>Sources — {}</h2></div>",
+                    if period == "thisMonth" { "this month" } else { "last month" }
+                ));
+                main.push_str(&sources_table(&src, &pid));
+                main.push_str("</div>");
+            }
+            Err(e) => main.push_str(&format!(
+                "<div class=\"callout callout--danger\">sources ({period}): {}</div>",
+                esc(&e)
+            )),
+        }
+    }
+    // Rail: stored-snapshot trend as a real sparkline.
+    let mut rail = String::new();
+    rail.push_str(&format!(
+        "<div class=\"card\"><div class=\"cardhead\"><h2>Game pin</h2></div><p>{} on the game's pinned list.</p><p>{}</p></div>",
+        if pinned { "Currently pinned" } else { "Not pinned" },
+        prepare_form(
+            session,
+            "PinToggleCmd",
+            json!({"productToToggle": pid}),
+            if pinned { "Unpin it" } else { "Pin it" },
+            false,
+        ),
+    ));
     if let Ok(st) = store(state) {
         if let Ok(rows) = st.trend(&name) {
             let mine: Vec<_> = rows.iter().filter(|r| r.7 == name).collect();
             if !mine.is_empty() {
-                let series: Vec<String> = mine.iter().map(|r| r.2.to_string()).collect();
-                body.push_str(&format!(
-                    "<h2>Stored snapshots</h2><p>Quantity across {} snapshot(s): <span class=\"spark\">{}</span></p>",
+                let pts: Vec<f64> = mine.iter().map(|r| r.2 as f64).collect();
+                rail.push_str(&format!(
+                    "<div class=\"card\"><div class=\"cardhead\"><h2>Stored snapshots</h2></div>{}<div class=\"caption\">Quantity across {} snapshot(s): {} → {}</div></div>",
+                    svg_sparkline(&pts, "var(--accent)"),
                     mine.len(),
-                    esc(&series.join(" → "))
+                    mine.first().map(|r| r.2).unwrap_or(0),
+                    mine.last().map(|r| r.2).unwrap_or(0),
                 ));
             }
         }
     }
-    // Sources, this month and last month
-    for period in ["thisMonth", "lastMonth"] {
-        match get_json(&c, &format!("/api/v1/products/sources?ids={pid}&period={period}")) {
-            Ok(src) => {
-                body.push_str(&format!(
-                    "<h2>Sources — {}</h2>",
-                    if period == "thisMonth" { "this month" } else { "last month" }
-                ));
-                body.push_str(&sources_table(&src, &pid));
-            }
-            Err(e) => body.push_str(&format!("<p class=\"err\">sources ({period}): {}</p>", esc(&e))),
-        }
-    }
-    Response::html(200, layout(session, &name, &body))
+    body.push_str(&format!("<div class=\"detail\"><div>{}</div><div>{}</div></div>", main, rail));
+    Response::html(200, layout_nav(state, session, &name, "Products", &body))
 }
 
 // ---------------------------------------------------------------------------
@@ -1196,27 +1938,31 @@ fn describe_command(cmd_type: &str, args: &Value) -> String {
 
 fn page_actions(state: &State, session: &Session) -> Response {
     let live = fetch_live(&client(state)).ok();
-    let mut body = String::from("<h1>Actions</h1>");
-    body.push_str("<p class=\"sub\">Commands the companion can run in your game. Every command goes: \
+    let mut body = page_head(
+        "Game",
+        "Actions",
+        "Commands the companion can run in your game — every one goes prepare → confirm → audit.",
+        "",
+    );
+    body.push_str("<div class=\"callout callout--info\">Every command goes: \
         prepare (you see the exact JSON) → confirm → the game executes it → the result lands in the \
-        audit log below. Nothing is ever sent without the confirmation step.</p>");
+        audit log below. Nothing is ever sent without the confirmation step.</div>");
     match &live {
         Some(l) => {
-            body.push_str(&game_header(l));
             body.push_str(&controls_html(session, l));
         }
-        None => body.push_str("<div class=\"err\">Game API unreachable — controls unavailable.</div>"),
+        None => body.push_str(&degraded_game("controls unavailable — the game API did not answer")),
     }
     body.push_str(&format!(
-        "<div class=\"panel\"><h2 style=\"margin-top:0\">Global priorities</h2>\
-         <p class=\"sub\">Sets one of the game's global priorities by id (SetGlobalPriorityCmd). \
+        "<div class=\"card\"><div class=\"cardhead\"><h2>Global priorities</h2></div>\
+         <div class=\"callout callout--info\">Sets one of the game's global priorities by id (SetGlobalPriorityCmd). \
          The API does not publish the valid ids, so this is a plain entry form: a wrong id makes the \
          game return failure and changes nothing — attempts are audit-logged either way, and \
-         confirmed ids will be listed here as they're verified.</p>\
+         confirmed ids will be listed here as they're verified.</div>\
          <form method=\"post\" action=\"/actions/prepare-priority\">\
          <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
-         <label>Priority id <input type=\"text\" name=\"priorityId\" required></label> \
-         <label>Value <input type=\"text\" name=\"priority\" value=\"0\" size=\"5\" required></label> \
+         <div class=\"field\"><label for=\"gp-id\">Priority id</label><input id=\"gp-id\" type=\"text\" name=\"priorityId\" required></div>\
+         <div class=\"field\"><label for=\"gp-val\">Value</label><input id=\"gp-val\" type=\"text\" name=\"priority\" value=\"0\" size=\"5\" required></div>\
          <button type=\"submit\">Prepare…</button></form></div>",
         esc(&session.csrf)
     ));
@@ -1250,26 +1996,35 @@ fn page_actions(state: &State, session: &Session) -> Response {
             <tr><td>Upgrade a belt / pipe</td><td>—</td><td class=\"lock\">🔒 no vanilla command exists (SPEC §12.7)</td></tr>\
             </table></div>");
     }
-    body.push_str("<h2>Audit log</h2>");
+    body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\"><h2>Audit log</h2><span class=\"right\"><a href=\"/log\">Full activity log →</a></span></div>");
     match store(state) {
         Ok(st) => match st.audit_recent(20) {
             Ok(rows) if !rows.is_empty() => {
-                body.push_str("<table><tr><th>When</th><th>Action</th><th>Detail</th></tr>");
+                body.push_str("<table><thead><tr><th>When</th><th>Action</th><th>Detail</th><th>Outcome</th></tr></thead><tbody>");
                 for (ts, action, detail) in rows {
+                    let outcome = if detail.contains("FAILED") {
+                        badge("critical", "failed")
+                    } else if detail.contains("success") {
+                        badge("ok", "success")
+                    } else {
+                        badge("paused", "recorded")
+                    };
                     body.push_str(&format!(
-                        "<tr><td>{}</td><td>{}</td><td>{}</td></tr>",
+                        "<tr><td class=\"mono\">{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
                         fmt_clock(ts as u64),
                         esc(&action),
-                        esc(&detail)
+                        esc(&detail),
+                        outcome
                     ));
                 }
-                body.push_str("</table>");
+                body.push_str("</tbody></table>");
             }
-            _ => body.push_str("<p class=\"sub\">No commands have been run yet.</p>"),
+            _ => body.push_str("<div class=\"empty\">No commands have been run yet — confirmed actions land here.</div>"),
         },
         Err(e) => body.push_str(&format!("<div class=\"err\">{}</div>", esc(&e))),
     }
-    Response::html(200, layout(session, "Actions", &body))
+    body.push_str("</div>");
+    Response::html(200, layout(state, session, "Actions", &body))
 }
 
 fn do_prepare(state: &State, session: &Session, req: &Request) -> Response {
@@ -1312,7 +2067,7 @@ fn do_prepare(state: &State, session: &Session, req: &Request) -> Response {
                         format!("Pin {name} to the pinned list")
                     };
                 }
-                Err(e) => return game_unreachable(&e),
+                Err(e) => return game_unreachable(state, session, &e),
             }
         }
         "SetGlobalPriorityCmd" => {
@@ -1363,7 +2118,7 @@ fn do_prepare(state: &State, session: &Session, req: &Request) -> Response {
                         return Response::text(400, "Bad storageId or unknown productId.");
                     }
                 }
-                Err(e) => return game_unreachable(&e),
+                Err(e) => return game_unreachable(state, session, &e),
             }
         }
         "StorageDisableLogisticsToggleCmd" => {
@@ -1420,25 +2175,40 @@ fn finish_prepare(state: &State, session: &Session, cmd_type: &str, args: &Value
         ),
         Err(e) => format!("Warning: could not read current game state ({e})"),
     };
+    // The confirm sheet (DESIGN §3.9): deliberately unlike every
+    // other panel — warning band, plain-language summary, current
+    // game state, the exact JSON, Run + Cancel as peers, expiry
+    // caption. Irreversible commands (deconstruction / destruction
+    // class) get the danger band and the danger button.
+    let irreversible = ["Deconstruction", "Destroy", "Discard", "Remove"]
+        .iter()
+        .any(|k| cmd_type.contains(k));
     let body = format!(
-        "<h1>Confirm command</h1>\
-         <div class=\"panel\"><p style=\"font-size:16px\"><b>{}</b></p>\
-         <p class=\"sub\">{}</p>\
-         <p>This exact JSON will be sent to the game's <code>POST /command</code>:</p>\
+        "<div class=\"confirm\"><div class=\"{}\">{}</div><div class=\"inner\">\
+         <p class=\"summary\">{}</p>\
+         <p class=\"meta\">{}</p>\
+         <div class=\"caption\">Exact command sent to the game</div>\
          <pre>{}</pre>\
          <form method=\"post\" action=\"/actions/apply\">\
          <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
          <input type=\"hidden\" name=\"token\" value=\"{}\">\
-         <button type=\"submit\">Run it</button> \
-         <a class=\"btn\" href=\"/actions\" style=\"background:#2a2f3a\">Cancel</a></form>\
-         <p class=\"sub\">This confirmation expires in 2 minutes and can be used once. The result will be written to the audit log.</p></div>",
+         <div class=\"actions\"><button class=\"{}\" type=\"submit\">Run it</button>\
+         <a class=\"btn btn--secondary\" href=\"/actions\">Cancel</a></div></form>\
+         <p class=\"caption\">Single-use · expires in 2 minutes · the result is written to the audit log.</p></div></div>",
+        if irreversible { "band band--danger" } else { "band" },
+        if irreversible {
+            "This cannot be undone."
+        } else {
+            "This will change your game."
+        },
         esc(summary),
         esc(&state_line),
         esc(&serde_json::to_string_pretty(&envelope).unwrap()),
         esc(&session.csrf),
         esc(&token),
+        if irreversible { "btn--danger" } else { "" },
     );
-    Response::html(200, layout(session, "Confirm command", &body))
+    Response::html(200, layout(state, session, "Confirm command", &body))
 }
 
 /// Generic prepare form for ANY catalogue command, generated from
@@ -1446,72 +2216,72 @@ fn finish_prepare(state: &State, session: &Session, cmd_type: &str, args: &Value
 /// from documentation into coverage: a command family does not
 /// need a hand-built page before it can be run through the §12
 /// flow — the exact JSON is shown at the confirm step either way.
-fn page_prepare(_state: &State, session: &Session, req: &Request) -> Response {
+fn page_prepare(state: &State, session: &Session, req: &Request) -> Response {
     let Some(name) = req.query.get("cmd").cloned() else {
         return Response::redirect("/catalogue");
     };
     let Some(info) = CATALOGUE.iter().find(|c| c.name == name) else {
         return Response::html(
             404,
-            layout(session, "Unknown command", "<h1>Unknown command</h1><p><a href=\"/catalogue\">Catalogue</a></p>"),
+            layout(state, session, "Unknown command", "<h1>Unknown command</h1><p><a href=\"/catalogue\">Catalogue</a></p>"),
         );
     };
     if info.status == "excluded" {
         return Response::html(
             200,
-            layout(
-                session,
-                info.name,
+            layout_nav(state, session,
+                info.name, "Catalogue",
                 &format!(
-                    "<h1>{}</h1><div class=\"panel\"><p><b>Excluded by policy.</b> {}</p><p><a href=\"/catalogue\">← Catalogue</a></p></div>",
-                    esc(info.name),
+                    "{}<div class=\"callout callout--danger\"><b>Excluded by policy.</b> {}</div><p><a class=\"btn btn--secondary\" href=\"/catalogue\">← Catalogue</a></p>",
+                    page_head("Library", info.name, info.purpose, &badge("critical", "excluded")),
                     esc(info.note),
                 ),
             ),
         );
     }
-    let mut body = format!(
-        "<h1>{}</h1><p class=\"sub\">{} · {} · status: {} — generic form generated from the captured schema. \
-         Nothing is sent yet: the next step shows the exact JSON for confirmation.</p>",
-        esc(info.purpose),
-        esc(info.name),
-        esc(info.domain),
-        esc(info.status),
+    let status_badge = match info.status {
+        "verified" => badge("ok", "verified"),
+        _ => badge("info", "wired"),
+    };
+    let mut body = page_head(
+        "Library",
+        info.purpose,
+        &format!("{} · {}", info.name, info.domain),
+        &status_badge,
     );
+    body.push_str("<div class=\"card\"><p class=\"sub\">Generic form generated from the captured schema. \
+         Nothing is sent yet: the next step shows the exact JSON for confirmation.</p>");
     if !info.note.is_empty() {
-        body.push_str(&format!("<div class=\"panel\"><p>{}</p></div>", esc(info.note)));
+        body.push_str(&format!("<div class=\"callout callout--info\">{}</div>", esc(info.note)));
     }
     body.push_str(&format!(
         "<form method=\"post\" action=\"/actions/prepare-generic\">\
          <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
-         <input type=\"hidden\" name=\"type\" value=\"{}\">\
-         <table>",
+         <input type=\"hidden\" name=\"type\" value=\"{}\">",
         esc(&session.csrf),
         esc(info.name),
     ));
     if info.spec.is_empty() {
-        body.push_str("<tr><td colspan=\"2\" class=\"sub\">This command takes no arguments.</td></tr>");
+        body.push_str("<p class=\"sub\">This command takes no arguments.</p>");
     }
     for (an, at) in info.spec {
         let optional = at.contains("or null");
         body.push_str(&format!(
-            "<tr><td><label for=\"a_{}\">{} <span class=\"sub\">({}{})</span></label></td>\
-             <td><input id=\"a_{}\" name=\"arg_{}\" style=\"width:320px\"></td></tr>",
+            "<div class=\"field\"><label for=\"a_{}\">{}</label><input id=\"a_{}\" name=\"arg_{}\"><div class=\"hint\">{}{}</div></div>",
+            esc(an),
+            esc(an),
             esc(an),
             esc(an),
             esc(at),
-            if optional { ", optional" } else { "" },
-            esc(an),
-            esc(an),
+            if optional { " · optional" } else { "" },
         ));
     }
     body.push_str(&format!(
-        "<tr><td><label for=\"plabel\">Summary label <span class=\"sub\">(optional)</span></label></td>\
-         <td><input id=\"plabel\" name=\"label\" maxlength=\"240\" style=\"width:320px\" placeholder=\"{}\"></td></tr>\
-         </table><p><button type=\"submit\">Prepare…</button> <a class=\"btn\" href=\"/catalogue\" style=\"background:#2a2f3a\">Back to catalogue</a></p></form>",
+        "<div class=\"field\"><label for=\"plabel\">Summary label</label><input id=\"plabel\" name=\"label\" maxlength=\"240\" placeholder=\"{}\"><div class=\"hint\">optional — shown on the confirmation page</div></div>\
+         <p><button type=\"submit\">Prepare…</button> <a class=\"btn btn--secondary\" href=\"/catalogue\">Back to catalogue</a></p></form></div>",
         esc(info.purpose),
     ));
-    Response::html(200, layout(session, info.purpose, &body))
+    Response::html(200, layout_nav(state, session, info.purpose, "Catalogue", &body))
 }
 
 fn coerce_arg(jtype: &str, raw: &str) -> Option<Value> {
@@ -1586,7 +2356,7 @@ fn do_prepare_storage_product(state: &State, session: &Session, req: &Request) -
     let pid = req.form.get("productId").cloned().unwrap_or_default();
     let live = match fetch_live(&client(state)) {
         Ok(l) => l,
-        Err(e) => return game_unreachable(&e),
+        Err(e) => return game_unreachable(state, session, &e),
     };
     let pname = match live.names.get(&pid) {
         Some(n) => n.clone(),
@@ -1656,8 +2426,7 @@ fn do_apply(state: &State, session: &Session, req: &Request) -> Response {
         _ => {
             return Response::html(
                 400,
-                layout(
-                    session,
+                layout(state, session,
                     "Expired",
                     "<h1>Confirmation expired</h1><p>The prepared command was not run (confirmations last 2 minutes and are single-use). <a href=\"/actions\">Back to Actions</a></p>",
                 ),
@@ -1727,37 +2496,522 @@ fn do_apply(state: &State, session: &Session, req: &Request) -> Response {
         String::new()
     };
     let body = format!(
-        "<h1>{}</h1>\
-         <div class=\"{}\"><b>{}</b> — {}</div>\
-         <div class=\"panel\"><p>Game response (HTTP {}):</p><pre>{}</pre><p class=\"sub\">{}</p>\
-         <p><a class=\"btn\" href=\"/actions\">Back to Actions</a> <a class=\"btn\" href=\"/\" style=\"background:#2a2f3a\">Overview</a></p></div>",
-        esc(&prepared.summary),
-        if ok { "ok" } else { "err" },
+        "{}\
+         <div class=\"{}\"><b>{}</b> — {}<p style=\"margin-top:8px\"><a href=\"/log\">See it in the Log →</a></p></div>\
+         <div class=\"card\"><div class=\"cardhead\"><h2>Game response</h2><span class=\"right badge {}\">HTTP {}</span></div><pre>{}</pre><p class=\"sub\">{}</p>\
+         <p><a class=\"btn\" href=\"/actions\">Back to Actions</a> <a class=\"btn btn--secondary\" href=\"/\">Overview</a></p></div>",
+        page_head("Game", "Command result", &prepared.summary, ""),
+        if ok { "callout callout--ok" } else { "callout callout--danger" },
         if ok { "Command executed" } else { "Command failed" },
         esc(&prepared.summary),
+        if ok { "badge--ok" } else { "badge--critical" },
         http,
         esc(&result_text),
         esc(&after),
     );
-    Response::html(200, layout(session, "Command result", &body))
+    Response::html(200, layout(state, session, "Command result", &body))
+}
+
+// ---------------------------------------------------------------------------
+// Place — blueprint placement via QoSBuilder job files (Addendum XVII)
+// ---------------------------------------------------------------------------
+//
+// The §12 shape, with a file as the apply step: Prepare renders the
+// exact job (blueprint, anchor, rotation, target gameId, expiry)
+// and Confirm — the only step that writes anything — writes ONE
+// job file into the QoS jobs folder. QoSBuilder (the in-game mod,
+// ships disabled) validates it and places it as construction sites
+// at the next in-game day end. There is deliberately no other
+// write path: no file, no placement.
+
+const BLUEPRINT_LIBRARY_JSON: &str = include_str!("../data/blueprint-library.json");
+
+/// How long a confirmed job stays valid (the mod refuses expired
+/// jobs): long enough for the day to turn, short enough that a
+/// stale job can never fire on another evening or another save.
+const JOB_TTL_SECONDS: u64 = 1800;
+/// Item cap written into every job (QoSBuilder's own config can
+/// only lower its side further).
+const JOB_MAX_ITEMS: i64 = 500;
+
+fn blueprint_library() -> Value {
+    serde_json::from_str(BLUEPRINT_LIBRARY_JSON)
+        .unwrap_or_else(|_| json!({"count": 0, "entries": [], "testing_status": ""}))
+}
+
+fn blueprint_entry(slug: &str) -> Option<Value> {
+    blueprint_library()["entries"]
+        .as_array()?
+        .iter()
+        .find(|e| e["slug"].as_str() == Some(slug))
+        .cloned()
+}
+
+/// The QoS jobs folder confirmed jobs are written into. Config:
+/// `[builder] jobs_dir` in coi.toml (same search order as
+/// [productivity]); default `%APPDATA%\Captain of Industry\QoS\
+/// jobs` — on Philip's PC, C:\Users\cokof\AppData\Roaming\Captain
+/// of Industry\QoS\jobs. The fallback (APPDATA unset — never on
+/// Windows) is a plain `qos-jobs` folder next to the binary.
+fn builder_jobs_dir(db_path: &str) -> std::path::PathBuf {
+    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+    if let Ok(p) = std::env::var("COI_CONFIG") {
+        candidates.push(p.into());
+    }
+    candidates.push("coi.toml".into());
+    if let Some(parent) = std::path::Path::new(db_path).parent() {
+        if !parent.as_os_str().is_empty() {
+            candidates.push(parent.join("coi.toml"));
+        }
+    }
+    for path in candidates {
+        if let Ok(text) = std::fs::read_to_string(&path) {
+            let mut in_builder = false;
+            for raw in text.lines() {
+                let line = raw.split('#').next().unwrap_or("").trim();
+                if line.starts_with('[') {
+                    in_builder = line == "[builder]";
+                    continue;
+                }
+                if in_builder {
+                    if let Some((key, val)) = line.split_once('=') {
+                        if key.trim() == "jobs_dir" {
+                            let v = val.trim().trim_matches('"');
+                            if !v.is_empty() {
+                                return v.into();
+                            }
+                        }
+                    }
+                }
+            }
+            break; // first coi.toml found wins, like [productivity]
+        }
+    }
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        if !appdata.is_empty() {
+            return std::path::PathBuf::from(appdata)
+                .join("Captain of Industry")
+                .join("QoS")
+                .join("jobs");
+        }
+    }
+    std::path::PathBuf::from("qos-jobs")
+}
+
+/// ISO-8601 UTC ("2026-11-05T18:30:00Z") — the job file's
+/// timestamp format (QoSBuilder parses it back with
+/// DateTime.TryParse, RoundtripKind).
+fn iso_utc(unix: u64) -> String {
+    // Civil-from-days (Howard Hinnant's algorithm), UTC — same as
+    // fmt_clock, with seconds and the ISO shape.
+    let days = (unix / 86400) as i64;
+    let secs = unix % 86400;
+    let z = days + 719468;
+    let era = if z >= 0 { z } else { z - 146096 } / 146097;
+    let doe = (z - era * 146097) as u64;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    format!(
+        "{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}Z",
+        secs / 3600,
+        (secs % 3600) / 60,
+        secs % 60
+    )
+}
+
+/// Job-file escaping — the ONE rule shared with QoSBuilder's
+/// canonical payload (Addendum XVII): '"' and '\' escaped, control
+/// chars as \u00xx (lowercase hex), everything else raw UTF-8.
+fn job_escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 8);
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+/// The canonical job payload: fixed field order, compact, the
+/// sha256 field excluded. QoSBuilder rebuilds exactly this from
+/// the parsed job and refuses the job if the hash differs — so
+/// this string IS what the user confirms.
+#[allow(clippy::too_many_arguments)]
+fn job_canonical(
+    job_id: &str,
+    created_utc: &str,
+    expires_utc: &str,
+    game_id: &str,
+    user: &str,
+    name: &str,
+    blueprint: &str,
+    anchor: (i64, i64, i64),
+    rotation_deg: i64,
+    apply_configuration: bool,
+    max_items: i64,
+) -> String {
+    format!(
+        "{{\"jobId\":\"{}\",\"schema\":1,\"createdUtc\":\"{}\",\"expiresUtc\":\"{}\",\"gameId\":\"{}\",\"companionUser\":\"{}\",\"blueprintName\":\"{}\",\"blueprintString\":\"{}\",\"anchor\":{{\"x\":{},\"y\":{},\"z\":{}}},\"rotationDeg\":{},\"applyConfiguration\":{},\"limits\":{{\"maxItems\":{}}}}}",
+        job_escape(job_id),
+        job_escape(created_utc),
+        job_escape(expires_utc),
+        job_escape(game_id),
+        job_escape(user),
+        job_escape(name),
+        job_escape(blueprint),
+        anchor.0,
+        anchor.1,
+        anchor.2,
+        rotation_deg,
+        apply_configuration,
+        max_items
+    )
+}
+
+fn job_sha256_hex(canonical: &str) -> String {
+    let mut h = Sha256::new();
+    h.update(canonical.as_bytes());
+    h.finalize().iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn new_job_id() -> String {
+    let h = rand_hex(16);
+    format!(
+        "{}-{}-{}-{}-{}",
+        &h[0..8],
+        &h[8..12],
+        &h[12..16],
+        &h[16..20],
+        &h[20..32]
+    )
+}
+
+fn page_place(state: &State, session: &Session) -> Response {
+    let lib = blueprint_library();
+    let jobs_dir = builder_jobs_dir(&state.db_path);
+    let mut h = page_head(
+        "Game",
+        "Place a blueprint",
+        "Place a whole layout — buildings, belts and pipes — as one confirmed job, executed in-game by QoSBuilder.",
+        "",
+    );
+    h.push_str("<div class=\"card\">");
+    h.push_str("<p>Pick a layout from the pack library, say where its origin lands (the anchor tile — a blueprint's own coordinates are relative to it), and <b>Prepare</b>. You then see the exact job — blueprint, anchor, rotation, target game, expiry — and only <b>Confirm</b> writes anything: one job file into the QoS jobs folder. <b>QoSBuilder</b> (the in-game mod) validates it — untampered, unexpired, pinned to the running game, item-capped — and places it as ordinary construction sites at the next in-game day end, <b>if the mod is enabled</b> in the game's mod settings. No file, no placement; a stale or foreign job can never fire.</p>");
+    match get_json(&client(state), "/api/v1/game-info") {
+        Ok(g) => h.push_str(&format!(
+            "<p class=\"sub\">Game reachable: {} · {} · gameId {}</p>",
+            esc(&sv(&g["date"])),
+            if g["isPaused"].as_bool() == Some(true) {
+                "paused"
+            } else {
+                "running"
+            },
+            esc(&sv(&g["gameId"]))
+        )),
+        Err(e) => h.push_str(&format!(
+            "<p class=\"sub\">⚠ The game is unreachable ({}) — the library still lists, but Prepare will refuse until the game answers.</p>",
+            esc(&e)
+        )),
+    }
+    h.push_str(&format!(
+        "<p class=\"sub\">Jobs folder: <code>{}</code></p><p class=\"sub\">Pack: {}</p></div>",
+        esc(&jobs_dir.display().to_string()),
+        esc(&sv(&lib["testing_status"]))
+    ));
+    h.push_str("<div class=\"card tablecard\"><table><thead><tr><th>Blueprint</th><th>Module</th><th class=\"num\">Items</th><th>Research gate</th><th>Place</th></tr></thead><tbody>");
+    if let Some(entries) = lib["entries"].as_array() {
+        for e in entries {
+            let kinds = &e["kinds"];
+            let breakdown = [
+                ("buildings", kinds["buildings"].as_i64().unwrap_or(0)),
+                ("transports", kinds["transports"].as_i64().unwrap_or(0)),
+                ("trees", kinds["trees"].as_i64().unwrap_or(0)),
+                ("other", kinds["other"].as_i64().unwrap_or(0)),
+            ]
+            .iter()
+            .filter(|(_, n)| *n > 0)
+            .map(|(label, n)| format!("{n} {label}"))
+            .collect::<Vec<_>>()
+            .join(" · ");
+            let gate = if e["research_gate"].is_null() {
+                "—".to_string()
+            } else {
+                sv(&e["research_gate"])
+            };
+            h.push_str(&format!(
+                "<tr><td><b>{}</b><br><span class=\"sub mono\">{}</span></td><td>{}{}</td><td class=\"num\">{} <span class=\"sub\">({})</span></td><td>{}</td>\
+                 <td><form method=\"post\" action=\"/place/prepare\"><input type=\"hidden\" name=\"csrf\" value=\"{}\"><input type=\"hidden\" name=\"slug\" value=\"{}\">\
+                 anchor x <input name=\"ax\" size=\"5\" value=\"0\"> y <input name=\"ay\" size=\"5\" value=\"0\"> z <input name=\"az\" size=\"3\" value=\"0\"> \
+                 <select name=\"rotation\"><option value=\"0\">0°</option><option value=\"90\">90°</option><option value=\"180\">180°</option><option value=\"270\">270°</option></select> \
+                 <button class=\"btn--sm\" type=\"submit\">Prepare…</button></form></td></tr>",
+                esc(&sv(&e["name"])),
+                esc(&sv(&e["slug"])),
+                esc(&sv(&e["module"])),
+                if e["layer"].as_str().is_some_and(|l| !l.is_empty()) {
+                    format!(" · {}", esc(&sv(&e["layer"])))
+                } else {
+                    String::new()
+                },
+                e["item_count"].as_i64().unwrap_or(0),
+                breakdown,
+                esc(&gate),
+                session.csrf,
+                esc(&sv(&e["slug"])),
+            ));
+        }
+    }
+    h.push_str("</tbody></table></div>");
+    Response::html(200, layout(state, session, "Place a blueprint", &h))
+}
+
+fn do_place_prepare(state: &State, session: &Session, req: &Request) -> Response {
+    if let Err(r) = check_csrf(session, req) {
+        return r;
+    }
+    let slug = req.form.get("slug").cloned().unwrap_or_default();
+    let Some(entry) = blueprint_entry(&slug) else {
+        return Response::html(
+            400,
+            layout(state, session,
+                "Unknown blueprint",
+                "<h1>Unknown blueprint</h1><div class=\"panel\"><p>That slug is not in the embedded pack library.</p><p><a href=\"/place\">← Back to the library</a></p></div>",
+            ),
+        );
+    };
+    let parse_i = |k: &str| req.form.get(k).and_then(|v| v.trim().parse::<i64>().ok());
+    let (Some(ax), Some(ay), Some(az)) = (parse_i("ax"), parse_i("ay"), parse_i("az")) else {
+        return Response::html(
+            400,
+            layout(state, session,
+                "Bad anchor",
+                "<h1>Bad anchor</h1><div class=\"panel\"><p>Anchor x, y and z must all be whole numbers.</p><p><a href=\"/place\">← Back to the library</a></p></div>",
+            ),
+        );
+    };
+    let rotation = parse_i("rotation").unwrap_or(0);
+    if ax.abs() > 100_000 || ay.abs() > 100_000 || az.abs() > 1_000 || ![0, 90, 180, 270].contains(&rotation) {
+        return Response::html(
+            400,
+            layout(state, session,
+                "Bad placement",
+                "<h1>Bad placement</h1><div class=\"panel\"><p>Anchor out of sane range, or rotation not a quarter turn (0/90/180/270).</p><p><a href=\"/place\">← Back to the library</a></p></div>",
+            ),
+        );
+    }
+    // The job is pinned to the RUNNING game: prepare refuses when
+    // the game cannot be reached or its id cannot be confirmed.
+    let game = match get_json(&client(state), "/api/v1/game-info") {
+        Ok(g) => g,
+        Err(e) => {
+            return Response::html(
+                502,
+                layout(state, session,
+                    "Game unreachable",
+                    &format!(
+                        "<h1>Prepare refused — game unreachable</h1><div class=\"panel\"><p>{}</p><p>A placement job must be pinned to the running game's id; without game-info there is nothing safe to prepare. Start the game, run <code>web_api_start</code>, and try again.</p><p><a href=\"/place\">← Back to the library</a></p></div>",
+                        esc(&e)
+                    ),
+                ),
+            )
+        }
+    };
+    let Some(game_id) = game["gameId"].as_str().map(|s| s.to_string()) else {
+        return Response::html(
+            502,
+            layout(state, session,
+                "No game id",
+                "<h1>Prepare refused — no game id</h1><div class=\"panel\"><p>game-info answered without a gameId; a job cannot be pinned. Nothing was prepared.</p><p><a href=\"/place\">← Back to the library</a></p></div>",
+            ),
+        );
+    };
+    let now = now_unix();
+    let job_id = new_job_id();
+    let created = iso_utc(now);
+    let expires = iso_utc(now + JOB_TTL_SECONDS);
+    let name = entry["name"].as_str().unwrap_or(&slug).to_string();
+    let blueprint_string = entry["string"].as_str().unwrap_or_default().to_string();
+    let canonical = job_canonical(
+        &job_id,
+        &created,
+        &expires,
+        &game_id,
+        &session.user,
+        &name,
+        &blueprint_string,
+        (ax, ay, az),
+        rotation,
+        true,
+        JOB_MAX_ITEMS,
+    );
+    let sha = job_sha256_hex(&canonical);
+    let file_json = format!(
+        "{},\"sha256\":\"{}\"}}",
+        &canonical[..canonical.len() - 1],
+        sha
+    );
+    let kinds = &entry["kinds"];
+    let summary = format!(
+        "Place '{}' ({} items: {} buildings, {} transports) at ({ax}, {ay}, {az}), rotation {rotation}°",
+        name,
+        entry["item_count"].as_i64().unwrap_or(0),
+        kinds["buildings"].as_i64().unwrap_or(0),
+        kinds["transports"].as_i64().unwrap_or(0),
+    );
+    let token = rand_hex(16);
+    state.prepared_jobs.lock().unwrap().insert(
+        token.clone(),
+        PreparedJob {
+            job_id: job_id.clone(),
+            file_json: file_json.clone(),
+            summary: summary.clone(),
+            game_id: game_id.clone(),
+            game_date: game["date"].as_str().map(|s| s.to_string()),
+            game_tick: game["tick"].as_i64(),
+            created: now,
+        },
+    );
+    let pretty = serde_json::from_str::<Value>(&file_json)
+        .map(|v| serde_json::to_string_pretty(&v).unwrap_or_default())
+        .unwrap_or_else(|_| file_json.clone());
+    let jobs_dir = builder_jobs_dir(&state.db_path);
+    let body = format!(
+        "{}\
+         <div class=\"confirm\"><div class=\"band\">This will change your game — a whole layout, placed by the QoSBuilder mod.</div><div class=\"inner\">\
+         <p class=\"summary\">{}</p>\
+         <p class=\"meta\">Job <code>{}</code> · target gameId <code>{}</code> (game date {}) · confirmed jobs are written to <code>{}</code> and <b>expire at {}</b> ({} min) — after that the mod refuses them and you prepare again.</p>\
+         <p class=\"sub\">Confirming writes exactly this job file (shown pretty-printed; the file itself is the compact canonical form). Its sha256 is <code>{}</code> — QoSBuilder recomputes it in-game and refuses the job if a single byte differs. Nothing else is sent to the game; the mod places at the <b>next in-game day end</b>, and only while its <code>enabled</code> setting is on. Surfaces and decals in a string are not placed in v1.</p>\
+         <div class=\"caption\">Exact job file written on confirm</div>\
+         <pre>{}</pre>\
+         <form method=\"post\" action=\"/place/confirm\"><input type=\"hidden\" name=\"csrf\" value=\"{}\"><input type=\"hidden\" name=\"token\" value=\"{}\">\
+         <div class=\"actions\"><button class=\"danger\" type=\"submit\">Write the job file</button> <a class=\"btn btn--secondary\" href=\"/place\">Cancel</a></div></form>\
+         <p class=\"caption\">This confirmation expires in two minutes.</p></div></div>",
+        page_head("Game", "Confirm placement", "One job file, written only on confirm — the mod does the placing.", ""),
+        esc(&summary),
+        esc(&job_id),
+        esc(&game_id),
+        esc(game["date"].as_str().unwrap_or("?")),
+        esc(&jobs_dir.display().to_string()),
+        esc(&fmt_clock(now + JOB_TTL_SECONDS)),
+        JOB_TTL_SECONDS / 60,
+        esc(&sha),
+        esc(&pretty),
+        session.csrf,
+        token,
+    );
+    Response::html(200, layout(state, session, "Confirm placement", &body))
+}
+
+fn do_place_confirm(state: &State, session: &Session, req: &Request) -> Response {
+    if let Err(r) = check_csrf(session, req) {
+        return r;
+    }
+    let token = req.form.get("token").cloned().unwrap_or_default();
+    let job = state.prepared_jobs.lock().unwrap().remove(&token);
+    let job = match job {
+        Some(j) if now_unix() - j.created <= 120 => j,
+        _ => {
+            return Response::html(
+                400,
+                layout(state, session,
+                    "Confirmation expired",
+                    "<h1>Confirmation expired</h1><div class=\"panel\"><p>That placement confirmation is unknown or older than two minutes, so nothing was written. Prepare the placement again.</p><p><a href=\"/place\">← Back to the library</a></p></div>",
+                ),
+            )
+        }
+    };
+    let dir = builder_jobs_dir(&state.db_path);
+    let path = dir.join(format!("{}.json", job.job_id));
+    let write = (|| -> Result<(), String> {
+        std::fs::create_dir_all(&dir).map_err(|e| format!("create jobs folder: {e}"))?;
+        let tmp = dir.join(format!("{}.json.tmp", job.job_id));
+        std::fs::write(&tmp, job.file_json.as_bytes()).map_err(|e| format!("write job: {e}"))?;
+        std::fs::rename(&tmp, &path).map_err(|e| format!("rename job: {e}"))?;
+        Ok(())
+    })();
+    if let Ok(st) = store(state) {
+        let outcome = if write.is_ok() { "job-written" } else { "write-failed" };
+        let _ = st.audit_add(
+            now_unix() as i64,
+            "PlaceBlueprintJob",
+            &format!(
+                "{} · job {} · game {} · {}",
+                job.summary, job.job_id, job.game_id, outcome
+            ),
+        );
+        let _ = st.activity_add(&ActivityEvent {
+            event_key: format!("place-{}-{}", now_unix(), rand_hex(8)),
+            recorded_ts_unix: now_unix() as i64,
+            source: "companion".into(),
+            actor: Some(session.user.clone()),
+            category: Some("placement".into()),
+            action: "PlaceBlueprintJob".into(),
+            summary: Some(job.summary.clone()),
+            game_id: Some(job.game_id.clone()),
+            game_date: job.game_date.clone(),
+            game_tick: job.game_tick,
+            outcome: Some(outcome.into()),
+            payload_json: Some(job.file_json.clone()),
+        });
+    }
+    match write {
+        Ok(()) => Response::html(
+            200,
+            layout(state, session,
+                "Job written",
+                &format!(
+                    "<h1>Job written</h1><div class=\"panel\"><p><b>{}</b></p>\
+                     <p class=\"sub\">File: <code>{}</code> · job <code>{}</code></p>\
+                     <p>QoSBuilder picks it up at the <b>next in-game day end</b> — if the mod is installed and its <code>enabled</code> setting is on. Watch the <a href=\"/log\">Log page</a> for <code>JobClaimed</code> / <code>JobScheduled</code> (or a refusal with its reason), then take a snapshot: the census change is the honest placement verdict, since the batch is per-item in-game.</p>\
+                     <p><a href=\"/place\">← Place another</a></p></div>",
+                    esc(&job.summary),
+                    esc(&path.display().to_string()),
+                    esc(&job.job_id),
+                ),
+            ),
+        ),
+        Err(e) => Response::html(
+            500,
+            layout(state, session,
+                "Job write failed",
+                &format!(
+                    "<h1>Job write failed</h1><div class=\"panel\"><p>{}</p><p>Nothing was placed and the failure is in the audit log. Check the jobs folder path (shown on the Place page; override it with <code>[builder] jobs_dir</code> in coi.toml if the companion runs somewhere other than the game PC).</p><p><a href=\"/place\">← Back to the library</a></p></div>",
+                    esc(&e)
+                ),
+            ),
+        ),
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Catalogue — every command the game exposes, and what we know about it
 // ---------------------------------------------------------------------------
 
-fn page_catalogue(_state: &State, session: &Session) -> Response {
+fn page_catalogue(state: &State, session: &Session) -> Response {
     let verified = CATALOGUE.iter().filter(|c| c.status == "verified").count();
     let excluded = CATALOGUE.iter().filter(|c| c.status == "excluded").count();
     let entity = CATALOGUE.iter().filter(|c| c.entity).count();
-    let mut body = format!(
-        "<h1>Actions understood — the command catalogue</h1>\
-         <p class=\"sub\">Every command the game exposes over POST /command (inventory captured \
-         from this game, v0.8.8). Purposes are read from command names and argument schemas; \
+    let mut body = page_head(
+        "Library",
+        "Actions understood — the command catalogue",
+        "Every command the game exposes over POST /command (inventory captured from this game, v0.8.8).",
+        "",
+    );
+    body.push_str(
+        "<div class=\"callout callout--info\">Purposes are read from command names and argument schemas; \
          only commands marked <b>verified</b> have actually been executed and observed through \
          this website's confirm flow. This registry is step A of the solo-play road: an agent \
-         can only play with hands that are understood.</p>\
-         <div class=\"cols\">\
+         can only play with hands that are understood.</div>",
+    );
+    body.push_str(&format!(
+        "<div class=\"cols\">\
          <div class=\"col\"><h2>{} commands</h2><p>{} target a specific entity (addressable via the bridge census); {} are global.</p></div>\
          <div class=\"col\"><h2>{} verified live</h2><p>Executed through the prepare → confirm → audit flow on the real game. {} excluded by policy (see its note). Every other command is <b>wired</b>: preparable from its row below through a generic schema form — the exact JSON is always shown before anything is sent.</p></div>\
          <div class=\"col\"><h2>Construction: the primitive exists</h2><p><b>CreateStaticEntityCmd</b> places a building/transport from a prototype at a tile transform, with <b>FinishBuildOfStaticEntityCmd</b> beside it, <b>CreateTrainTrackEntityWithDirectionCmd</b> for rails, and full train-line / train-network / vehicle-build-queue creation commands. Whether placement creates a construction site or a finished building — and how TileTransform encodes position — is untested: sandbox-save experiments are the next step, never the live save.</p></div>\
@@ -1767,23 +3021,23 @@ fn page_catalogue(_state: &State, session: &Session) -> Response {
         CATALOGUE.len() - entity,
         verified,
         excluded,
-    );
-    body.push_str("<input id=\"tfilter\" type=\"search\" placeholder=\"Filter commands…\" style=\"width:100%;padding:8px;margin:10px 0\">");
+    ));
+    body.push_str("<div class=\"card tablecard\"><div class=\"filterbar\"><input id=\"tfilter\" type=\"search\" placeholder=\"🔍 Filter commands…\"><span class=\"count\">status: verified = executed live · wired = preparable, unverified · excluded = policy refusal</span></div>");
     body.push_str("<table id=\"ctable\"><thead><tr><th>Domain</th><th>Command</th><th>Purpose & args</th><th>Targets</th><th>Status</th></tr></thead><tbody>");
     for c in CATALOGUE {
         let status = match c.status {
-            "verified" => "✅ verified",
-            "excluded" => "⛔ excluded",
-            _ => "wired",
+            "verified" => badge("ok", "verified"),
+            "excluded" => badge("critical", "excluded"),
+            _ => badge("info", "wired"),
         };
         body.push_str(&format!(
-            "<tr><td>{}</td><td><b>{}</b>{}</td><td>{}<br><span class=\"sub\">{}</span>",
+            "<tr><td class=\"sub\">{}</td><td><b>{}</b>{}</td><td>{}<br><span class=\"sub mono\">{}</span>",
             esc(c.domain),
             esc(c.name),
             if c.status == "excluded" {
                 String::new()
             } else {
-                format!("<br><a class=\"btn\" href=\"/prepare?cmd={}\">Prepare…</a>", esc(c.name))
+                format!("<br><a class=\"btn btn--sm\" href=\"/prepare?cmd={}\">Prepare…</a>", esc(c.name))
             },
             esc(c.purpose),
             esc(c.args),
@@ -1797,10 +3051,10 @@ fn page_catalogue(_state: &State, session: &Session) -> Response {
             status,
         ));
     }
-    body.push_str("</tbody></table>");
+    body.push_str("</tbody></table></div>");
     body.push_str(TABLE_JS);
     body.push_str("<script>wireTable('ctable','tfilter');</script>");
-    Response::html(200, layout(session, "Command catalogue", &body))
+    Response::html(200, layout(state, session, "Command catalogue", &body))
 }
 
 // ---------------------------------------------------------------------------
@@ -1892,22 +3146,26 @@ fn arg_form_value(v: &Value) -> String {
     }
 }
 
-fn page_plans(_state: &State, session: &Session, _req: &Request) -> Response {
+fn page_plans(state: &State, session: &Session, _req: &Request) -> Response {
     let verdicts: Value = serde_json::from_str(PLANS_VERDICTS).unwrap_or(Value::Null);
     let plan_docs: Vec<Value> = [PLAN_JSON_FRESH, PLAN_JSON_CONT]
         .iter()
         .filter_map(|s| serde_json::from_str(s).ok())
         .collect();
-    let mut body = String::from(
-        "<h1>Game plans</h1>\
-         <p class=\"sub\">Machine-executable plans (GAME-PLAN-FORMAT v1) with their latest \
-         <b>dry-run</b> verdicts — gates evaluated against captured state, orders rendered as \
-         would-prepare. Nothing here has been executed. A Prepare button sends the order through \
-         the standard generic prepare flow; you still confirm the exact JSON before anything runs.</p>",
+    let mut body = page_head(
+        "Game",
+        "Game plans",
+        "Machine-executable plans (GAME-PLAN-FORMAT v1) with their latest dry-run verdicts.",
+        "",
+    );
+    body.push_str(
+        "<div class=\"callout callout--info\">Gates are evaluated against captured state and orders rendered as \
+         would-prepare. <b>Nothing here has been executed.</b> A Prepare button sends the order through \
+         the standard generic prepare flow; you still confirm the exact JSON before anything runs.</div>",
     );
     if let Some(src) = verdicts["state"]["source"].as_str() {
         body.push_str(&format!(
-            "<div class=\"panel\"><p>Verdict state source: {}<br>Captured: date {}, tick {}, gameId {}.</p></div>",
+            "<div class=\"callout callout--warn\"><b>Save-version honesty:</b> verdict state source: {}<br>Captured: date {}, tick {}, gameId {}.</div>",
             esc(src),
             esc(&verdicts["state"]["date"].to_string()),
             esc(&verdicts["state"]["tick"].to_string()),
@@ -1916,14 +3174,15 @@ fn page_plans(_state: &State, session: &Session, _req: &Request) -> Response {
     }
     let Some(plans) = verdicts["plans"].as_array() else {
         body.push_str("<div class=\"err\">Baked-in verdict data failed to parse.</div>");
-        return Response::html(200, layout(session, "Plans", &body));
+        return Response::html(200, layout(state, session, "Plans", &body));
     };
     for (i, p) in plans.iter().enumerate() {
         let pid = p["id"].as_str().unwrap_or("?");
         let doc = plan_docs.get(i);
         body.push_str(&format!(
-            "<h2>{}</h2><p class=\"sub\">Plan <code>{}</code> v{} · game {} · {}</p>",
+            "<div class=\"card\"><div class=\"cardhead\"><h2>{}</h2><span class=\"right\">{}</span></div><p class=\"sub\">Plan <code>{}</code> v{} · game {} · {}</p>",
             esc(p["title"].as_str().unwrap_or(pid)),
+            badge("info", p["plan_status"].as_str().unwrap_or("")),
             esc(pid),
             esc(&p["version"].to_string()),
             esc(&p["game_version"].to_string()),
@@ -1934,18 +3193,24 @@ fn page_plans(_state: &State, session: &Session, _req: &Request) -> Response {
                 body.push_str(&format!("<p class=\"sub\">End state: {}</p>", esc(end)));
             }
         }
-        body.push_str("<table><thead><tr><th>Phase</th><th>Name</th><th>Dry-run status</th></tr></thead><tbody>");
         if let Some(phases) = p["phases"].as_array() {
             for ph in phases {
+                let status = ph["status"].as_str().unwrap_or("");
+                let sb = match status {
+                    "COMPLETE" => badge("ok", "COMPLETE"),
+                    "ACTIVE" => badge("info", "ACTIVE"),
+                    "HELD" => badge("paused", "HELD"),
+                    _ => badge("paused", status),
+                };
                 body.push_str(&format!(
-                    "<tr><td>{}</td><td>{}</td><td>{}</td></tr>",
-                    esc(ph["id"].as_str().unwrap_or("")),
+                    "<div class=\"phase\"><b>{}</b> {}<div class=\"ev\">{}</div></div>",
                     esc(ph["name"].as_str().unwrap_or("")),
-                    esc(ph["status"].as_str().unwrap_or("")),
+                    sb,
+                    esc(ph["id"].as_str().unwrap_or("")),
                 ));
             }
         }
-        body.push_str("</tbody></table>");
+        body.push_str("</div>");
         // Active phase's orders.
         if let Some(active) = p["active_phase"].as_str() {
             body.push_str(&format!(
@@ -1957,10 +3222,16 @@ fn page_plans(_state: &State, session: &Session, _req: &Request) -> Response {
                     let oid = o["id"].as_str().unwrap_or("?");
                     let do_ = o["do"].as_str().unwrap_or("?");
                     let head = o["status_head"].as_str().unwrap_or("");
+                    let head_badge = match head {
+                        "WOULD PREPARE" => badge("info", "WOULD PREPARE"),
+                        "HELD" => badge("paused", "HELD"),
+                        "PREPARED" => badge("ok", "PREPARED"),
+                        _ => badge("paused", head),
+                    };
                     body.push_str(&format!(
-                        "<div class=\"panel\"><p><b>{}</b> — {} · <code>{}</code></p>",
+                        "<div class=\"card\"><p><b>{}</b> {} · <code>{}</code></p>",
                         esc(oid),
-                        esc(head),
+                        head_badge,
                         esc(do_),
                     ));
                     if let Some(note) = o["note"].as_str() {
@@ -2024,10 +3295,10 @@ fn page_plans(_state: &State, session: &Session, _req: &Request) -> Response {
                 }
             }
         } else {
-            body.push_str("<p>Plan complete by its gates — no active phase, no next orders.</p>");
+            body.push_str("<div class=\"callout callout--ok\">Plan complete by its gates — no active phase, no next orders.</div>");
         }
     }
-    Response::html(200, layout(session, "Plans", &body))
+    Response::html(200, layout(state, session, "Plans", &body))
 }
 
 fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
@@ -2039,14 +3310,15 @@ fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
             .unwrap_or(id)
     };
     let pcts = |v: &Value| format!("{:.1}%", pct_raw(v));
-    let mut body = String::from(
-        "<h1>Trade, loans &amp; edicts</h1>\
-         <p class=\"sub\">Read through CoiBridge — the vanilla API has no routes for any of this. \
-         Actions go through the usual prepare → confirm → audit flow.</p>",
+    let mut body = page_head(
+        "Game",
+        "Trade, loans & edicts",
+        "Read through CoiBridge — the vanilla API has no routes for any of this. Actions go through the usual prepare → confirm → audit flow.",
+        "",
     );
 
     // ---- Contracts ----
-    body.push_str("<h2>Contracts</h2>");
+    body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Contracts</h2></div>");
     match bridge_json(state, "/coi/v1/contracts") {
         Some(v) => {
             body.push_str(&format!(
@@ -2085,13 +3357,12 @@ fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
             body.push_str("<h3>Available to establish</h3>");
             body.push_str(&rows("available", "Establish contract"));
         }
-        None => body.push_str(
-            "<div class=\"panel\"><p>Contracts arrive with <b>CoiBridge v0.6</b> — update the mod to see them here.</p></div>",
-        ),
+        None => body.push_str(&degraded_bridge("Contracts", "v0.6")),
     }
+    body.push_str("</div>");
 
     // ---- Quick trades (CoiBridge v0.6.1) ----
-    body.push_str("<h2>Quick trades</h2>");
+    body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Quick trades</h2></div>");
     match bridge_json(state, "/coi/v1/quick-trades") {
         Some(v) => {
             body.push_str("<table class=\"sortable\"><thead><tr><th>Trade</th><th>You receive</th><th>You pay</th><th>Unity cost (raw)</th><th>Step</th><th>State</th><th></th></tr></thead><tbody>");
@@ -2100,11 +3371,11 @@ fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
                     let id = sv(&t["id"]);
                     let sold_out = t["isSoldOut"].as_bool().unwrap_or(false);
                     let state_txt = if sold_out {
-                        "sold out"
+                        badge("paused", "sold out")
                     } else if t["hasPriceIncreased"].as_bool().unwrap_or(false) {
-                        "price increased"
+                        badge("warning", "price increased")
                     } else {
-                        "available"
+                        badge("ok", "available")
                     };
                     body.push_str(&format!(
                         "<tr><td>{}</td><td>{} {}</td><td>{} {}</td><td>{}</td><td>{} / {}</td><td>{}</td><td>{}</td></tr>",
@@ -2133,13 +3404,12 @@ fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
             }
             body.push_str("</tbody></table>");
         }
-        None => body.push_str(
-            "<div class=\"panel\"><p>Quick trades arrive with <b>CoiBridge v0.6.1</b> — update the mod to see them here.</p></div>",
-        ),
+        None => body.push_str(&degraded_bridge("Quick trades", "v0.6.1")),
     }
+    body.push_str("</div>");
 
     // ---- Loans ----
-    body.push_str("<h2>Loans</h2>");
+    body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Loans</h2></div>");
     match bridge_json(state, "/coi/v1/loans") {
         Some(v) => {
             body.push_str(&format!(
@@ -2201,13 +3471,12 @@ fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
                 }
             }
         }
-        None => body.push_str(
-            "<div class=\"panel\"><p>Loans arrive with <b>CoiBridge v0.6</b> — update the mod to see them here.</p></div>",
-        ),
+        None => body.push_str(&degraded_bridge("Loans", "v0.6")),
     }
+    body.push_str("</div>");
 
     // ---- Edicts ----
-    body.push_str("<h2>Edicts</h2>");
+    body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Edicts</h2></div>");
     match bridge_json(state, "/coi/v1/edicts") {
         Some(v) => {
             body.push_str("<table class=\"sortable\"><thead><tr><th>Edict</th><th>Enabled</th><th>Active</th><th>Can enable</th><th>Why / why not</th></tr></thead><tbody>");
@@ -2221,28 +3490,32 @@ fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
                     body.push_str(&format!(
                         "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
                         esc(&sv(&e["id"])),
-                        if e["isEnabled"].as_bool().unwrap_or(false) { "✅" } else { "—" },
-                        if e["isActive"].as_bool().unwrap_or(false) { "✅" } else { "—" },
+                        if e["isEnabled"].as_bool().unwrap_or(false) { badge("ok", "enabled") } else { "—".to_string() },
+                        if e["isActive"].as_bool().unwrap_or(false) { badge("ok", "active") } else { "—".to_string() },
                         if e["canBeEnabled"].as_bool().unwrap_or(false) { "yes" } else { "no" },
                         esc(&why),
                     ));
                 }
             }
-            body.push_str("</tbody></table><p class=\"sub\">Toggling edicts is not wired yet: the game's ToggleEdictEnabledCmd exists inside the game but is not in the web API's command list, so it needs a sandbox test before it can go through the confirm flow. Toggle in-game for now.</p>");
+            body.push_str("</tbody></table><div class=\"callout callout--info\">Toggling edicts is not wired yet: the game's ToggleEdictEnabledCmd exists inside the game but is not in the web API's command list, so it needs a sandbox test before it can go through the confirm flow. Toggle in-game for now.</div>");
         }
-        None => body.push_str(
-            "<div class=\"panel\"><p>Edicts arrive with <b>CoiBridge v0.6</b> — update the mod to see them here.</p></div>",
-        ),
+        None => body.push_str(&degraded_bridge("Edicts", "v0.6")),
     }
+    body.push_str("</div>");
     body.push_str(TABLE_JS);
-    Response::html(200, layout(session, "Trade", &body))
+    Response::html(200, layout(state, session, "Trade", &body))
 }
 
-fn page_guides(_state: &State, session: &Session) -> Response {
-    let mut body = String::from(
-        "<h1>Guides</h1><p class=\"sub\">Organized around the failures the triage board watches \
-         for: what goes wrong, how it presents, and how to keep it from happening. Researched \
-         from the official wiki and community practice, and grounded in this run's own numbers — \
+fn page_guides(state: &State, session: &Session) -> Response {
+    let mut body = page_head(
+        "Library",
+        "Guides",
+        "Failure-mode knowledge: what goes wrong, how it presents, and how to keep it from happening.",
+        "",
+    );
+    body.push_str(
+        "<p class=\"sub\">Organized around the failures the triage board watches \
+         for. Researched from the official wiki and community practice, and grounded in this run's own numbers — \
          no invented figures.</p><div class=\"cols\">",
     );
     for g in GUIDES {
@@ -2255,7 +3528,7 @@ fn page_guides(_state: &State, session: &Session) -> Response {
         ));
     }
     body.push_str("</div>");
-    Response::html(200, layout(session, "Guides", &body))
+    Response::html(200, layout(state, session, "Guides", &body))
 }
 
 fn page_guide(state: &State, session: &Session, req: &Request) -> Response {
@@ -2265,11 +3538,14 @@ fn page_guide(state: &State, session: &Session, req: &Request) -> Response {
     let Some(g) = guide_by_id(&id) else {
         return Response::html(
             404,
-            layout(session, "No such guide", "<h1>No such guide</h1><p><a href=\"/guides\">All guides</a></p>"),
+            layout(state, session, "No such guide", "<h1>No such guide</h1><p><a href=\"/guides\">All guides</a></p>"),
         );
     };
-    let mut body = format!("<h1>{}</h1><p class=\"sub\">{}</p>", esc(g.title), esc(g.blurb));
-    // Open issues right now that this guide speaks to.
+    let mut body = page_head("Library", g.title, g.blurb, "");
+    let mut main = String::new();
+    let mut rail = String::new();
+    // Open issues right now that this guide speaks to — the "in
+    // your factory right now" panel leads the main column.
     if let Ok(live) = fetch_live(&client(state)) {
         let issues = compute_issues(&live);
         let rel: Vec<&Issue> = issues
@@ -2284,24 +3560,31 @@ fn page_guide(state: &State, session: &Session, req: &Request) -> Response {
             })
             .collect();
         if !rel.is_empty() {
-            body.push_str("<h2>In your factory right now</h2>");
+            main.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>In your factory right now</h2></div>");
             for i in rel {
-                body.push_str(&format!(
-                    "<div class=\"card\"><div class=\"p\">{}</div><div class=\"t\"><a href=\"/issue?p={}&t={}\">{}</a></div><div class=\"e\">{}</div></div>",
-                    esc(&i.product),
-                    url_enc(&i.product),
-                    url_enc(&i.title),
-                    esc(&i.title),
-                    esc(&i.evidence),
-                ));
+                main.push_str(&issue_card(i, None));
             }
+            main.push_str("</div>");
         }
     }
     for s in g.sections {
-        body.push_str(&format!("<h2>{}</h2><div class=\"panel\">{}</div>", esc(s.heading), s.body));
+        main.push_str(&format!(
+            "<div class=\"card\"><div class=\"cardhead\"><h2>{}</h2></div>{}</div>",
+            esc(s.heading),
+            s.body
+        ));
     }
-    body.push_str("<p class=\"sub\"><a href=\"/guides\">← All guides</a></p>");
-    Response::html(200, layout(session, g.title, &body))
+    rail.push_str("<div class=\"card\"><p><a class=\"btn btn--secondary\" href=\"/guides\">← All guides</a></p><p class=\"sub\">More failure modes:</p>");
+    for other in GUIDES.iter().filter(|x| x.id != g.id).take(5) {
+        rail.push_str(&format!(
+            "<p><a href=\"/guide?id={}\">{}</a></p>",
+            other.id,
+            esc(other.title)
+        ));
+    }
+    rail.push_str("</div>");
+    body.push_str(&format!("<div class=\"detail\"><div>{}</div><div>{}</div></div>", main, rail));
+    Response::html(200, layout_nav(state, session, g.title, "Guides", &body))
 }
 
 // ---------------------------------------------------------------------------
@@ -2352,10 +3635,18 @@ fn pct_raw(v: &Value) -> f64 {
 /// (Electricity.Value is kW by construction — no scaling). Returns an
 /// empty string when the route is absent (older mod, or the game is
 /// off): the Overview degrades silently, never an error.
+fn power_data(state: &State) -> Option<Value> {
+    bridge_json(state, "/coi/v1/power")
+}
+
 fn power_panel(state: &State) -> String {
-    let Some(v) = bridge_json(state, "/coi/v1/power") else {
+    let Some(v) = power_data(state) else {
         return String::new();
     };
+    power_panel_html(&v)
+}
+
+fn power_panel_html(v: &Value) -> String {
     // CoiBridge v0.6.3 averages (optional — absent on older mods, in
     // which case the panel renders exactly as before). The bridge
     // flags this decoding UNVERIFIED (`averagesUnverified`), so the
@@ -2373,11 +3664,33 @@ fn power_panel(state: &State) -> String {
         let prod = &a["production"];
         let cons = &a["consumption"];
         let cap = &a["generationCapacity"];
+        // §4.5: the averages as labelled mini-bars in the UNVERIFIED
+        // colour (last-month values, shared scale), with every word
+        // of the old prose line kept in the caption beneath.
+        let num = |x: &Value| x.as_f64().unwrap_or(0.0);
+        let scale = num(&prod["lastMonthKw"])
+            .max(num(&cons["lastMonthKw"]))
+            .max(num(&cap["lastMonthKw"]))
+            .max(1.0);
+        let bar = |x: &Value| -> String {
+            fillbar(num(x) / scale * 100.0, "var(--unverified)", 160)
+        };
         format!(
-            "<br><span class=\"sub\">Averages via CoiBridge v0.6.3 — decoding UNVERIFIED: \
+            "<div style=\"margin-top:12px\"><div class=\"kv\"><span>Monthly averages</span>{}</div>\
+             <table style=\"margin:6px 0\"><tr><td>Produced</td><td>{}</td><td class=\"num\">≈{} <span class=\"u\">kW</span></td></tr>\
+             <tr><td>Consumed</td><td>{}</td><td class=\"num\">≈{} <span class=\"u\">kW</span></td></tr>\
+             <tr><td>Capacity</td><td>{}</td><td class=\"num\">≈{} <span class=\"u\">kW</span></td></tr></table>\
+             <div class=\"caption\">Averages via CoiBridge v0.6.3 — decoding UNVERIFIED: \
              produced ≈{} kW last day · ≈{} kW last month · ≈{} kW last year; \
              consumed ≈{} kW last day · ≈{} kW last month · ≈{} kW last year; \
-             generation capacity ≈{} kW last day · ≈{} kW last month · ≈{} kW last year.</span>",
+             generation capacity ≈{} kW last day · ≈{} kW last month · ≈{} kW last year.</div></div>",
+            badge("unverified", "UNVERIFIED"),
+            bar(&prod["lastMonthKw"]),
+            avg(&prod["lastMonthKw"]),
+            bar(&cons["lastMonthKw"]),
+            avg(&cons["lastMonthKw"]),
+            bar(&cap["lastMonthKw"]),
+            avg(&cap["lastMonthKw"]),
             avg(&prod["lastDayKw"]),
             avg(&prod["lastMonthKw"]),
             avg(&prod["lastYearKw"]),
@@ -2391,16 +3704,32 @@ fn power_panel(state: &State) -> String {
     } else {
         String::new()
     };
+    let balance = vi(&v["balanceKw"]);
+    let cap = vi(&v["generationCapacityKw"]).max(1);
+    let gen_pct = vi(&v["generatedKw"]) as f64 / cap as f64 * 100.0;
+    let cons_pct = vi(&v["consumedKw"]) as f64 / cap as f64 * 100.0;
     format!(
-        "<h2>Electric power</h2><div class=\"panel\">Generated <b>{} kW</b> · consumed <b>{} kW</b> · \
-         balance <b>{} kW</b> · capacity {} / {} kW<br>\
-         <span class=\"sub\">Demanded {} kW (surplus demand {} kW) · wasted {} kW · \
-         {} generator(s), {} consumer(s) — this tick, via CoiBridge.</span>{}</div>",
+        "<div class=\"card\"><div class=\"cardhead\"><h2>Electric power</h2><span class=\"right\">{}</span></div>\
+         <div class=\"kv\"><span>Generated <b style=\"color:var(--text-1)\">{} <span class=\"u\">kW</span></b></span><span>·</span>\
+         <span>Consumed <b style=\"color:var(--text-1)\">{} <span class=\"u\">kW</span></b></span><span>·</span>\
+         <span>Balance <b style=\"color:var(--text-1)\">{} <span class=\"u\">kW</span></b></span><span>·</span>\
+         <span>Capacity {} / {} <span class=\"u\">kW</span></span></div>\
+         <div style=\"margin-top:10px\"><div class=\"caption\" style=\"margin:0 0 4px\">Generation vs capacity</div>{}</div>\
+         <div style=\"margin-top:6px\"><div class=\"caption\" style=\"margin:0 0 4px\">Consumption vs capacity</div>{}</div>\
+         <div class=\"caption\">Demanded {} kW (surplus demand {} kW) · wasted {} kW · \
+         {} generator(s), {} consumer(s) — this tick, via CoiBridge.</div>{}</div>",
+        if balance >= 0 {
+            badge("ok", "balanced")
+        } else {
+            badge("critical", "deficit")
+        },
         vi(&v["generatedKw"]),
         vi(&v["consumedKw"]),
-        vi(&v["balanceKw"]),
+        balance,
         vi(&v["generationCapacityKw"]),
         vi(&v["maxGenerationCapacityKw"]),
+        fillbar(gen_pct, "var(--accent)", 420),
+        fillbar(cons_pct, "var(--paused)", 420),
         vi(&v["demandedKw"]),
         vi(&v["surplusDemandedKw"]),
         vi(&v["wastedKw"]),
@@ -2482,15 +3811,28 @@ fn storage_row_html(session: &Session, row: &Value, live: &Live) -> String {
         ));
     }
     format!(
-        "<tr><td>#{sid}</td><td>{}</td><td><a href=\"/product?id={}\">{}</a></td><td>{} / {}</td><td>{:.1}%</td><td>{}</td><td>{}</td><td>{}{}</td></tr>",
+        "<tr><td class=\"mono\">#{sid}</td><td>{}</td><td><a href=\"/product?id={}\">{}</a></td><td class=\"num\">{} / {} {}</td><td class=\"num\">{:.1}%</td><td>{}</td><td>{}</td><td>{}{}</td></tr>",
         esc(&proto),
         esc(&pid),
         esc(&pname),
         qty,
         cap,
+        fillbar(
+            pct,
+            if pct >= 90.0 { "var(--blocked)" } else { "var(--accent)" },
+            64
+        ),
         pct,
-        if in_dis { "input OFF" } else { "input on" },
-        if out_dis { "output OFF" } else { "output on" },
+        if in_dis {
+            badge("warning", "input OFF")
+        } else {
+            badge("paused", "input on")
+        },
+        if out_dis {
+            badge("warning", "output OFF")
+        } else {
+            badge("paused", "output on")
+        },
         ctl,
         extra,
     )
@@ -2503,16 +3845,18 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
     let c = client(state);
     let live = match fetch_live(&c) {
         Ok(l) => l,
-        Err(e) => return game_unreachable(&e),
+        Err(e) => return game_unreachable(state, session, &e),
     };
     let issues = compute_issues(&live);
     let Some(issue) = issues.iter().find(|i| i.product == p && i.title == t) else {
         return Response::html(
             200,
-            layout(
-                session,
+            layout(state, session,
                 "Issue gone",
-                "<h1>That issue is no longer present</h1><p>The live numbers have moved since the board was rendered — it may have resolved, or changed quadrant. <a href=\"/issues\">Back to the board</a></p>",
+                &format!(
+                    "{}<div class=\"empty\">That issue is no longer present — the live numbers have moved since the board was rendered; it may have resolved, or changed quadrant.</div><p><a class=\"btn btn--secondary\" href=\"/issues\">Back to the board</a></p>",
+                    page_head("Monitor", "Issue gone", "This finding is not on the live board any more.", "")
+                ),
             ),
         );
     };
@@ -2529,17 +3873,22 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
         "Watch" => "wa",
         _ => "ig",
     };
-    let mut body = format!(
-        "<h1>{}</h1><div class=\"sub\">{} · <span class=\"badge\">{}</span></div>",
-        esc(&issue.title),
-        match &pid {
-            Some(id) => format!("<a href=\"/product?id={}\">{}</a>", esc(id), esc(&issue.product)),
-            None => esc(&issue.product),
-        },
-        esc(issue.quadrant),
+    let (_, qvariant) = quadrant_style(issue.quadrant);
+    let mut body = page_head(
+        "Monitor",
+        &issue.title,
+        &format!(
+            "{} · quadrant {}",
+            issue.product,
+            issue.quadrant
+        ),
+        &badge(qvariant, issue.quadrant),
     );
+    // Detail layout (DESIGN §5): main column + right rail; the wide
+    // per-entity Act tables follow full-width below the grid.
+    body.push_str("<div class=\"detail\"><div>");
     body.push_str(&format!(
-        "<div class=\"card {cls}\" style=\"margin-top:14px\"><div class=\"t\">Why \u{2018}{}\u{2019}?</div><div class=\"e\">{}</div></div>",
+        "<div class=\"card {cls}\"><div class=\"cardhead\"><h2>Why \u{2018}{}\u{2019}?</h2></div><p>{}</p></div>",
         esc(issue.quadrant),
         quadrant_why(issue.quadrant),
     ));
@@ -2548,7 +3897,12 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
         let s = &live.stats["products"][id];
         if !s.is_null() {
             body.push_str(&format!(
-                "<h2>The numbers</h2><div class=\"panel\">Quantity <b>{}</b> · stored {} / {} · produced TM/LM {} · consumed TM/LM {} · net last month <b>{}</b>/mo</div>",
+                "<div class=\"card\"><div class=\"cardhead\"><h2>The numbers</h2></div>\
+                 <div class=\"kvrow\"><span class=\"k\">Quantity</span><span><b>{}</b></span></div>\
+                 <div class=\"kvrow\"><span class=\"k\">Stored / capacity</span><span>{} / {}</span></div>\
+                 <div class=\"kvrow\"><span class=\"k\">Produced TM/LM</span><span>{}</span></div>\
+                 <div class=\"kvrow\"><span class=\"k\">Consumed TM/LM</span><span>{}</span></div>\
+                 <div class=\"kvrow\"><span class=\"k\">Net last month</span><span><b>{}</b> <span class=\"u\">/mo</span></span></div></div>",
                 fmt_num(&s["quantity"]),
                 fmt_num(&s["stored"]),
                 fmt_num(&s["storageCapacity"]),
@@ -2565,22 +3919,27 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
             if let Some(q) = h["products"][id]["quantity"].as_array() {
                 let n = q.len();
                 let keep = n.saturating_sub(8);
-                body.push_str("<h2>Monthly history</h2><table><tr><th>Month</th><th>Produced</th><th>Consumed</th><th>Quantity</th></tr>");
+                let pts: Vec<f64> = q.iter().skip(keep).map(|v| v.as_f64().unwrap_or(0.0)).collect();
+                body.push_str(&format!(
+                    "<div class=\"card\"><div class=\"cardhead\"><h2>Monthly history</h2></div>{}",
+                    svg_sparkline_big(&pts, "var(--accent)")
+                ));
+                body.push_str("<table><thead><tr><th>Month</th><th class=\"num\">Produced</th><th class=\"num\">Consumed</th><th class=\"num\">Quantity</th></tr></thead><tbody>");
                 for (i, qty) in q.iter().enumerate().skip(keep) {
                     body.push_str(&format!(
-                        "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                        "<tr><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td></tr>",
                         if i + 1 == n { "current (partial)".to_string() } else { format!("-{}", n - 1 - i) },
                         fmt_num(&h["products"][id]["produced"][i]),
                         fmt_num(&h["products"][id]["consumed"][i]),
                         fmt_num(qty),
                     ));
                 }
-                body.push_str("</table>");
+                body.push_str("</tbody></table></div>");
             }
         }
     }
     body.push_str(&format!(
-        "<h2>Evidence</h2><div class=\"panel\">{}</div>",
+        "<div class=\"card\"><div class=\"cardhead\"><h2>Evidence</h2></div><p>{}</p></div>",
         esc(&issue.evidence)
     ));
     if let Some(f) = fc {
@@ -2590,36 +3949,47 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
             _ => format!("stock lasts ≈ {:.1} months", f.months),
         };
         body.push_str(&format!(
-            "<h2>Outlook</h2><div class=\"panel\"><b>{}</b><br><span class=\"sub\">Basis: {}</span></div>",
+            "<div class=\"card\"><div class=\"cardhead\"><h2>Outlook</h2></div><p>{} <b>{}</b></p><div class=\"caption\">Basis: {}</div></div>",
+            svg_runway(f.months, f.kind),
             esc(&label),
             esc(&f.basis),
         ));
     }
     body.push_str(&format!(
-        "<h2>How to fix it</h2><div class=\"panel\">{}</div>",
+        "<div class=\"card\"><div class=\"cardhead\"><h2>How to fix it</h2></div><p>{}</p></div>",
         esc(&issue.fix)
     ));
-    if let Some(f) = fc {
-        if f.advice != issue.fix {
-            body.push_str(&format!(
-                "<div class=\"panel\">Forecast advice: {}</div>",
-                esc(&f.advice)
-            ));
-        }
+    body.push_str("</div><div>");
+    // Rail: product link card, guide buttons, forecast advice.
+    if let Some(id) = &pid {
+        body.push_str(&format!(
+            "<div class=\"card\"><div class=\"cardhead\"><h2>Product</h2></div><p><a href=\"/product?id={}\">{}</a></p><p class=\"sub mono\">{}</p></div>",
+            esc(id),
+            esc(&issue.product),
+            esc(id),
+        ));
     }
-    // Guides that speak to this failure mode.
     let gl = guides_for_issue(issue, pid.as_deref());
     if !gl.is_empty() {
-        body.push_str("<h2>Guides for this failure mode</h2><p>");
+        body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Guides for this failure mode</h2></div><p>");
         for g in gl {
             body.push_str(&format!(
-                "<a class=\"btn\" href=\"/guide?id={}\">{}</a> ",
+                "<a class=\"btn btn--secondary btn--sm\" href=\"/guide?id={}\">{}</a> ",
                 g.id,
                 esc(g.title),
             ));
         }
-        body.push_str("</p>");
+        body.push_str("</p></div>");
     }
+    if let Some(f) = fc {
+        if f.advice != issue.fix {
+            body.push_str(&format!(
+                "<div class=\"callout callout--info\"><b>Forecast advice.</b> {}</div>",
+                esc(&f.advice)
+            ));
+        }
+    }
+    body.push_str("</div></div>");
     // Act on it: pin toggle + bridge-driven controls for the actual
     // storages holding this product and the machines producing it.
     body.push_str("<h2>Act on it</h2>");
@@ -2757,7 +4127,7 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
         }
     }
     body.push_str("<p class=\"sub\"><a href=\"/issues\">← Back to the board</a></p>");
-    Response::html(200, layout(session, "Issue detail", &body))
+    Response::html(200, layout(state, session, "Issue detail", &body))
 }
 
 /// Machines per instance (CoiBridge v0.6.4's GET /coi/v1/machines):
@@ -2769,9 +4139,10 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
 /// at the top of page_entities. Malformed rows never panic: missing
 /// fields render as "—".
 fn machines_section(state: &State) -> String {
-    let mut s = String::from("<h2>Machines (per-instance)</h2>");
+    let mut s = String::from("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Machines (per-instance)</h2></div>");
     let Some(v) = bridge_json(state, "/coi/v1/machines") else {
-        s.push_str("<div class=\"panel\"><p>Per-instance machine states arrive with <b>CoiBridge v0.6.4</b> — update the mod to see them here.</p></div>");
+        s.push_str(&degraded_bridge("Per-instance machine states", "v0.6.4"));
+        s.push_str("</div>");
         return s;
     };
     let txt = |v: &Value| -> String {
@@ -2800,9 +4171,8 @@ fn machines_section(state: &State) -> String {
             summary.push_str(&format!(" · {} row(s) skipped by the bridge", skipped));
         }
     }
-    s.push_str(&format!("<p class=\"sub\">{}</p>", summary));
     if rows.is_empty() {
-        s.push_str("<p class=\"sub\">No machines reported by the bridge.</p>");
+        s.push_str("<div class=\"empty\">No machines reported by the bridge.</div></div>");
         return s;
     }
     // State dropdown options: the distinct states, alphabetical.
@@ -2813,10 +4183,12 @@ fn machines_section(state: &State) -> String {
         opts.push_str(&format!("<option value=\"{}\">{}</option>", esc(st), esc(st)));
     }
     s.push_str(&format!(
-        "<p class=\"sub\">Filter: <input type=\"text\" id=\"mfilter\" placeholder=\"proto, id, recipe…\" oninput=\"filterMachines()\"> · \
-         State: <select id=\"mstate\" onchange=\"filterMachines()\">{}</select></p>\
+        "<div class=\"filterbar\"><input type=\"text\" id=\"mfilter\" placeholder=\"🔍 proto, id, recipe…\" oninput=\"filterMachines()\">\
+         <label>State <select id=\"mstate\" onchange=\"filterMachines()\">{}</select></label>\
+         <span class=\"count\">{}</span></div>\
          <table id=\"mtable\"><thead><tr><th>Id</th><th>Proto</th><th>Pos</th><th>State</th><th>Recipe(s)</th><th>Paused</th><th>Enabled</th></tr></thead><tbody>",
-        opts
+        opts,
+        summary
     ));
     let flag = |v: &Value| -> &'static str {
         match v.as_bool() {
@@ -2847,19 +4219,28 @@ fn machines_section(state: &State) -> String {
             _ => "—".to_string(),
         };
         let state_txt = txt(&r["state"]);
+        // State cell as a token badge (DESIGN §1.1 binding); the
+        // row's data-state keeps the raw state for the filter JS.
+        let state_badge = match state_txt.as_str() {
+            "Working" => badge("ok", "Working"),
+            "NotEnoughInput" => badge("starved", "Starved"),
+            "OutputFull" => badge("blocked", "Blocked"),
+            "Paused" => badge("paused", "Paused"),
+            other => badge("paused", other),
+        };
         s.push_str(&format!(
-            "<tr data-state=\"{}\"><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+            "<tr data-state=\"{}\"><td class=\"mono\">{}</td><td>{}</td><td class=\"mono\">{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
             esc(&state_txt),
             esc(&id),
             esc(&txt(&r["proto"])),
             esc(&pos),
-            esc(&state_txt),
+            state_badge,
             esc(&recipes),
             flag(&r["isPaused"]),
             flag(&r["isEnabled"]),
         ));
     }
-    s.push_str("</tbody></table>");
+    s.push_str("</tbody></table></div>");
     s.push_str(MACHINES_JS);
     s
 }
@@ -2876,23 +4257,27 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
     let live = match fetch_live(&client(state)) {
         Ok(l) => l,
         Err(e) => {
-            let mut html = format!(
-                "<h1>Entities — the CoiBridge directory</h1>\
-                 <div class=\"err\">The game API did not answer: {}</div>\
-                 <p>Is the game running with a save loaded and <code>web_api_start</code> active? \
-                 The entity directory appears here once it is.</p>",
-                esc(&e)
+            let mut html = page_head(
+                "Monitor",
+                "Entities",
+                "The CoiBridge directory — every storage and machine the companion can address.",
+                "",
             );
+            html.push_str(&degraded_game(&e));
             html.push_str(&machines_html);
-            return Response::html(200, layout(session, "Entities", &html));
+            return Response::html(200, layout(state, session, "Entities", &html));
         }
     };
-    let mut body = game_header(&live);
-    body.push_str("<h1>Entities — the CoiBridge directory</h1>");
+    let mut body = page_head(
+        "Monitor",
+        "Entities",
+        "The CoiBridge directory — every storage and machine the companion can address, with controls.",
+        "",
+    );
     if !bridge_present(state) {
-        body.push_str("<div class=\"err\">CoiBridge is not answering. Install the mod (Mods\\CoiBridge), load the save with it, and run <code>web_api_start</code> — this page then shows every storage and machine the companion can address, with controls.</div>");
+        body.push_str("<div class=\"callout callout--danger\"><b>CoiBridge is not answering.</b> Install the mod (Mods\\CoiBridge), load the save with it, and run <code>web_api_start</code> — this page then shows every storage and machine the companion can address, with controls.</div>");
         body.push_str(&machines_html);
-        return Response::html(200, layout(session, "Entities", &body));
+        return Response::html(200, layout(state, session, "Entities", &body));
     }
     if let (Some(st), Some(rs)) = (
         bridge_json(state, "/coi/v1/status"),
@@ -2900,8 +4285,8 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
     ) {
         let cur = &rs["current"];
         body.push_str(&format!(
-            "<div class=\"panel\">Population <b>{}</b> · housing {} free of {} · months of food <b>{}</b>{}<br>\
-             Research: <b>{}</b> — {:.1}% ({} of {} steps), {} in queue · {} researched · lab {}</div>",
+            "<div class=\"card\"><div class=\"kv\"><span>Population <b style=\"color:var(--text-1)\">{}</b></span><span>·</span><span>housing {} free of {}</span><span>·</span><span>months of food <b style=\"color:var(--text-1)\">{}</b>{}</span></div>\
+             <div style=\"margin-top:10px\"><span>Research: <b>{}</b> — {:.1}% ({} of {} steps), {} in queue · {} researched · lab {}</span> {}</div></div>",
             st["population"],
             st["freeHousingCapacity"],
             st["totalHousingCapacity"],
@@ -2914,6 +4299,7 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
             rs["queue"].as_array().map(|a| a.len()).unwrap_or(0),
             rs["researchedCount"],
             if rs["hasActiveLab"].as_bool().unwrap_or(false) { "active" } else { "idle" },
+            fillbar(pct_raw(&cur["progressPerc"]), "var(--accent)", 160),
         ));
     }
     // Set a storage's product — one form for any storage id.
@@ -2933,11 +4319,11 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
             ));
         }
         body.push_str(&format!(
-            "<div class=\"panel\"><h2 style=\"margin-top:0\">Set a storage's product</h2>\
+            "<div class=\"card\"><div class=\"cardhead\"><h2>Set a storage's product</h2></div>\
              <form method=\"post\" action=\"/actions/prepare-storage-product\">\
              <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
-             <label>Storage id <input type=\"text\" name=\"storageId\" size=\"7\" required></label> \
-             <label>Product <select name=\"productId\">{}</select></label> \
+             <div class=\"field\"><label for=\"ssp-id\">Storage id</label><input id=\"ssp-id\" type=\"text\" name=\"storageId\" size=\"7\" required></div>\
+             <div class=\"field\"><label for=\"ssp-prod\">Product</label><select id=\"ssp-prod\" name=\"productId\">{}</select></div>\
              <button type=\"submit\">Prepare…</button></form>\
              <p class=\"sub\">Goes through the same confirmation page, which warns you if the storage currently holds something else.</p></div>",
             esc(&session.csrf),
@@ -2948,7 +4334,7 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
     if let Some(td) = bridge_json(state, "/coi/v1/trains-detail") {
         if let Some(lines) = td["lines"].as_array() {
             if !lines.is_empty() {
-                body.push_str("<h2>Train lines (detail)</h2><table><thead><tr><th>Id</th><th>Line</th><th>Network</th><th>Trains</th><th>Stations</th><th>Schedule</th></tr></thead><tbody>");
+                body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Train lines (detail)</h2></div><table><thead><tr><th>Id</th><th>Line</th><th>Network</th><th>Trains</th><th>Stations</th><th>Schedule</th></tr></thead><tbody>");
                 for l in lines {
                     let net = if l["network"].is_null() {
                         "—".to_string()
@@ -2974,7 +4360,7 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
                         esc(&sched),
                     ));
                 }
-                body.push_str("</tbody></table>");
+                body.push_str("</tbody></table></div>");
             }
         }
     }
@@ -2982,14 +4368,14 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
     if let Some(storages) = bridge_json(state, "/coi/v1/storages") {
         let rows = storages["storages"].as_array().cloned().unwrap_or_default();
         body.push_str(&format!(
-            "<h2>Storages ({})</h2><p class=\"sub\">Filter: <input type=\"text\" id=\"tfilter\" placeholder=\"product, proto, id…\" oninput=\"filterTable()\"></p>\
-             <table id=\"ptable\"><thead><tr><th>Id</th><th>Storage</th><th>Product</th><th>Qty / cap</th><th>Full</th><th>Input</th><th>Output</th><th>Logistics</th></tr></thead><tbody>",
+            "<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Storages</h2></div><div class=\"filterbar\"><input type=\"text\" id=\"tfilter\" placeholder=\"🔍 product, proto, id…\" oninput=\"filterTable()\"><span class=\"count\">{} storages</span></div>\
+             <table id=\"ptable\"><thead><tr><th>Id</th><th>Storage</th><th>Product</th><th class=\"num\">Qty / cap</th><th class=\"num\">Full</th><th>Input</th><th>Output</th><th>Logistics</th></tr></thead><tbody>",
             rows.len()
         ));
         for r in &rows {
             body.push_str(&storage_row_html(session, r, &live));
         }
-        body.push_str("</tbody></table>");
+        body.push_str("</tbody></table></div>");
     }
     // Machines per instance (CoiBridge v0.6.4) — computed at the top
     // of the page so the section also renders on the degraded paths.
@@ -3008,7 +4394,7 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
                 let mut entries: Vec<(&String, &Value)> = prios.iter().collect();
                 entries.sort_by_key(|(k, _)| k.parse::<i64>().unwrap_or(0));
                 body.push_str(&format!(
-                    "<h2>Non-default priorities ({})</h2>\
+                    "<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Non-default priorities ({})</h2></div>\
                      <p class=\"sub\">Entities whose general priority differs from their prototype default (CoiBridge census).</p>\
                      <table><thead><tr><th>Entity</th><th>Type</th><th>Position</th><th>General priority</th></tr></thead><tbody>",
                     entries.len()
@@ -3037,7 +4423,7 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
                         vi(pv),
                     ));
                 }
-                body.push_str("</tbody></table>");
+                body.push_str("</tbody></table></div>");
             }
         }
         let total = census["transports"]["total"].as_i64().unwrap_or(0);
@@ -3138,7 +4524,7 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
                     .map(|a| a.iter().filter(|e| sv(&e["proto"]) == *proto).count())
                     .unwrap_or(0);
                 body.push_str(&format!(
-                    "<tr><td>{}</td><td>{}</td><td>{}</td><td><a class=\"btn\" href=\"/entities?proto={}\">Open</a></td></tr>",
+                    "<tr><td>{}</td><td>{}</td><td>{}</td><td><a class=\"btn btn--secondary btn--sm\" href=\"/entities?proto={}\">Open</a></td></tr>",
                     esc(proto),
                     count,
                     esc(&machines[proto]["states"].to_string()),
@@ -3149,7 +4535,7 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
         }
     }
     body.push_str(TABLE_JS);
-    Response::html(200, layout(session, "Entities", &body))
+    Response::html(200, layout(state, session, "Entities", &body))
 }
 
 /// Tiny client-side table filter/sort (no framework, our own pages).
@@ -3163,38 +4549,41 @@ document.querySelectorAll('#ptable thead th').forEach(function(th,i){th.style.cu
 // ---------------------------------------------------------------------------
 
 fn page_snapshots(state: &State, session: &Session, req: &Request) -> Response {
-    let mut body = String::from("<h1>Snapshots</h1>");
-    if let Some(msg) = req.query.get("msg") {
-        body.push_str(&format!("<div class=\"ok\">{}</div>", esc(msg)));
-    }
-    body.push_str(&format!(
-        "<div class=\"panel\"><p>Snapshots freeze the whole run — every product, the monthly \
-         history, and the triage board — into the local SQLite store. Take one before and after \
-         a big change and the trends below show what it did.</p>\
-         <form method=\"post\" action=\"/snapshots/take\">\
-         <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
-         <button type=\"submit\">Take a snapshot now</button></form></div>",
+    let take_form = format!(
+        "<form method=\"post\" action=\"/snapshots/take\"><input type=\"hidden\" name=\"csrf\" value=\"{}\"><button type=\"submit\">Take a snapshot now</button></form>",
         esc(&session.csrf)
-    ));
+    );
+    let mut body = page_head(
+        "System",
+        "Snapshots",
+        "Snapshots freeze the whole run — every product, the monthly history, and the triage board — into the local SQLite store.",
+        &take_form,
+    );
+    if let Some(msg) = req.query.get("msg") {
+        body.push_str(&format!("<div class=\"callout callout--ok\">{}</div>", esc(msg)));
+    }
     match store(state) {
         Ok(st) => {
             match st.counts() {
                 Ok((snaps, rows, issues)) => body.push_str(&format!(
-                    "<p class=\"sub\">Store: {snaps} snapshot(s), {rows} product rows, {issues} stored issues.</p>"
+                    "<div class=\"stats\">{}{}{}</div>",
+                    stat_tile("Snapshots", &format!("{snaps}"), "", false),
+                    stat_tile("Product rows", &format!("{rows}"), "", false),
+                    stat_tile("Stored issues", &format!("{issues}"), "", false),
                 )),
                 Err(e) => body.push_str(&format!("<div class=\"err\">{}</div>", esc(&e))),
             }
             if let Ok(list) = st.recent_snapshots(20) {
                 if !list.is_empty() {
-                    body.push_str("<table><tr><th>#</th><th>Game date</th><th>Tick</th><th>Taken</th><th>Products</th><th>Issues</th></tr>");
+                    body.push_str("<div class=\"card tablecard\"><table><thead><tr><th>#</th><th>Game date</th><th class=\"num\">Tick</th><th>Taken</th><th class=\"num\">Products</th><th class=\"num\">Issues</th></tr></thead><tbody>");
                     for (id, date, tick, taken, prods, issues) in list {
                         body.push_str(&format!(
-                            "<tr><td>{id}</td><td>{}</td><td>{tick}</td><td>{}</td><td>{prods}</td><td>{issues}</td></tr>",
+                            "<tr><td>{id}</td><td>{}</td><td class=\"num mono\">{tick}</td><td>{}</td><td class=\"num\">{prods}</td><td class=\"num\">{issues}</td></tr>",
                             esc(&date),
                             fmt_clock(taken as u64)
                         ));
                     }
-                    body.push_str("</table>");
+                    body.push_str("</tbody></table></div>");
                 }
             }
             // Trends for pinned products (names from a live fetch if possible)
@@ -3207,22 +4596,24 @@ fn page_snapshots(state: &State, session: &Session, req: &Request) -> Response {
                 names.sort();
                 names.dedup();
                 let mut any = false;
-                let mut tbl = String::from("<h2>Trends across snapshots</h2><table><tr><th>Product</th><th>Quantity series</th></tr>");
+                let mut tbl = String::from("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Trends across snapshots</h2></div><table><thead><tr><th>Product</th><th>Trend</th><th>First → last</th></tr></thead><tbody>");
                 for name in names {
                     if let Ok(rows) = st.trend(&name) {
                         let mine: Vec<_> = rows.iter().filter(|r| r.7 == name).collect();
                         if mine.len() >= 1 {
                             any = true;
-                            let series: Vec<String> = mine.iter().map(|r| r.2.to_string()).collect();
+                            let vals: Vec<f64> = mine.iter().map(|r| r.2 as f64).collect();
                             tbl.push_str(&format!(
-                                "<tr><td>{}</td><td class=\"spark\">{}</td></tr>",
+                                "<tr><td>{}</td><td>{}</td><td class=\"num\">{} → {}</td></tr>",
                                 esc(&name),
-                                esc(&series.join(" → "))
+                                svg_sparkline(&vals, "var(--accent)"),
+                                mine.first().map(|r| r.2).unwrap_or(0),
+                                mine.last().map(|r| r.2).unwrap_or(0),
                             ));
                         }
                     }
                 }
-                tbl.push_str("</table>");
+                tbl.push_str("</tbody></table></div>");
                 if any {
                     body.push_str(&tbl);
                 }
@@ -3230,7 +4621,7 @@ fn page_snapshots(state: &State, session: &Session, req: &Request) -> Response {
         }
         Err(e) => body.push_str(&format!("<div class=\"err\">{}</div>", esc(&e))),
     }
-    Response::html(200, layout(session, "Snapshots", &body))
+    Response::html(200, layout(state, session, "Snapshots", &body))
 }
 
 fn do_take_snapshot(state: &State, session: &Session, req: &Request) -> Response {
@@ -3239,7 +4630,7 @@ fn do_take_snapshot(state: &State, session: &Session, req: &Request) -> Response
     }
     let live = match fetch_live(&client(state)) {
         Ok(l) => l,
-        Err(e) => return game_unreachable(&e),
+        Err(e) => return game_unreachable(state, session, &e),
     };
     let snap = snapshot_json(&live);
     let mut issues = compute_issues(&live);
@@ -3369,16 +4760,21 @@ fn page_log(state: &State, session: &Session, req: &Request) -> Response {
         .unwrap_or(0)
         .max(0);
 
-    let mut body = String::from("<h1>Log — everything that was done, in order</h1>");
+    let mut body = page_head(
+        "System",
+        "Log",
+        "Everything that was done, in order — applies, snapshot takes and the QoS mods' own feed.",
+        "",
+    );
     body.push_str(
-        "<p class=\"sub\">The unified activity record, stored in this companion's local \
+        "<div class=\"callout callout--info\">The unified activity record, stored in this companion's local \
          database (coi.db). <b>Companion</b> rows are written when a command is applied \
          through the Actions flow; <b>system</b> rows when a snapshot is taken here; \
          <b>QoS</b> rows are the mods' own record of what they did inside the game, \
          imported from their feed file each time this page loads. QoS events exist only \
          from the updated mods onward — mod actions from before the update lived only \
          in the game log and are <b>not</b> backfilled. Times are UTC, as everywhere \
-         in this companion.</p>",
+         in this companion.</div>",
     );
 
     match store(state) {
@@ -3387,7 +4783,7 @@ fn page_log(state: &State, session: &Session, req: &Request) -> Response {
             if report.found {
                 match (&report.stats, &report.error) {
                     (Some(s), _) => body.push_str(&format!(
-                        "<p class=\"sub\">QoS feed: {} — this load imported {} new, skipped {} already stored, {} malformed line(s).</p>",
+                        "<p class=\"caption\">QoS feed: <span class=\"mono\">{}</span> — this load imported {} new, skipped {} already stored, {} malformed line(s).</p>",
                         esc(&report.path), s.imported, s.skipped, s.malformed
                     )),
                     (None, Some(e)) => body.push_str(&format!(
@@ -3399,7 +4795,7 @@ fn page_log(state: &State, session: &Session, req: &Request) -> Response {
                 }
             } else {
                 body.push_str(&format!(
-                    "<p class=\"sub\">QoS feed: no file at {} yet — nothing to import.</p>",
+                    "<p class=\"caption\">QoS feed: no file at <span class=\"mono\">{}</span> yet — nothing to import.</p>",
                     esc(&report.path)
                 ));
             }
@@ -3407,14 +4803,14 @@ fn page_log(state: &State, session: &Session, req: &Request) -> Response {
             // Filter form (plain GET, so filters live in the URL).
             let sel = |v: &str| if src_filter == v { " selected" } else { "" };
             body.push_str(&format!(
-                "<form method=\"get\" action=\"/log\" style=\"margin:12px 0\">\
+                "<div class=\"card\"><form method=\"get\" action=\"/log\" class=\"filterbar\" style=\"margin:0\">\
                  <label>Source <select name=\"source\">\
                  <option value=\"all\"{}>All sources</option>\
                  <option value=\"companion\"{}>Companion</option>\
                  <option value=\"qos\"{}>QoS mods</option>\
-                 <option value=\"system\"{}>System</option></select></label> \
-                 <label>Search <input type=\"text\" name=\"q\" value=\"{}\" placeholder=\"action or summary text\"></label> \
-                 <button type=\"submit\">Filter</button></form>",
+                 <option value=\"system\"{}>System</option></select></label>\
+                 <input type=\"text\" name=\"q\" value=\"{}\" placeholder=\"🔍 action or summary text\">\
+                 <button type=\"submit\">Filter</button></form></div>",
                 sel("all"),
                 sel("companion"),
                 sel("qos"),
@@ -3427,24 +4823,48 @@ fn page_log(state: &State, session: &Session, req: &Request) -> Response {
                 .activity_recent(source, Some(search), PAGE_SIZE, page * PAGE_SIZE)
                 .unwrap_or_default();
             body.push_str(&format!(
-                "<p class=\"sub\">{total} event(s) match. Showing {} (newest first).</p>",
+                "<p class=\"caption\">{total} event(s) match. Showing {} (newest first).</p>",
                 rows.len()
             ));
             if rows.is_empty() {
-                body.push_str("<p>No events recorded yet.</p>");
+                let filtered = source.is_some() || !search.is_empty();
+                body.push_str(&format!(
+                    "<div class=\"empty\">{}</div>",
+                    if filtered {
+                        "No events match this filter."
+                    } else {
+                        "No events recorded yet — actions you confirm and QoS mod activity land here."
+                    }
+                ));
             } else {
-                body.push_str("<table><tr><th>Time (UTC)</th><th>Source</th><th>Actor / mod</th><th>Action</th><th>Summary</th><th>Outcome</th><th>Game</th><th>Payload</th></tr>");
+                body.push_str("<div class=\"card\">");
+                let mut cur_day = String::new();
                 for r in &rows {
-                    let badge = match r.source.as_str() {
-                        "qos" => "<span class=\"badge\" style=\"background:#274a2a\">QoS</span>",
-                        "system" => "<span class=\"badge\" style=\"background:#3a3f4a\">system</span>",
-                        _ => "<span class=\"badge\" style=\"background:#2b3a5e\">companion</span>",
+                    let clock = fmt_clock(r.recorded_ts_unix as u64);
+                    let (day, time) = clock
+                        .split_once(' ')
+                        .map(|(d, t)| (d.to_string(), t.to_string()))
+                        .unwrap_or((clock.clone(), String::new()));
+                    if day != cur_day {
+                        body.push_str(&format!("<div class=\"feed-day\">{}</div>", esc(&day)));
+                        cur_day = day;
+                    }
+                    let src_badge = match r.source.as_str() {
+                        "qos" => "<span class=\"badge badge--src-qos\">QoS</span>".to_string(),
+                        "system" => "<span class=\"badge badge--src-system\">system</span>".to_string(),
+                        _ => "<span class=\"badge badge--src-companion\">companion</span>".to_string(),
+                    };
+                    let outcome_badge = match r.outcome.as_deref() {
+                        Some("success") => badge("ok", "success"),
+                        Some("failed") => badge("critical", "failed"),
+                        Some(o) if !o.is_empty() => badge("paused", o),
+                        _ => String::new(),
                     };
                     let game = match (&r.game_date, r.game_tick) {
                         (Some(d), Some(t)) => format!("{} · tick {}", esc(d), t),
                         (Some(d), None) => esc(d),
                         (None, Some(t)) => format!("tick {t}"),
-                        (None, None) => "—".to_string(),
+                        (None, None) => String::new(),
                     };
                     let payload = match &r.payload_json {
                         Some(p) => {
@@ -3454,28 +4874,27 @@ fn page_log(state: &State, session: &Session, req: &Request) -> Response {
                                         .unwrap_or_else(|_| p.clone())
                                 })
                                 .unwrap_or_else(|_| p.clone());
-                            format!("<details><summary>payload</summary><pre>{}</pre></details>", esc(&pretty))
+                            format!("<details class=\"payload\"><summary>payload</summary><pre>{}</pre></details>", esc(&pretty))
                         }
-                        None => "—".to_string(),
+                        None => String::new(),
                     };
                     body.push_str(&format!(
-                        "<tr><td style=\"white-space:nowrap\">{}</td><td>{}</td><td>{}</td>\
-                         <td><b>{}</b>{}</td><td>{}</td><td>{}</td><td style=\"white-space:nowrap\">{}</td><td>{}</td></tr>",
-                        esc(&fmt_clock(r.recorded_ts_unix as u64)),
-                        badge,
-                        esc(r.actor.as_deref().unwrap_or("—")),
+                        "<div class=\"feedrow\"><span class=\"time mono\">{}</span>{}<div style=\"flex:1;min-width:0\">\
+                         <div><b>{}</b> <span class=\"sub\">{}</span> {}</div>\
+                         <div>{}</div>\
+                         <div class=\"caption\">{} · {}</div>{}</div></div>",
+                        esc(&time),
+                        src_badge,
                         esc(&r.action),
-                        r.category
-                            .as_deref()
-                            .map(|c| format!("<br><span class=\"sub\">{}</span>", esc(c)))
-                            .unwrap_or_default(),
+                        esc(r.category.as_deref().unwrap_or("")),
+                        outcome_badge,
                         esc(r.summary.as_deref().unwrap_or("")),
-                        esc(r.outcome.as_deref().unwrap_or("")),
+                        esc(r.actor.as_deref().unwrap_or("—")),
                         game,
                         payload,
                     ));
                 }
-                body.push_str("</table>");
+                body.push_str("</div>");
             }
 
             // Pagination: simple older/newer links preserving filters.
@@ -3487,25 +4906,28 @@ fn page_log(state: &State, session: &Session, req: &Request) -> Response {
             let mut pager = String::new();
             if page > 0 {
                 pager.push_str(&format!(
-                    "<a class=\"btn\" href=\"/log?{}&page={}\">← Newer</a> ",
+                    "<a class=\"btn btn--secondary\" href=\"/log?{}&page={}\">← Newer</a> ",
                     qs,
                     page - 1
                 ));
             }
             if total > (page + 1) * PAGE_SIZE {
                 pager.push_str(&format!(
-                    "<a class=\"btn\" href=\"/log?{}&page={}\">Older →</a>",
+                    "<a class=\"btn btn--secondary\" href=\"/log?{}&page={}\">Older →</a>",
                     qs,
                     page + 1
                 ));
             }
             if !pager.is_empty() {
-                body.push_str(&format!("<p style=\"margin-top:14px\">{pager}</p>"));
+                body.push_str(&format!(
+                    "<div class=\"pager\">{pager}<span class=\"caption\">page {}</span></div>",
+                    page + 1
+                ));
             }
         }
         Err(e) => body.push_str(&format!("<div class=\"err\">{}</div>", esc(&e))),
     }
-    Response::html(200, layout(session, "Log", &body))
+    Response::html(200, layout(state, session, "Log", &body))
 }
 
 // ---------------------------------------------------------------------------
@@ -3543,16 +4965,46 @@ fn pretty_research(id: &str) -> String {
 }
 
 fn page_research(state: &State, session: &Session) -> Response {
-    let mut body = String::from("<h1>Research</h1>");
-    body.push_str(
-        "<p class=\"sub\">The game API does not report research state — what's finished or what's \
-         currently running arrives with the CoiBridge census. Until then: commands are validated \
-         against the game's own catalogue below (250 nodes), and the game accepts or rejects each \
-         one. Starting a node that isn't available yet returns failure and changes nothing. \
-         Queueing several nodes and letting the game work through them works the same way. \
-         Every attempt is audit-logged.</p>",
+    let mut body = page_head(
+        "Game",
+        "Research",
+        "Current node, queue and the full node catalogue — Start / Queue / Unqueue all go through prepare → confirm.",
+        "",
     );
-    body.push_str("<div class=\"panel\"><h2 style=\"margin-top:0\">Current research</h2><p>");
+    body.push_str(
+        "<div class=\"callout callout--info\">Commands are validated against the game's own catalogue below (250 nodes), and the game accepts \
+         or rejects each one. Starting a node that isn't available yet returns failure and changes nothing. \
+         Queueing several nodes and letting the game work through them works the same way. Every attempt is audit-logged. \
+         Current state and completed nodes come from the CoiBridge research route — the vanilla API does not report research.</div>",
+    );
+    // Current research card — with progress + queue from the bridge
+    // payload when present (DESIGN §2.1), Stop form always.
+    let rs = bridge_json(state, "/coi/v1/research");
+    body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Current research</h2></div>");
+    if let Some(rsv) = &rs {
+        let cur = &rsv["current"];
+        let cur_id = cur["id"].as_str().unwrap_or("");
+        if !cur_id.is_empty() {
+            let pct = pct_raw(&cur["progressPerc"]);
+            let queue_html: String = rsv["queue"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .map(|q| format!("<span class=\"statcap\">{}</span>", esc(&pretty_research(&sv(q)))))
+                        .collect::<Vec<_>>()
+                        .join(" → ")
+                })
+                .unwrap_or_default();
+            body.push_str(&format!(
+                "<p><b>{}</b> — {:.1}%</p>{}<p class=\"sub\">Queue: {}</p>",
+                esc(&pretty_research(cur_id)),
+                pct,
+                fillbar(pct, "var(--accent)", 420),
+                if queue_html.is_empty() { "empty".to_string() } else { queue_html },
+            ));
+        }
+    }
+    body.push_str("<p>");
     body.push_str(&prepare_form(
         session,
         "ResearchStopCmd",
@@ -3564,7 +5016,7 @@ fn page_research(state: &State, session: &Session) -> Response {
     // Completed research (CoiBridge v0.6.2): the bridge research
     // route's "researched" array of completed node ids. Absent on
     // older mods (or when the game is off) — the page is unchanged.
-    if let Some(rs) = bridge_json(state, "/coi/v1/research") {
+    if let Some(rs) = &rs {
         if let Some(done) = rs["researched"].as_array() {
             let count = if rs["researchedCount"].is_null() {
                 done.len() as i64
@@ -3576,7 +5028,8 @@ fn page_research(state: &State, session: &Session) -> Response {
                 .map(|v| esc(&pretty_research(&sv(v))))
                 .collect();
             body.push_str(&format!(
-                "<h2>Completed research ({count})</h2><div class=\"panel\">{}</div>",
+                "<div class=\"card\"><div class=\"cardhead\"><h2>Completed research</h2><span class=\"right\">{} nodes</span></div><p>{}</p></div>",
+                count,
                 if names.is_empty() {
                     "— none yet —".to_string()
                 } else {
@@ -3585,17 +5038,17 @@ fn page_research(state: &State, session: &Session) -> Response {
             ));
         }
     }
-    body.push_str("<h2>Catalogue</h2>");
+    body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Catalogue</h2></div>");
     body.push_str(
-        "<p><input type=\"text\" id=\"rq\" placeholder=\"Filter research…\" oninput=\"filterResearch()\"></p>\
+        "<div class=\"filterbar\"><input type=\"text\" id=\"rq\" placeholder=\"🔍 Filter research…\" oninput=\"filterResearch()\"></div>\
          <script>function filterResearch(){var q=document.getElementById('rq').value.toLowerCase();\
          document.querySelectorAll('tr[data-r]').forEach(function(r){r.style.display=r.getAttribute('data-r').toLowerCase().includes(q)?'':'none';});}</script>",
     );
-    body.push_str("<table><tr><th>Research</th><th>Node id</th><th>Actions</th></tr>");
+    body.push_str("<table><thead><tr><th>Research</th><th>Node id</th><th>Actions</th></tr></thead><tbody>");
     for id in research_ids() {
         let pretty = pretty_research(id);
         body.push_str(&format!(
-            "<tr data-r=\"{} {}\"><td>{}</td><td class=\"sub\">{}</td><td>{} {} {}</td></tr>",
+            "<tr data-r=\"{} {}\"><td>{}</td><td class=\"sub mono\">{}</td><td>{} {} {}</td></tr>",
             esc(&pretty),
             esc(id),
             esc(&pretty),
@@ -3617,8 +5070,8 @@ fn page_research(state: &State, session: &Session) -> Response {
             ),
         ));
     }
-    body.push_str("</table>");
-    Response::html(200, layout(session, "Research", &body))
+    body.push_str("</tbody></table></div>");
+    Response::html(200, layout(state, session, "Research", &body))
 }
 
 /// The global-priority form posts id+value here; build the command args
@@ -3646,4 +5099,45 @@ fn do_prepare_priority(state: &State, session: &Session, req: &Request) -> Respo
         cookies: HashMap::new(),
     };
     do_prepare(state, session, &fake)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The canonical job payload is a cross-language contract with
+    /// QoSBuilder (SPEC Addendum XVII): this vector was produced by
+    /// an independent implementation of the same spec. If either
+    /// side's escaping or field order drifts, the mod refuses every
+    /// job as tampered — this test must fail first.
+    #[test]
+    fn job_canonical_vector() {
+        let canonical = job_canonical(
+            "11111111-2222-3333-4444-555555555555",
+            "2026-11-05T18:00:00Z",
+            "2026-11-05T18:30:00Z",
+            "5583213724730880438",
+            "captain",
+            "Test \"A\" \\ Béton",
+            "B1504:H4sIAAAAAAAC/test+string==",
+            (3167, 762, 4),
+            90,
+            true,
+            500,
+        );
+        assert_eq!(
+            canonical,
+            "{\"jobId\":\"11111111-2222-3333-4444-555555555555\",\"schema\":1,\"createdUtc\":\"2026-11-05T18:00:00Z\",\"expiresUtc\":\"2026-11-05T18:30:00Z\",\"gameId\":\"5583213724730880438\",\"companionUser\":\"captain\",\"blueprintName\":\"Test \\\"A\\\" \\\\ Béton\",\"blueprintString\":\"B1504:H4sIAAAAAAAC/test+string==\",\"anchor\":{\"x\":3167,\"y\":762,\"z\":4},\"rotationDeg\":90,\"applyConfiguration\":true,\"limits\":{\"maxItems\":500}}"
+        );
+        assert_eq!(
+            job_sha256_hex(&canonical),
+            "a8b4498e9edb99e4338bbee339a826f51db9f6ad7a0439c72d8e379343069cbf"
+        );
+    }
+
+    #[test]
+    fn iso_utc_format() {
+        assert_eq!(iso_utc(1793883600), "2026-11-05T13:00:00Z");
+        assert_eq!(iso_utc(0), "1970-01-01T00:00:00Z");
+    }
 }
