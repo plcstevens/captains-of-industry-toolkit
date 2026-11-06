@@ -723,6 +723,10 @@ pub(crate) struct Issue {
     pub(crate) title: String,
     pub(crate) evidence: String,
     pub(crate) fix: String,
+    /// The generator class (DESIGN V2.7): drives the card's figure
+    /// strip and its call-to-action. Set at construction; the web
+    /// layer never re-derives it from the title string.
+    pub(crate) class: &'static str,
 }
 
 /// Production rhythm. Continuous producers (most machines) make
@@ -856,6 +860,7 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                     quadrant: "Watch",
                     product: name.clone(),
                     title: "Stored above nominal capacity".into(),
+                    class: "overcap",
                     evidence: format!("stored {stored} vs capacity {cap} (quantity {qty})"),
                     fix: "Check what holds the excess (vehicles/machine buffers?) and whether capacity accounting changed in 0.8.8.".into(),
                 });
@@ -881,6 +886,7 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                     },
                     product: name.clone(),
                     title: "Production stalled, consumption continues".into(),
+                    class: "stalled",
                     evidence: format!(
                         "produced 0 last month ({} this month), consumed {cons_lm}/mo, stock {qty} ≈ {cover:.1} months of cover{trend}",
                         prod_tm
@@ -903,6 +909,7 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                         },
                         product: name.clone(),
                         title: "Net deficit — buffer draining".into(),
+                    class: "deficit",
                         evidence: format!(
                             "net {net_lm}/mo last month, stock {qty} ≈ {months:.1} months at that rate{trend}"
                         ),
@@ -916,6 +923,7 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                         quadrant: if imp == 3 { "Fix later" } else { "Watch" },
                         product: name.clone(),
                         title: "Structural deficit — stock falls every month".into(),
+                    class: "structural",
                         evidence: format!(
                             "net {net_lm}/mo last month and {} this month, stock {qty} ≈ {months:.1} months at last month's rate{trend}",
                             prod_tm - cons_tm
@@ -936,6 +944,7 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                             quadrant: if imp == 3 { "Fix later" } else { "Watch" },
                             product: name.clone(),
                             title: "Seasonal producer in deficit on the long-window balance".into(),
+                    class: "seasonal",
                             evidence: format!(
                                 "{basis}; stock {qty} ≈ {months:.1} months at that average rate"
                             ),
@@ -950,6 +959,7 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                         quadrant: if imp == 3 { "Fix later" } else { "Watch" },
                         product: name.clone(),
                         title: "Storage full while still producing — output will block".into(),
+                    class: "storage-full",
                         evidence: format!("stored {stored} / capacity {cap}, produced {prod_lm} last month"),
                         fix: "Add storage, raise draw, or pause the producer before it backs up the chain.".into(),
                     });
@@ -958,6 +968,7 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                         quadrant: "Ignore for now",
                         product: name.clone(),
                         title: "Storage full, chain parked (no production or draw)".into(),
+                    class: "parked",
                         evidence: format!("stored {stored} / capacity {cap}, no movement last month"),
                         fix: "Consistent with a filled buffer / war chest. No action unless draw resumes.".into(),
                     });
@@ -981,6 +992,13 @@ pub(crate) struct Forecast {
     pub(crate) months: f64,
     pub(crate) basis: String,
     pub(crate) advice: String,
+    /// The measured flows behind the forecast (DESIGN V2.3: the
+    /// Outlook table renders these as delta chips instead of
+    /// burying them in the basis sentence; the basis string itself
+    /// is kept verbatim as the caption).
+    pub(crate) net_tm: i64,
+    pub(crate) net_lm: i64,
+    pub(crate) stored: i64,
 }
 
 pub(crate) fn compute_forecasts(live: &Live) -> Vec<Forecast> {
@@ -1057,6 +1075,9 @@ Some(((l - f) as f64 / (fin.len() - 1) as f64, fin.len()))
                                 "monthly stock slope {sl:.0}/mo over {n_fin} finished months; recent flows: net {net_tm}/mo this month, {net_lm}/mo last month"
                             ),
                             advice: fix_hint(id, "deficit"),
+                            net_tm,
+                            net_lm,
+                            stored,
                         });
                     }
                 }
@@ -1074,6 +1095,9 @@ Some(((l - f) as f64 / (fin.len() - 1) as f64, fin.len()))
                             months,
                             basis,
                             advice: fix_hint(id, "deficit"),
+                            net_tm,
+                            net_lm,
+                            stored,
                         });
                     }
                 }
@@ -1101,6 +1125,9 @@ Some(((l - f) as f64 / (fin.len() - 1) as f64, fin.len()))
                         } else {
                             "Plan a supply increase or a draw cut before the runway ends.".into()
                         },
+                        net_tm,
+                        net_lm,
+                        stored,
                     });
                 }
             } else if net > 0 && cap >= 200 && stored < cap {
@@ -1115,6 +1142,9 @@ Some(((l - f) as f64 / (fin.len() - 1) as f64, fin.len()))
                             "net +{net_lm}/mo last month, +{net_tm}/mo this month; stored {stored} of {cap}"
                         ),
                         advice: "Add storage, raise the draw, or plan a pause point before the output blocks.".into(),
+                        net_tm,
+                        net_lm,
+                        stored,
                     });
                 }
             }

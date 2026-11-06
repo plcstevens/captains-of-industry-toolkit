@@ -8,8 +8,12 @@
 //! VM.) The CLI subcommands are a debug shell; this is the interface.
 //!
 //! Features:
-//! - Login with a single local user (first visit = set a password;
-//!   salted SHA-256 in the SQLite store, session cookie, CSRF tokens).
+//! - No login (removed 2026-11-06, Philip's call): the site is
+//!   loopback-only, single-user, on his machine. Protection is the
+//!   loopback bind + a Host-header check (127.0.0.1/localhost on the
+//!   configured port only, mirroring the game API) + per-form CSRF
+//!   tokens. The store's `web_users` table is vestigial — nothing
+//!   reads or writes it any more.
 //! - Overview: live game status, pause/speed controls, triage summary,
 //!   live screenshot.
 //! - Issues: the Eisenhower triage board with evidence + fix guidance.
@@ -38,7 +42,7 @@
 //!   in one chronological, filterable replay.
 //!
 //! Std-only HTTP (thread per connection). All state-changing POSTs
-//! require a session + CSRF token.
+//! require the per-form CSRF token.
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -61,10 +65,14 @@ use crate::{
 // State
 // ---------------------------------------------------------------------------
 
+/// The request context handed to page handlers. Since the login
+/// concept was removed (2026-11-06) there is exactly one implicit
+/// local user; the struct survives as plumbing: it carries the
+/// process-lifetime CSRF token every form renders and every POST
+/// checks, plus the actor name stamped into activity rows.
 struct Session {
     user: String,
     csrf: String,
-    expires: u64,
 }
 
 struct Prepared {
@@ -87,10 +95,29 @@ struct PreparedJob {
     created: u64,
 }
 
+/// Server-side cache behind the top-bar must-fix badge and its
+/// polling endpoint (DESIGN V2 addendum). Fed ONLY by page loads
+/// that already fetched live game state — the endpoint itself never
+/// triggers a game fetch, so N open tabs cannot stampede the API.
+/// `count` is None until the first successful page fetch; when the
+/// game goes unreachable the last count stays but `reachable` flips
+/// false and the badge must render it as last-known, never as live.
+struct BadgeCache {
+    count: Option<u64>,
+    reachable: bool,
+    updated: u64,
+}
+
 struct State {
     cfg: Config,
     db_path: String,
-    sessions: Mutex<HashMap<String, Session>>,
+    /// The single CSRF token for this process run (login removed
+    /// 2026-11-06; the token still blocks naive cross-site posts).
+    csrf: String,
+    /// The port the server is bound to — the Host-header check
+    /// accepts only 127.0.0.1/localhost on exactly this port.
+    port: u16,
+    badge: Mutex<BadgeCache>,
     prepared: Mutex<HashMap<String, Prepared>>,
     prepared_jobs: Mutex<HashMap<String, PreparedJob>>,
 }
@@ -120,18 +147,35 @@ fn rand_hex(bytes: usize) -> String {
     buf.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-fn hex_bytes(s: &str) -> Vec<u8> {
-    (0..s.len())
-        .step_by(2)
-        .filter_map(|i| u8::from_str_radix(s.get(i..i + 2).unwrap_or(""), 16).ok())
-        .collect()
+/// The implicit local session: no login, one user, the process
+/// CSRF token. Activity rows keep an actor string for continuity
+/// with the pre-removal log.
+fn local_session(state: &State) -> Session {
+    Session {
+        user: "local".to_string(),
+        csrf: state.csrf.clone(),
+    }
 }
 
-fn password_hash(salt_hex: &str, password: &str) -> String {
-    let mut h = Sha256::new();
-    h.update(hex_bytes(salt_hex));
-    h.update(password.as_bytes());
-    h.finalize().iter().map(|b| format!("{b:02x}")).collect()
+/// Record a live fetch outcome into the badge cache. Called by the
+/// pages that already fetch live state (Overview, Issues); the
+/// badge endpoint only ever reads this.
+fn badge_note(state: &State, live: Option<&Live>) {
+    let mut b = state.badge.lock().unwrap_or_else(|p| p.into_inner());
+    match live {
+        Some(l) => {
+            let n = compute_issues(l)
+                .iter()
+                .filter(|i| i.quadrant == "Fix now")
+                .count() as u64;
+            b.count = Some(n);
+            b.reachable = true;
+            b.updated = now_unix();
+        }
+        None => {
+            b.reachable = false;
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -143,7 +187,9 @@ struct Request {
     path: String,
     query: HashMap<String, String>,
     form: HashMap<String, String>,
-    cookies: HashMap<String, String>,
+    /// The raw Host header ("" when absent) — checked against the
+    /// loopback bind before routing (login-removal hardening).
+    host: String,
 }
 
 fn pct_decode(s: &str) -> String {
@@ -218,14 +264,14 @@ fn read_request(stream: &mut TcpStream) -> Option<Request> {
     let method = first.next()?.to_string();
     let raw_path = first.next()?.to_string();
     let mut content_length = 0usize;
-    let mut cookie_header = String::new();
+    let mut host_header = String::new();
     for line in lines {
         let lower = line.to_ascii_lowercase();
         if let Some(v) = lower.strip_prefix("content-length:") {
             content_length = v.trim().parse().unwrap_or(0);
         }
-        if lower.starts_with("cookie:") {
-            cookie_header = line[7..].trim().to_string();
+        if lower.starts_with("host:") {
+            host_header = line[5..].trim().to_string();
         }
     }
     let mut body = buf[header_end..].to_vec();
@@ -246,19 +292,12 @@ fn read_request(stream: &mut TcpStream) -> Option<Request> {
     } else {
         HashMap::new()
     };
-    let mut cookies = HashMap::new();
-    for pair in cookie_header.split(';') {
-        let mut it = pair.trim().splitn(2, '=');
-        if let (Some(k), Some(v)) = (it.next(), it.next()) {
-            cookies.insert(k.to_string(), v.to_string());
-        }
-    }
     Some(Request {
         method,
         path,
         query,
         form,
-        cookies,
+        host: host_header,
     })
 }
 
@@ -297,10 +336,6 @@ impl Response {
             body: Vec::new(),
             headers: vec![("Location".into(), location.into())],
         }
-    }
-    fn with_cookie(mut self, cookie: String) -> Response {
-        self.headers.push(("Set-Cookie".into(), cookie));
-        self
     }
 }
 
@@ -373,7 +408,7 @@ pub fn cmd(cfg: &Config, db_path: &str, args: &[String]) -> i32 {
         }
     };
     println!("CoI Companion web app at http://{bind}:{port}/  (Ctrl-C to stop)");
-    println!("First visit asks you to set a password; it lives in the local DB.");
+    println!("No login — loopback only, Host-checked, CSRF tokens on forms.");
     let state = Arc::new(State {
         cfg: Config {
             authority: cfg.authority.clone(),
@@ -381,7 +416,13 @@ pub fn cmd(cfg: &Config, db_path: &str, args: &[String]) -> i32 {
             proxy: cfg.proxy.clone(),
         },
         db_path: db_path.to_string(),
-        sessions: Mutex::new(HashMap::new()),
+        csrf: rand_hex(16),
+        port,
+        badge: Mutex::new(BadgeCache {
+            count: None,
+            reachable: false,
+            updated: 0,
+        }),
         prepared: Mutex::new(HashMap::new()),
         prepared_jobs: Mutex::new(HashMap::new()),
     });
@@ -410,60 +451,67 @@ fn store(state: &State) -> Result<Store, String> {
     Store::open(&state.db_path)
 }
 
-fn session_of(state: &State, req: &Request) -> Option<(String, Session)> {
-    let token = req.cookies.get("coi_session")?;
-    let sessions = lock_map(&state.sessions);
-    let s = sessions.get(token)?;
-    if s.expires < now_unix() {
-        return None;
+/// Host-header check (added with the login removal, 2026-11-06):
+/// with no session gate, the bind alone is not the whole story —
+/// a browser on this machine can be driven to POST at any local
+/// port by a hostile page (DNS rebinding / CSRF-by-form). Accept
+/// only the loopback names on the configured port, exactly like
+/// the game API does. The CSRF token remains as the second layer.
+fn host_ok(state: &State, req: &Request) -> bool {
+    let h = req.host.trim().to_ascii_lowercase();
+    h == format!("127.0.0.1:{}", state.port) || h == format!("localhost:{}", state.port)
+}
+
+/// The must-fix badge endpoint: answers ONLY from the server-side
+/// cache (fed by Overview/Issues page loads). It never fetches the
+/// game itself. `count` is null until the first successful page
+/// fetch; `reachable:false` means the number is last-known.
+fn api_must_fix_count(state: &State) -> Response {
+    let b = state.badge.lock().unwrap_or_else(|p| p.into_inner());
+    let body = json!({
+        "count": b.count,
+        "reachable": b.reachable,
+        "updatedUnix": if b.updated == 0 { Value::Null } else { json!(b.updated) },
+    });
+    Response {
+        status: 200,
+        content_type: "application/json".into(),
+        body: body.to_string().into_bytes(),
+        headers: Vec::new(),
     }
-    Some((
-        token.clone(),
-        // Rebuild an owned snapshot (Session isn't Clone; fields are).
-        Session {
-            user: s.user.clone(),
-            csrf: s.csrf.clone(),
-            expires: s.expires,
-        },
-    ))
 }
 
 fn route(state: &State, req: &Request) -> Response {
+    if !host_ok(state, req) {
+        return Response::text(
+            403,
+            "forbidden: this companion only answers 127.0.0.1 / localhost on its own port",
+        );
+    }
     let path = req.path.as_str();
+    let session = local_session(state);
     match (req.method.as_str(), path) {
-        ("GET", "/login") => page_login(state, req),
-        ("POST", "/login") => do_login(state, req),
-        ("POST", "/logout") => {
-            if let Some(token) = req.cookies.get("coi_session") {
-                lock_map(&state.sessions).remove(token);
-            }
-            Response::redirect("/login")
-                .with_cookie("coi_session=; Path=/; Max-Age=0; HttpOnly".into())
-        }
-        _ => {
-            let Some((_, session)) = session_of(state, req) else {
-                return Response::redirect("/login");
-            };
-            match (req.method.as_str(), path) {
                 ("GET", "/") | ("GET", "/index.html") => page_overview(state, &session),
-                ("GET", "/issues") => page_issues(state, &session),
+                ("GET", "/issues") => page_issues(state, &session, req),
                 ("GET", "/issue") => page_issue(state, &session, req),
                 ("GET", "/guides") => page_guides(state, &session),
                 ("GET", "/guide") => page_guide(state, &session, req),
-                ("GET", "/catalogue") => page_catalogue(state, &session),
-                ("GET", "/products") => page_products(state, &session),
+                ("GET", "/catalogue") => page_catalogue(state, &session, req),
+                ("GET", "/products") => page_products(state, &session, req),
                 ("GET", "/product") => page_product(state, &session, req),
                 ("GET", "/entities") => page_entities(state, &session, req),
                 ("GET", "/terrain") => page_terrain(state, &session, req),
                 ("GET", "/trade") => page_trade(state, &session, req),
                 ("GET", "/plans") => page_plans(state, &session, req),
-                ("GET", "/place") => page_place(state, &session),
+                ("GET", "/place") => page_place(state, &session, req),
                 ("POST", "/place/prepare") => do_place_prepare(state, &session, req),
                 ("POST", "/place/confirm") => do_place_confirm(state, &session, req),
                 ("GET", "/designate") => page_designate(state, &session),
                 ("POST", "/designate/prepare") => do_designate_prepare(state, &session, req),
                 ("POST", "/designate/confirm") => do_designate_confirm(state, &session, req),
-                ("GET", "/research") => page_research(state, &session),
+                ("GET", "/research") => page_research(state, &session, req),
+                ("GET", "/research/node") => page_research_node(state, &session, req),
+                ("GET", "/api/v1/must-fix-count") => api_must_fix_count(state),
                 ("GET", "/actions") => page_actions(state, &session),
                 ("POST", "/actions/prepare") => do_prepare(state, &session, req),
                 ("GET", "/prepare") => page_prepare(state, &session, req),
@@ -511,8 +559,6 @@ fn route(state: &State, req: &Request) -> Response {
                 },
                 ("GET", "/favicon.ico") => Response::text(204, ""),
                 _ => Response::text(404, "not found"),
-            }
-        }
     }
 }
 
@@ -706,24 +752,216 @@ img.shot{max-width:100%;border-radius:var(--r-md);margin-top:0}
 /* detail layout (SS2.4): main column + right rail */
 .detail{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
 @media(max-width:900px){.detail{grid-template-columns:1fr}}
+/* =====================================================================
+   DESIGN V2 (addendum V2.1–V2.9, implemented 2026-11-06). Everything
+   below layers over the v1 rules above: token lifts win by order,
+   density overrides restate the v1 selectors, new components are
+   new classes. The SS12 confirm-sheet rules above are untouched.
+   ===================================================================== */
+:root{
+  --text-3:#8494ab; --text-disabled:#5b6a84;
+  --pos:var(--ok); --neg:var(--critical); --flat:var(--text-2);
+}
+.ic{width:16px;height:16px;flex:none;vertical-align:-3px}
+/* density (V2.2) */
+.card,.panel{padding:12px;margin-bottom:16px}
+.card .cardhead{margin-bottom:8px}
+main{padding:20px 24px}
+/* contrast (V2.6): mono data is data, not a hint */
+.mono{color:var(--text-2)}
+.confirm pre{color:var(--text-1)}
+details.payload pre{background:var(--surface-2);color:var(--text-2)}
+.feed-day{color:var(--text-1);font-size:13px;font-weight:600}
+.feedrow{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-bottom:1px solid var(--border-subtle)}
+.empty{color:var(--text-2)}
+.phase .ev{color:var(--text-2)}
+/* ---------- top bar / mega nav (V2.1) ---------- */
+.topbar{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:14px;min-height:48px;padding:0 16px;background:var(--bg-1);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.topbar .brand{font-weight:700;font-size:15px;white-space:nowrap;padding:0}
+.meganav{display:flex;align-items:stretch;min-height:48px}
+.mega{position:relative;display:flex}
+.mega>a{display:flex;align-items:center;gap:5px;padding:0 12px;color:var(--text-2);font-weight:600}
+.mega>a:hover,.mega:hover>a{color:var(--text-1);text-decoration:none;background:var(--surface-2)}
+.mega.active>a{color:var(--text-1);box-shadow:inset 0 -2px 0 var(--accent)}
+.mega .caret{font-size:10px;color:var(--text-3)}
+.mega-panel{display:none;position:absolute;left:0;top:100%;width:560px;max-width:92vw;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 8px 28px rgba(0,0,0,.45);padding:8px;z-index:70}
+.mega:hover .mega-panel,.mega:focus-within .mega-panel{display:block}
+.mega-panel .cols{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
+.mega-row{display:flex;gap:10px;padding:8px;border-radius:var(--r-sm);color:var(--text-1);align-items:flex-start}
+.mega-row:hover{background:var(--surface-2);text-decoration:none}
+.mega-row .ic{color:var(--text-2);margin-top:2px}
+.mega-row .txt{display:flex;flex-direction:column}
+.mega-row .nm{font-weight:600;font-size:13.5px}
+.mega-row .ds{color:var(--text-2);font-size:12px;line-height:1.35}
+.mega-foot{border-top:1px solid var(--border-subtle);margin-top:6px;padding:7px 8px 2px;color:var(--text-3);font-size:12px}
+.topsearch{margin-left:auto;display:flex;align-items:center;gap:6px;background:var(--surface-3);border:1px solid var(--border-strong);border-radius:var(--r-sm);padding:5px 9px;color:var(--text-3)}
+.topsearch input{background:none;border:0;color:var(--text-1);font:13px var(--font-ui);width:170px;outline:none;margin:0;padding:0}
+.topstatus{display:flex;align-items:center;gap:8px;white-space:nowrap;color:var(--text-2);font-size:13px}
+.topstatus .date{color:var(--text-1);font-weight:650}
+.topstatus .down{color:var(--critical);font-weight:600}
+/* must-fix badge (V2 addition, 2026-11-06) */
+.mustfix{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:650;border:1px solid var(--border-subtle);white-space:nowrap}
+.mustfix:hover{text-decoration:none}
+.mustfix--alert{background:var(--critical-soft);color:var(--critical);border-color:var(--critical)}
+.mustfix--ok{background:var(--ok-soft);color:var(--ok)}
+.mustfix--off{background:var(--surface-3);color:var(--text-2)}
+/* ---------- rail (V2.1) ---------- */
+.shell{display:grid;grid-template-columns:232px 1fr;align-items:start}
+aside.rail{background:var(--bg-1);border-right:1px solid var(--border-subtle);padding:14px 12px;position:sticky;top:48px;height:calc(100vh - 48px);overflow:auto}
+.rail .sec{color:var(--text-3);font-size:12px;letter-spacing:.02em;padding:2px 8px 6px}
+.rail .ctx{color:var(--text-3);font-size:12px;letter-spacing:.02em;padding:14px 8px 6px;border-top:1px solid var(--border-subtle);margin-top:12px}
+.rail .navitem{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r-sm);color:var(--text-2);margin-bottom:2px;font-size:13.5px}
+.rail .navitem:hover{background:var(--surface-2);text-decoration:none}
+.rail .navitem.active{background:var(--accent-soft);color:var(--text-1);font-weight:600;box-shadow:inset 2px 0 0 var(--accent)}
+.rail .navitem .count{margin-left:auto}
+.rail .navitem.anchor{color:var(--text-3);font-size:13px}
+.rail .navitem.anchor:hover{color:var(--text-1)}
+.railfoot{color:var(--text-3);font-size:12px;padding:12px 8px 0;border-top:1px solid var(--border-subtle);margin-top:12px}
+.crumb{color:var(--text-3);font-size:12px;letter-spacing:.02em}
+.pagehead{display:flex;align-items:flex-end;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.pagehead h1{font-size:20px;line-height:26px;margin:2px 0 2px;font-weight:650}
+.pagehead .summary{color:var(--text-2);font-size:13.5px}
+.pagehead .actions{margin-left:auto;display:flex;gap:8px}
+/* ---------- stat blocks + figures (V2.3) ---------- */
+.stats2{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.stat2{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px}
+.stat2 .top{display:flex;align-items:center;gap:8px}
+.stat2 .ictile{width:28px;height:28px;border-radius:var(--r-sm);background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--text-2)}
+.stat2 .label{color:var(--text-2);font-size:12px;letter-spacing:.02em}
+.stat2 .value{font-size:22px;line-height:26px;font-weight:650;font-variant-numeric:tabular-nums;margin:4px 0 2px}
+.stat2 .value .u{font-size:13px}
+.stat2 .ctx{color:var(--text-2);font-size:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.stat2--crit{border-color:var(--critical)}
+.stat2--crit .ictile{color:var(--critical);background:var(--critical-soft)}
+.figstrip{display:flex;flex-wrap:wrap;border:1px solid var(--border-subtle);border-radius:var(--r-sm);background:var(--surface-3);overflow:hidden}
+.fig{padding:6px 12px;border-left:1px solid var(--border-subtle);min-width:92px}
+.fig:first-child{border-left:0}
+.fig .figl{font-size:11px;color:var(--text-3);letter-spacing:.02em}
+.fig .fv{font-size:15px;line-height:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.fig .figv.warn{color:var(--warning)}
+.fig .fv .u{font-size:11px}
+/* number semantics (V2.5): a delta is a signed difference, arrowed */
+.delta{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.delta .ic{width:12px;height:12px}
+.delta--pos{background:var(--ok-soft);color:var(--pos)}
+.delta--neg{background:var(--critical-soft);color:var(--neg)}
+.delta--flat{background:var(--surface-2);color:var(--flat);border:1px solid var(--border-subtle)}
+.fillbar{display:inline-block;height:6px;background:var(--chart-track);border-radius:3px;overflow:hidden;vertical-align:middle}
+.fillbar>i{display:block;height:100%}
+.runway{position:relative;height:8px;background:var(--chart-track);border-radius:4px;min-width:140px;display:inline-block;vertical-align:middle}
+.runway>i{display:block;height:100%;border-radius:4px}
+.runway .tick{position:absolute;left:25%;top:-2px;width:1px;height:12px;background:var(--text-3)}
+/* ---------- issue cards (V2.7) ---------- */
+.issue2{background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px}
+.issue2--fn{box-shadow:inset 2px 0 0 var(--critical)} .issue2--fl{box-shadow:inset 2px 0 0 var(--warning)}
+.issue2--wa{box-shadow:inset 2px 0 0 var(--info)} .issue2--ig{box-shadow:inset 2px 0 0 var(--paused)}
+.issue2 .r1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.issue2 .r1 .p{font-weight:600}
+.issue2 .r1 .qb{margin-left:auto}
+.issue2 .state-ic{color:var(--text-2);display:flex}
+.issue2 .figstrip{margin-top:8px}
+.issue2 .guide{color:var(--text-2);font-size:13px;margin-top:7px}
+.issue2 .ctas{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.issue2 .evcap{color:var(--text-2);font-size:12px;margin-top:6px}
+.issue2 .noact{display:inline-flex;align-items:center;gap:6px;color:var(--text-2);font-size:13px}
+.quadhead{display:flex;gap:8px;align-items:center;margin:12px 0 8px;flex-wrap:wrap}
+.quadhead:first-child{margin-top:0}
+.quadhead .more{margin-left:auto;font-size:13px}
+details.quadwhy{display:inline-block}
+details.quadwhy summary{cursor:pointer;color:var(--text-3);font-size:12px;list-style:none}
+details.quadwhy p{color:var(--text-2);font-size:12.5px;max-width:640px;margin:6px 0 0}
+/* ---------- tables (V2.2) ---------- */
+.table--compact td{padding:5px 10px;font-size:13px;line-height:18px}
+.table--compact th{padding:5px 10px}
+.tablecard thead th{position:sticky;top:48px;z-index:5}
+.letterhead{position:sticky;top:48px;background:var(--bg-0);padding:10px 2px 4px;font-weight:650;color:var(--text-1);z-index:4}
+/* ---------- forms (V2.2) ---------- */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
+.form-grid .field{max-width:none;margin:0}
+.howit{color:var(--text-2);font-size:13px}
+.howit summary{cursor:pointer;color:var(--text-3);font-size:12.5px}
+.howit p{margin:6px 0 0;max-width:720px}
+/* ---------- misc v2 components ---------- */
+.ovgrid{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
+.ovrail{display:flex;flex-direction:column;position:sticky;top:64px}
+.minirow{display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0}
+.minirow .bar{flex:1}
+.minibar{height:6px;background:var(--chart-track);border-radius:3px;overflow:hidden;display:block}
+.minibar>i{display:block;height:100%}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text-2);margin-top:6px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px;font-style:normal}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:999px;padding:2px 10px;font-size:12.5px;color:var(--text-2)}
+details.indgroup{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:8px;padding:0 12px}
+details.indgroup summary{cursor:pointer;padding:10px 0;font-weight:600;display:flex;gap:8px;align-items:center}
+details.indgroup summary .count{margin-left:auto;color:var(--text-3);font-weight:400;font-size:12.5px}
+.logfigs{margin-left:auto;display:flex}
+@media(max-width:900px){
+  .shell{grid-template-columns:1fr}
+  aside.rail{position:static;height:auto;display:flex;flex-wrap:wrap;gap:2px;align-items:center}
+  .rail .sec,.rail .ctx{width:100%}
+  .ovgrid{grid-template-columns:1fr}
+  .ovrail{position:static}
+  .mega-panel{display:none!important}
+  main{padding:16px}
+}
 ";
 
-/// The always-visible game status strip (DESIGN §2.1): game date,
-/// PAUSED/RUNNING, speed, tick, population — from data the game-info
-/// route and the bridge status route already serve. When the game
-/// does not answer, the strip flips to its "Game unreachable" state
-/// instead of vanishing, and the page body carries the D1 callout.
+/// The icon sprite (DESIGN V2.4): the 20 glyphs of
+/// design-mock/icons-v2.svg as <symbol> defs, pasted once into the
+/// shell. Stroke glyphs on a 24×24 grid; i-play/i-pause are filled.
+/// Colour always comes from `color:` at the use site.
+const SPRITE: &str = "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><defs>\
+<symbol id=\"i-power\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/></g></symbol>\
+<symbol id=\"i-users\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></g></symbol>\
+<symbol id=\"i-wheat\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 10c-3.5 0-5.5-2-5.5-5.5C10 4.5 12 6.5 12 10Z\"/><path d=\"M12 10c3.5 0 5.5-2 5.5-5.5C14 4.5 12 6.5 12 10Z\"/><path d=\"M12 16.5c-2.8 0-4.6-1.4-5-4 2.8 0 4.6 1.4 5 4Z\"/><path d=\"M12 16.5c2.8 0 4.6-1.4 5-4-2.8 0-4.6 1.4-5 4Z\"/><path d=\"M12 10v12\"/></g></symbol>\
+<symbol id=\"i-flask\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 3h6\"/><path d=\"M10 3v5.5L4.8 18.5A2 2 0 0 0 6.6 21.5h10.8a2 2 0 0 0 1.8-3L14 8.5V3\"/><path d=\"M7.8 15h8.4\"/></g></symbol>\
+<symbol id=\"i-box\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z\"/><polyline points=\"3.27 6.96 12 12.01 20.73 6.96\"/><line x1=\"12\" y1=\"22.08\" x2=\"12\" y2=\"12\"/></g></symbol>\
+<symbol id=\"i-factory\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 21V11l5 3.5V11l5 3.5V7h8v14\"/><path d=\"M3 21h18\"/><path d=\"M16.5 11h.01M16.5 15h.01\"/></g></symbol>\
+<symbol id=\"i-alert\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"13\"/><line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\"/></g></symbol>\
+<symbol id=\"i-check\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></g></symbol>\
+<symbol id=\"i-clock\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><polyline points=\"12 7 12 12 15.5 14\"/></g></symbol>\
+<symbol id=\"i-truck\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"1\" y=\"3\" width=\"15\" height=\"13\" rx=\"1\"/><polygon points=\"16 8 20 8 23 11 23 16 16 16 16 8\"/><circle cx=\"5.5\" cy=\"18.5\" r=\"2.5\"/><circle cx=\"18.5\" cy=\"18.5\" r=\"2.5\"/></g></symbol>\
+<symbol id=\"i-anchor\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"5\" r=\"3\"/><line x1=\"12\" y1=\"22\" x2=\"12\" y2=\"8\"/><path d=\"M5 12H2a10 10 0 0 0 20 0h-3\"/></g></symbol>\
+<symbol id=\"i-train\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"5\" y=\"3\" width=\"14\" height=\"13\" rx=\"2\"/><path d=\"M5 9.5h14\"/><path d=\"M9 13h.01M15 13h.01\"/><path d=\"M9 21l1.8-5M15 21l-1.8-5\"/></g></symbol>\
+<symbol id=\"i-chart\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"12\" y1=\"20\" x2=\"12\" y2=\"10\"/><line x1=\"18\" y1=\"20\" x2=\"18\" y2=\"4\"/><line x1=\"6\" y1=\"20\" x2=\"6\" y2=\"16\"/></g></symbol>\
+<symbol id=\"i-up\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"12\" y1=\"19\" x2=\"12\" y2=\"5\"/><polyline points=\"5 12 12 5 19 12\"/></g></symbol>\
+<symbol id=\"i-down\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"12\" y1=\"5\" x2=\"12\" y2=\"19\"/><polyline points=\"19 12 12 19 5 12\"/></g></symbol>\
+<symbol id=\"i-flat\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"4\" y1=\"12\" x2=\"20\" y2=\"12\"/><polyline points=\"8 8 4 12 8 16\"/><polyline points=\"16 8 20 12 16 16\"/></g></symbol>\
+<symbol id=\"i-play\" viewBox=\"0 0 24 24\"><polygon points=\"6 3 20 12 6 21 6 3\" fill=\"currentColor\"/></symbol>\
+<symbol id=\"i-pause\" viewBox=\"0 0 24 24\"><g fill=\"currentColor\"><rect x=\"6\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\"/><rect x=\"14\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\"/></g></symbol>\
+<symbol id=\"i-layers\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"12 2 2 7 12 12 22 7 12 2\"/><polyline points=\"2 17 12 22 22 17\"/><polyline points=\"2 12 12 17 22 12\"/></g></symbol>\
+<symbol id=\"i-search\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><line x1=\"21\" y1=\"21\" x2=\"16.5\" y2=\"16.5\"/></g></symbol>\
+</defs></svg>";
+
+/// An icon use-site. `name` is one of the sprite ids without the
+/// `i-` prefix. Icons never appear without an adjacent text label.
+fn icon(name: &str) -> String {
+    format!("<svg class=\"ic\"><use href=\"#i-{name}\"/></svg>")
+}
+
+/// The flattened one-line game status for the top bar (DESIGN
+/// V2.1): date · PAUSED/RUNNING solid badge · speed · tick · pop.
+/// When the game does not answer, the strip flips to its "Game
+/// unreachable" state instead of vanishing, and the page body
+/// carries the D1 callout.
 fn status_strip(state: &State) -> String {
     match get_json(&client(state), "/api/v1/game-info") {
         Ok(g) => {
             let paused = g["isPaused"].as_bool().unwrap_or(false);
             let pop = bridge_json(state, "/coi/v1/status")
-                .map(|s| format!(" · pop {}", fmt_num(&s["population"])))
+                .map(|s| {
+                    format!(
+                        "<span>{} {}</span>",
+                        icon("users"),
+                        fmt_num(&s["population"])
+                    )
+                })
                 .unwrap_or_default();
             format!(
-                "<div class=\"statusbox\"><div class=\"date\">{}</div>\
-                 <div class=\"meta\"><span class=\"badge {}\">{}</span><span>speed {}×</span></div>\
-                 <div class=\"meta\"><span class=\"mono\">tick {}</span><span>{}</span></div></div>",
+                "<span class=\"date\">{}</span>\
+                 <span class=\"badge {}\">{}</span>\
+                 <span>speed {}×</span><span class=\"mono\">tick {}</span>{}",
                 esc(&sv(&g["date"])),
                 if paused { "badge--solid-paused" } else { "badge--solid-ok" },
                 if paused { "PAUSED" } else { "RUNNING" },
@@ -732,11 +970,47 @@ fn status_strip(state: &State) -> String {
                 pop,
             )
         }
-        Err(_) => "<div class=\"statusbox statusbox--down\"><div class=\"date\">Game unreachable</div>\
-             <div class=\"meta\"><span class=\"badge badge--critical\">OFFLINE</span><span>no answer from the game API</span></div></div>"
+        Err(_) => "<span class=\"down\">Game unreachable</span>\
+             <span class=\"badge badge--critical\">OFFLINE</span>"
             .to_string(),
     }
 }
+
+/// The top-bar must-fix badge (V2 addition): server-rendered from
+/// the badge cache, then kept fresh by BADGE_JS polling
+/// /api/v1/must-fix-count every 60 s. Colour is never alone — the
+/// words "must fix" are always in the label, and a last-known
+/// number is labelled as such, never dressed as live.
+fn mustfix_badge(state: &State) -> String {
+    let b = state.badge.lock().unwrap_or_else(|p| p.into_inner());
+    let (cls, ic, label) = match (b.count, b.reachable) {
+        (Some(n), true) if n > 0 => ("mustfix--alert", "alert", format!("{n} must fix")),
+        (Some(_), true) => ("mustfix--ok", "check", "0 must fix".to_string()),
+        (Some(n), false) => (
+            "mustfix--off",
+            "alert",
+            format!("{n} must fix · last known"),
+        ),
+        (None, _) => ("mustfix--off", "alert", "must fix · no data yet".to_string()),
+    };
+    format!(
+        "<a id=\"mustfix\" class=\"mustfix {cls}\" href=\"/issues?only=fix-now\">{}<span>{}</span></a>",
+        icon(ic),
+        esc(&label)
+    )
+}
+
+const BADGE_JS: &str = "<script>
+(function(){var b=document.getElementById('mustfix');if(!b)return;
+function ic(n){return '<svg class=\"ic\"><use href=\"#i-'+n+'\"/></svg>'}
+function render(d){var n=d.count;
+if(n===null||n===undefined){b.className='mustfix mustfix--off';b.innerHTML=ic('alert')+'<span>must fix · no data yet</span>';return}
+if(!d.reachable){b.className='mustfix mustfix--off';b.innerHTML=ic('alert')+'<span>'+n+' must fix · last known</span>';return}
+if(n>0){b.className='mustfix mustfix--alert';b.innerHTML=ic('alert')+'<span>'+n+' must fix</span>'}
+else{b.className='mustfix mustfix--ok';b.innerHTML=ic('check')+'<span>0 must fix</span>'}}
+function poll(){fetch('/api/v1/must-fix-count').then(function(r){return r.json()}).then(render).catch(function(){})}
+setInterval(poll,60000)})();
+</script>";
 
 /// Which nav item a page title belongs to (DESIGN §2.2). Detail and
 /// result pages map back to their section; unknown titles get none.
@@ -769,55 +1043,204 @@ fn nav_active(title: &str) -> &'static str {
     }
 }
 
+/// The four sections and their pages, with the one-line
+/// descriptors the mega-nav panels and the rail switcher share
+/// (DESIGN V2.1): (section, section landing href, footer line,
+/// [(page, href, icon, descriptor)]).
+const SECTIONS: [(&str, &str, &str, &[(&str, &str, &str, &str)]); 4] = [
+    (
+        "Monitor",
+        "/",
+        "Live game state, refreshed on every page load.",
+        &[
+            ("Overview", "/", "chart", "Triage, power and pinned products at a glance"),
+            ("Issues", "/issues", "alert", "The board — fix now, fix later, watch, ignore"),
+            ("Products", "/products", "box", "Every product: quantities, storage, monthly flows"),
+            ("Entities", "/entities", "factory", "Storages, machines and the network, with controls"),
+            ("Terrain", "/terrain", "layers", "Heights, deposits and designations"),
+        ],
+    ),
+    (
+        "Game",
+        "/research",
+        "Everything mutating goes prepare → confirm → audit.",
+        &[
+            ("Research", "/research", "flask", "Current node, queue and the full catalogue"),
+            ("Trade", "/trade", "anchor", "Contracts, quick trades, loans and edicts"),
+            ("Plans", "/plans", "layers", "Phase-gated game plans and their evidence"),
+            ("Actions", "/actions", "power", "Commands through prepare → confirm → audit"),
+            ("Place", "/place", "box", "Blueprint placement jobs via QoSBuilder"),
+            ("Designate", "/designate", "layers", "Terrain pads and removals via QoSBuilder"),
+        ],
+    ),
+    (
+        "Library",
+        "/guides",
+        "Guidance first — the catalogue is the whole command surface.",
+        &[
+            ("Guides", "/guides", "check", "Failure modes, in your factory right now"),
+            ("Catalogue", "/catalogue", "search", "Every game command, with its status"),
+        ],
+    ),
+    (
+        "System",
+        "/snapshots",
+        "The local record — nothing leaves this machine.",
+        &[
+            ("Snapshots", "/snapshots", "clock", "Stored snapshots and trends"),
+            ("Log", "/log", "chart", "Companion and QoS activity, in order"),
+        ],
+    ),
+];
+
+fn section_of(active: &str) -> Option<usize> {
+    SECTIONS
+        .iter()
+        .position(|(_, _, _, pages)| pages.iter().any(|(name, _, _, _)| *name == active))
+}
+
+/// One rail context entry (anchor or facet link).
+fn rail_link(href: &str, label: &str) -> String {
+    format!("<a class=\"navitem anchor\" href=\"{}\">{}</a>", href, esc(label))
+}
+
+/// The default rail context for pages whose context block is a
+/// fixed anchor list (DESIGN V2.1 tree). Pages with data-driven
+/// context (facets, indexes, lists) call layout_ctx directly.
+fn default_ctx(active: &str) -> String {
+    let items: &[(&str, &str)] = match active {
+        "Overview" => &[
+            ("#attention", "Attention"),
+            ("#power", "Power"),
+            ("#machines", "Machines"),
+            ("#outlook", "Outlook"),
+            ("#pinned", "Pinned products"),
+        ],
+        "Issues" => &[
+            ("#q-fix-now", "Fix now"),
+            ("#q-fix-later", "Fix later"),
+            ("#q-watch", "Watch"),
+            ("#q-ignore", "Ignore for now"),
+            ("#prod", "Productivity"),
+        ],
+        "Terrain" => &[
+            ("#heightmap", "Height map"),
+            ("#region", "Region & earthworks"),
+            ("#deposits", "Deposits"),
+            ("#designations", "Designations"),
+        ],
+        "Trade" => &[
+            ("#contracts", "Contracts"),
+            ("#quick", "Quick trades"),
+            ("#loans", "Loans"),
+            ("#edicts", "Edicts"),
+        ],
+        "Actions" => &[
+            ("#controls", "Game controls"),
+            ("#prio", "Global priorities"),
+            ("#fix", "Fix actions"),
+            ("#audit", "Audit"),
+        ],
+        "Designate" => &[
+            ("#pad", "New pad"),
+            ("#live", "Live designations"),
+            ("#remove", "Remove"),
+        ],
+        "Snapshots" => &[
+            ("#store", "Store"),
+            ("#take", "Take"),
+            ("#list", "Snapshots"),
+            ("#trends", "Trends"),
+        ],
+        _ => &[],
+    };
+    if items.is_empty() {
+        return String::new();
+    }
+    let mut h = String::from("<div class=\"ctx\">ON THIS PAGE</div>");
+    for (href, label) in items {
+        h.push_str(&rail_link(href, label));
+    }
+    h
+}
+
 fn layout(state: &State, session: &Session, title: &str, body: &str) -> String {
-    layout_nav(state, session, title, nav_active(title), body)
+    let active = nav_active(title);
+    layout_ctx(state, session, title, active, &default_ctx(active), body)
 }
 
 fn layout_nav(state: &State, session: &Session, title: &str, active: &str, body: &str) -> String {
-    const NAV: [(&str, &str, &str); 15] = [
-        ("Monitor", "Overview", "/"),
-        ("Monitor", "Issues", "/issues"),
-        ("Monitor", "Products", "/products"),
-        ("Monitor", "Entities", "/entities"),
-        ("Monitor", "Terrain", "/terrain"),
-        ("Game", "Research", "/research"),
-        ("Game", "Trade", "/trade"),
-        ("Game", "Plans", "/plans"),
-        ("Game", "Actions", "/actions"),
-        ("Game", "Place", "/place"),
-        ("Game", "Designate", "/designate"),
-        ("Library", "Guides", "/guides"),
-        ("Library", "Catalogue", "/catalogue"),
-        ("System", "Snapshots", "/snapshots"),
-        ("System", "Log", "/log"),
-    ];
-    let mut nav = String::new();
-    let mut group = "";
-    for (g, name, href) in NAV {
-        if g != group {
-            group = g;
-            nav.push_str(&format!("<div class=\"group\">{}</div>", g.to_uppercase()));
+    layout_ctx(state, session, title, active, &default_ctx(active), body)
+}
+
+/// The V2 shell: sticky top bar (brand · mega-nav · product jump ·
+/// must-fix badge · flattened status) over a depth rail (section
+/// label · sub-page switcher · one context block). No user area —
+/// there is no login (2026-11-06).
+fn layout_ctx(
+    state: &State,
+    session: &Session,
+    title: &str,
+    active: &str,
+    ctx: &str,
+    body: &str,
+) -> String {
+    let _ = session;
+    let sec_idx = section_of(active);
+    // Mega-nav.
+    let mut mega = String::new();
+    for (i, (sec, sec_href, foot, pages)) in SECTIONS.iter().enumerate() {
+        let mut rows = String::new();
+        for (name, href, ic, desc) in *pages {
+            rows.push_str(&format!(
+                "<a class=\"mega-row\" href=\"{}\">{}<span class=\"txt\"><span class=\"nm\">{}</span><span class=\"ds\">{}</span></span></a>",
+                href,
+                icon(ic),
+                name,
+                desc
+            ));
         }
-        nav.push_str(&format!(
-            "<a class=\"navitem{}\" href=\"{}\">{}</a>",
-            if name == active { " active" } else { "" },
-            href,
-            name,
+        mega.push_str(&format!(
+            "<div class=\"mega{}\"><a href=\"{}\">{}<span class=\"caret\">▾</span></a>\
+             <div class=\"mega-panel\"><div class=\"cols\">{}</div><div class=\"mega-foot\">{}</div></div></div>",
+            if sec_idx == Some(i) { " active" } else { "" },
+            sec_href,
+            sec,
+            rows,
+            foot
         ));
     }
+    // Rail: section label + this section's pages + context block.
+    let mut rail = String::new();
+    if let Some(i) = sec_idx {
+        let (sec, _, _, pages) = &SECTIONS[i];
+        rail.push_str(&format!("<div class=\"sec\">{}</div>", sec.to_uppercase()));
+        for (name, href, _, _) in *pages {
+            rail.push_str(&format!(
+                "<a class=\"navitem{}\" href=\"{}\">{}</a>",
+                if *name == active { " active" } else { "" },
+                href,
+                name
+            ));
+        }
+    }
+    rail.push_str(ctx);
+    rail.push_str("<div class=\"railfoot\">local companion · design v2</div>");
     format!(
         "<!doctype html><html><head><meta charset=\"utf-8\">\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-         <title>{title} — CoI Companion</title><style>{CSS}</style></head><body>\
-         <div class=\"shell\"><aside>\
-         <div class=\"brand\">🏛️ CoI Companion<div class=\"ver\">local companion · design system v1</div></div>\
+         <title>{title} — CoI Companion</title><style>{CSS}</style></head><body>{SPRITE}\
+         <header class=\"topbar\"><div class=\"brand\">🏛️ CoI Companion</div>\
+         <nav class=\"meganav\">{}</nav>\
+         <form class=\"topsearch\" method=\"get\" action=\"/products\">{}<input type=\"text\" name=\"q\" placeholder=\"Jump to product, page…\" aria-label=\"Jump to product\"></form>\
          {}\
-         <nav>{}</nav>\
-         <div class=\"sidefoot\"><span>{}</span><form method=\"post\" action=\"/logout\"><button class=\"ghost btn--sm\" type=\"submit\">Log out</button></form></div>\
-         </aside><main>{body}</main></div></body></html>",
+         <div class=\"topstatus\">{}</div></header>\
+         <div class=\"shell\"><aside class=\"rail\">{}</aside><main>{body}</main></div>{BADGE_JS}</body></html>",
+        mega,
+        icon("search"),
+        mustfix_badge(state),
         status_strip(state),
-        nav,
-        esc(&session.user)
+        rail
     )
 }
 
@@ -833,26 +1256,95 @@ fn badge(variant: &str, word: &str) -> String {
     format!("<span class=\"badge badge--{}\">{}</span>", variant, esc(word))
 }
 
-fn stat_tile(label: &str, value_html: &str, ctx_html: &str, critical: bool) -> String {
-    format!(
-        "<div class=\"stat{}\"><div class=\"label\">{}</div><div class=\"value\">{}</div><div class=\"ctx\">{}</div></div>",
-        if critical { " stat--critical" } else { "" },
-        esc(label),
-        value_html,
-        ctx_html,
-    )
-}
 
-/// Page header pattern (DESIGN §2.3): group eyebrow, H1, one-line
+/// Page header pattern (DESIGN V2.1): breadcrumb, H1, one-line
 /// summary, optional right-aligned actions.
 fn page_head(group: &str, title: &str, summary: &str, actions: &str) -> String {
     format!(
-        "<div class=\"pagehead\"><div><div class=\"eyebrow\">{}</div><h1>{}</h1><div class=\"summary\">{}</div></div><div class=\"actions\">{}</div></div>",
-        esc(&group.to_uppercase()),
+        "<div class=\"crumb\">{} / <b>{}</b></div>\
+         <div class=\"pagehead\"><div><h1>{}</h1><div class=\"summary\">{}</div></div><div class=\"actions\">{}</div></div>",
+        esc(group),
+        esc(title),
         esc(title),
         esc(summary),
         actions,
     )
+}
+
+/// A V2 stat tile (DESIGN V2.3): icon tile + label + big tabular
+/// value + at most one context line. Absent context renders
+/// nothing — the tile is content-height.
+fn stat2_tile(icon_name: &str, label: &str, value_html: &str, ctx_html: &str, critical: bool) -> String {
+    format!(
+        "<div class=\"stat2{}\"><div class=\"top\"><span class=\"ictile\">{}</span><span class=\"label\">{}</span></div><div class=\"value\">{}</div>{}</div>",
+        if critical { " stat2--crit" } else { "" },
+        icon(icon_name),
+        esc(label),
+        value_html,
+        if ctx_html.is_empty() {
+            String::new()
+        } else {
+            format!("<div class=\"ctx\">{}</div>", ctx_html)
+        },
+    )
+}
+
+/// Signed rendering for a DIFFERENCE (DESIGN V2.5 rule 1): ASCII
+/// digits with an explicit + for positives and the Unicode minus
+/// for negatives, thousands-separated like fmt_num.
+fn signed(n: i64) -> String {
+    if n > 0 {
+        format!("+{}", fmt_num(&json!(n)))
+    } else if n < 0 {
+        format!("\u{2212}{}", fmt_num(&json!(-n)))
+    } else {
+        "0".to_string()
+    }
+}
+
+/// The delta chip (DESIGN V2.5): the ONLY way a signed difference
+/// is rendered. Positive → green + up arrow; negative → red + down
+/// arrow; a MEASURED zero → the muted flat chip. Callers must never
+/// build a chip from missing data — absence is rendered as text
+/// (UNEVALUABLE / no data), never as a flat chip.
+fn delta_chip(value: i64, window: &str) -> String {
+    let (cls, ic) = if value > 0 {
+        ("delta--pos", "up")
+    } else if value < 0 {
+        ("delta--neg", "down")
+    } else {
+        ("delta--flat", "flat")
+    };
+    if window.is_empty() {
+        format!(
+            "<span class=\"delta {cls}\">{} {}</span>",
+            icon(ic),
+            signed(value)
+        )
+    } else {
+        format!(
+            "<span class=\"delta {cls}\">{} {} <span class=\"u\">{}</span></span>",
+            icon(ic),
+            signed(value),
+            esc(window)
+        )
+    }
+}
+
+/// One figure in a figstrip (DESIGN V2.3): caption label over a
+/// tabular value. `warn` paints the value amber — only when a
+/// FINDING attaches to the figure (V2.5 rule 4), never for sign.
+fn fig(label: &str, value_html: &str, warn: bool) -> String {
+    format!(
+        "<div class=\"fig\"><div class=\"figl\">{}</div><div class=\"figv{}\">{}</div></div>",
+        esc(label),
+        if warn { " warn" } else { "" },
+        value_html
+    )
+}
+
+fn figstrip(figs: &[String]) -> String {
+    format!("<div class=\"figstrip\">{}</div>", figs.concat())
 }
 
 /// D1 degraded state (DESIGN §2.4): the game did not answer — the
@@ -989,21 +1481,6 @@ fn svg_sparkline_big(points: &[f64], color: &str) -> String {
     )
 }
 
-/// §4.2 compact flow bars for one product row: produced vs consumed
-/// on a shared scale (TM by default pair with LM in the text next to
-/// it). Produced = info/accent, consumed = neutral slate — a deficit
-/// only colours when a finding already flags it (caller's badge).
-fn svg_flow_pair(produced: i64, consumed: i64) -> String {
-    let max = produced.max(consumed).max(1) as f64;
-    let pw = produced as f64 / max * 100.0;
-    let cw = consumed as f64 / max * 100.0;
-    format!(
-        "<span style=\"display:inline-block;vertical-align:middle\">\
-         <span class=\"fillbar\" style=\"width:64px;display:block;margin-bottom:2px\"><i style=\"width:{:.1}%;background:var(--info)\"></i></span>\
-         <span class=\"fillbar\" style=\"width:64px;display:block\"><i style=\"width:{:.1}%;background:var(--paused)\"></i></span></span>",
-        pw, cw
-    )
-}
 
 /// Terrain heatmap: a height grid (tiles, row-major) as inline
 /// SVG rects on a low→high ramp (deep water blue → green → tan →
@@ -1066,105 +1543,6 @@ fn fmt_tiles(raw: i64) -> String {
 }
 
 /// f64 view of a stats flow array entry (values are i64 in the API).
-fn bare_page(title: &str, body: &str) -> String {
-    format!(
-        "<!doctype html><html><head><meta charset=\"utf-8\">\
-         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-         <title>{title} — CoI Companion</title><style>{CSS}</style></head><body>{body}</body></html>"
-    )
-}
-
-fn page_login(state: &State, req: &Request) -> Response {
-    let err = req
-        .query
-        .get("e")
-        .map(|e| format!("<div class=\"err\">{}</div>", esc(e)))
-        .unwrap_or_default();
-    let user = match store(state) {
-        Ok(st) => st.web_user().unwrap_or(None),
-        Err(_) => None,
-    };
-    let body = if user.is_none() {
-        format!(
-            "<div class=\"login-wrap\"><div class=\"login-card\">\
-             <div class=\"brand\">🏛️ CoI Companion</div>\
-             <h1>Welcome</h1>\
-             <p class=\"sub\">No account exists yet on this machine. Choose the password for the local account — it is stored salted + hashed in the local database, never in the open.</p>{err}\
-             <form method=\"post\" action=\"/login\">\
-             <input type=\"hidden\" name=\"mode\" value=\"setup\">\
-             <div class=\"field\"><label for=\"lu\">Username</label><input id=\"lu\" type=\"text\" name=\"username\" value=\"captain\" required></div>\
-             <div class=\"field\"><label for=\"lp\">Password</label><input id=\"lp\" type=\"password\" name=\"password\" required><div class=\"hint\">Minimum 8 characters.</div></div>\
-             <div class=\"field\"><label for=\"lp2\">Repeat password</label><input id=\"lp2\" type=\"password\" name=\"password2\" required></div>\
-             <button type=\"submit\">Create account & log in</button></form></div></div>"
-        )
-    } else {
-        format!(
-            "<div class=\"login-wrap\"><div class=\"login-card\">\
-             <div class=\"brand\">🏛️ CoI Companion</div>\
-             <h1>Log in</h1>{err}\
-             <form method=\"post\" action=\"/login\">\
-             <input type=\"hidden\" name=\"mode\" value=\"login\">\
-             <div class=\"field\"><label for=\"lu\">Username</label><input id=\"lu\" type=\"text\" name=\"username\" required></div>\
-             <div class=\"field\"><label for=\"lp\">Password</label><input id=\"lp\" type=\"password\" name=\"password\" required></div>\
-             <button type=\"submit\">Log in</button></form></div></div>"
-        )
-    };
-    Response::html(200, bare_page("Log in", &body))
-}
-
-fn do_login(state: &State, req: &Request) -> Response {
-    let mode = req.form.get("mode").map(|s| s.as_str()).unwrap_or("");
-    let username = req.form.get("username").cloned().unwrap_or_default();
-    let password = req.form.get("password").cloned().unwrap_or_default();
-    let st = match store(state) {
-        Ok(s) => s,
-        Err(e) => return Response::text(502, &e),
-    };
-    let fail = |msg: &str| {
-        Response::redirect(&format!("/login?e={}", pct_encode(msg)))
-    };
-    let user = st.web_user().unwrap_or(None);
-    let ok = match (mode, &user) {
-        ("setup", None) => {
-            let password2 = req.form.get("password2").cloned().unwrap_or_default();
-            if password.len() < 8 {
-                return fail("Password must be at least 8 characters.");
-            }
-            if password != password2 {
-                return fail("Passwords do not match.");
-            }
-            if username.trim().is_empty() {
-                return fail("Username cannot be empty.");
-            }
-            let salt = rand_hex(16);
-            let hash = password_hash(&salt, &password);
-            match st.create_web_user(username.trim(), &salt, &hash) {
-                Ok(()) => true,
-                Err(e) => return Response::text(502, &e),
-            }
-        }
-        ("login", Some((name, salt, hash))) => {
-            username == *name && password_hash(salt, &password) == *hash
-        }
-        ("setup", Some(_)) => return fail("An account already exists — log in instead."),
-        _ => false,
-    };
-    if !ok {
-        return fail("Login failed — check the username and password.");
-    }
-    let token = rand_hex(32);
-    let session = Session {
-        user: username.trim().to_string(),
-        csrf: rand_hex(16),
-        expires: now_unix() + 12 * 3600,
-    };
-    lock_map(&state.sessions).insert(token.clone(), session);
-    Response::redirect("/").with_cookie(format!(
-        "coi_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={}",
-        12 * 3600
-    ))
-}
-
 fn pct_encode(s: &str) -> String {
     let mut out = String::new();
     for b in s.bytes() {
@@ -1235,7 +1613,7 @@ fn prepare_form_labeled(session: &Session, cmd_type: &str, args: Value, summary:
          <input type=\"hidden\" name=\"type\" value=\"{}\">\
          <input type=\"hidden\" name=\"args\" value=\"{}\">\
          <input type=\"hidden\" name=\"label\" value=\"{}\">\
-         <button class=\"btn--sm\" type=\"submit\">{}</button></form>",
+         <button class=\"btn btn--sm btn--ghost\" type=\"submit\">{}</button></form>",
         esc(&session.csrf),
         esc(cmd_type),
         esc(&args.to_string()),
@@ -1250,7 +1628,7 @@ fn prepare_form(session: &Session, cmd_type: &str, args: Value, label: &str, dis
          <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
          <input type=\"hidden\" name=\"type\" value=\"{}\">\
          <input type=\"hidden\" name=\"args\" value=\"{}\">\
-         <button class=\"btn--sm\" type=\"submit\" {}>{}</button></form>",
+         <button class=\"btn btn--sm btn--ghost\" type=\"submit\" {}>{}</button></form>",
         esc(&session.csrf),
         esc(cmd_type),
         esc(&args.to_string()),
@@ -1267,11 +1645,11 @@ fn controls_html(session: &Session, live: &Live) -> String {
     let g = &live.game;
     let paused = g["isPaused"].as_bool().unwrap_or(false);
     let speed = g["speed"].as_i64().unwrap_or(1);
-    let mut h = String::from("<div class=\"card\"><div class=\"cardhead\"><h2>Game controls</h2></div><p>");
+    let mut h = String::from("<div class=\"card\" id=\"controls\"><div class=\"cardhead\"><h2>Game controls</h2></div><p>");
     if paused {
-        h.push_str(&prepare_form(session, "SetSimPauseStateCmd", json!({"isPaused": false}), "▶ Resume game", false));
+        h.push_str(&prepare_form(session, "SetSimPauseStateCmd", json!({"isPaused": false}), "Resume game", false));
     } else {
-        h.push_str(&prepare_form(session, "SetSimPauseStateCmd", json!({"isPaused": true}), "⏸ Pause game", false));
+        h.push_str(&prepare_form(session, "SetSimPauseStateCmd", json!({"isPaused": true}), "Pause game", false));
     }
     h.push_str(" &nbsp; Speed: ");
     for s in [1, 2, 3] {
@@ -1288,47 +1666,277 @@ fn controls_html(session: &Session, live: &Live) -> String {
 /// for now = paused/neutral.
 fn quadrant_style(q: &str) -> (&'static str, &'static str) {
     match q {
-        "Fix now" => ("issue--fn", "critical"),
-        "Fix later" => ("issue--fl", "warning"),
-        "Watch" => ("issue--wa", "info"),
-        _ => ("issue--ig", "paused"),
+        "Fix now" => ("issue2--fn", "critical"),
+        "Fix later" => ("issue2--fl", "warning"),
+        "Watch" => ("issue2--wa", "info"),
+        _ => ("issue2--ig", "paused"),
     }
 }
 
-fn issue_card(i: &Issue, forecasts: Option<&[Forecast]>) -> String {
-    let (cls, _) = quadrant_style(i.quadrant);
-    let mut runway = String::new();
-    if let Some(f) = forecasts.and_then(|fs| fs.iter().find(|f| f.product == i.product)) {
-        let label = match f.kind {
-            "fill" => format!("storage full in ≈ {:.1} months", f.months),
-            "stall-runway" => format!("stock lasts ≈ {:.1} months (production stalled)", f.months),
-            _ => format!("stock lasts ≈ {:.1} months", f.months),
-        };
-        runway = format!(
-            "<div style=\"margin-top:6px\">{} <span class=\"sub\">{}</span></div>",
-            svg_runway(f.months, f.kind),
-            esc(&label)
-        );
+/// The state icon at the head of an issue card, by quadrant.
+fn quadrant_icon(q: &str) -> &'static str {
+    match q {
+        "Fix now" => "alert",
+        "Fix later" => "clock",
+        "Watch" => "chart",
+        _ => "check",
     }
+}
+
+/// Anchor id for a quadrant section on the Issues board.
+fn quadrant_anchor(q: &str) -> &'static str {
+    match q {
+        "Fix now" => "q-fix-now",
+        "Fix later" => "q-fix-later",
+        "Watch" => "q-watch",
+        _ => "q-ignore",
+    }
+}
+
+/// Look up a product's stats row by its DISPLAY name (Issue.product
+/// and Forecast.product carry names, the stats map is keyed by id).
+fn stats_for_name<'a>(live: &'a Live, name: &str) -> Option<(String, &'a Value)> {
+    live.names
+        .iter()
+        .find(|(_, n)| n.as_str() == name)
+        .map(|(id, _)| (id.clone(), &live.stats["products"][id]))
+}
+
+/// The figure strip for an issue card (DESIGN V2.3 mapping): the
+/// measurements behind the issue as figures — never inside the
+/// evidence sentence, which survives verbatim as the caption under
+/// the strip. Classes without product stats (productivity protos)
+/// get no strip; their evidence label is the figure source and
+/// stays as the caption alone.
+fn issue_figstrip(i: &Issue, live: Option<&Live>) -> String {
+    let Some(live) = live else { return String::new() };
+    let Some((_, s)) = stats_for_name(live, &i.product) else {
+        return String::new();
+    };
+    if s.is_null() {
+        return String::new();
+    }
+    let qty = s["quantity"].as_i64().unwrap_or(0);
+    let stored = s["stored"].as_i64().unwrap_or(0);
+    let cap = s["storageCapacity"].as_i64().unwrap_or(0);
+    let prod_lm = crate::flow_at(&s["produced"], 1);
+    let cons_lm = crate::flow_at(&s["consumed"], 1);
+    let net_lm = prod_lm - cons_lm;
+    let pct = if cap > 0 {
+        stored as f64 / cap as f64 * 100.0
+    } else {
+        0.0
+    };
+    let stored_fig = |bar_color: &str, warn: bool| {
+        fig(
+            "Stored",
+            &format!(
+                "{} {}",
+                fmt_num(&s["stored"]),
+                fillbar(pct, bar_color, 90)
+            ),
+            warn,
+        )
+    };
+    let cover_fig = |months: f64| {
+        fig(
+            "Cover",
+            &format!("{months:.1} <span class=\"u\">months</span>"),
+            months < 3.0,
+        )
+    };
+    let figs: Vec<String> = match i.class {
+        "stalled" => {
+            let mut v = vec![
+                fig("Produced LM", &fmt_num(&json!(prod_lm)), false),
+                fig("Consumed LM", &fmt_num(&json!(cons_lm)), false),
+                fig("Stock", &fmt_num(&s["quantity"]), false),
+            ];
+            if cons_lm > 0 {
+                v.push(cover_fig(qty as f64 / cons_lm as f64));
+            }
+            v
+        }
+        "deficit" | "structural" => {
+            let mut v = vec![
+                fig("Net LM", &delta_chip(net_lm, "LM"), false),
+                fig("Stock", &fmt_num(&s["quantity"]), false),
+            ];
+            if net_lm < 0 {
+                v.push(cover_fig(qty as f64 / (-net_lm) as f64));
+            }
+            v
+        }
+        "seasonal" => {
+            let (net_m, _) = crate::seasonal_net(live, &stats_for_name(live, &i.product).map(|(id, _)| id).unwrap_or_default(), s);
+            let mut v = vec![
+                fig(
+                    "Net (long window)",
+                    &delta_chip(net_m.round() as i64, "/mo avg"),
+                    false,
+                ),
+                fig("Stock", &fmt_num(&s["quantity"]), false),
+            ];
+            if net_m < 0.0 {
+                v.push(cover_fig(qty as f64 / (-net_m)));
+            }
+            v
+        }
+        "storage-full" => vec![
+            stored_fig("var(--warning)", pct >= 90.0),
+            fig("Capacity", &fmt_num(&s["storageCapacity"]), false),
+            fig("Produced LM", &fmt_num(&json!(prod_lm)), false),
+        ],
+        "parked" => vec![
+            // Row 6 of the CTA table: a parked full buffer is NOT a
+            // finding — figures neutral, bar in the accent colour.
+            stored_fig("var(--accent)", false),
+            fig("Capacity", &fmt_num(&s["storageCapacity"]), false),
+            fig("Produced LM", &fmt_num(&json!(prod_lm)), false),
+        ],
+        "overcap" => vec![
+            stored_fig("var(--warning)", true),
+            fig("Capacity", &fmt_num(&s["storageCapacity"]), false),
+            fig("Quantity", &fmt_num(&s["quantity"]), false),
+        ],
+        "below-baseline" => vec![
+            fig("Produced LM", &fmt_num(&json!(prod_lm)), false),
+            fig("Stock", &fmt_num(&s["quantity"]), false),
+        ],
+        _ => return String::new(),
+    };
+    if figs.is_empty() {
+        String::new()
+    } else {
+        figstrip(&figs)
+    }
+}
+
+/// The CTA row for an issue card (DESIGN V2.7): ONE primary
+/// button + at most one ghost link, keyed by the issue's generator
+/// class. A CTA never applies anything — it lands on a detail
+/// page, a sources anchor, a filtered directory or a prepare form.
+/// The parked class gets the spec'd no-action treatment instead.
+fn issue_ctas(i: &Issue, live: Option<&Live>) -> String {
+    let pid = live.and_then(|l| stats_for_name(l, &i.product).map(|(id, _)| id));
+    let detail = format!("/issue?p={}&t={}", url_enc(&i.product), url_enc(&i.title));
+    let product_href = match &pid {
+        Some(id) => format!("/product?id={}", esc(id)),
+        None => format!("/products?q={}", url_enc(&i.product)),
+    };
+    let primary = |href: &str, label: &str| {
+        format!("<a class=\"btn btn--sm\" href=\"{}\">{}</a>", href, esc(label))
+    };
+    let ghost = |href: &str, label: &str| {
+        format!("<a class=\"btn btn--sm btn--ghost\" href=\"{}\">{}</a>", href, esc(label))
+    };
+    match i.class {
+        "stalled" => format!(
+            "{}{}",
+            primary(&format!("{detail}#fix"), "Inspect producers…"),
+            ghost("/entities?view=machines", "See machines")
+        ),
+        "deficit" | "structural" => format!(
+            "{}{}",
+            primary(&format!("{product_href}#sources"), "See who draws it"),
+            ghost(&product_href, "View product")
+        ),
+        "seasonal" => primary(&product_href, "View product"),
+        "storage-full" => format!(
+            "{}{}",
+            primary(&format!("{detail}#fix"), "Open fix panel…"),
+            ghost(
+                &format!(
+                    "/entities?view=storages&product={}",
+                    pid.as_deref().unwrap_or("")
+                ),
+                "See storages"
+            )
+        ),
+        "parked" => format!(
+            "<span class=\"noact\">{} No action needed</span>{}",
+            icon("check"),
+            ghost(
+                &format!(
+                    "/entities?view=storages&product={}",
+                    pid.as_deref().unwrap_or("")
+                ),
+                "View storages"
+            )
+        ),
+        "overcap" => format!(
+            "{}{}",
+            primary(
+                &format!(
+                    "/entities?view=storages&product={}",
+                    pid.as_deref().unwrap_or("")
+                ),
+                "See storages"
+            ),
+            ghost(&product_href, "View product")
+        ),
+        "prod-starved" => primary(
+            &format!("/entities?view=machines&proto={}", url_enc(&i.product)),
+            "See machines",
+        ),
+        "prod-blocked" => format!(
+            "{}{}",
+            primary(
+                &format!("/entities?view=machines&proto={}", url_enc(&i.product)),
+                "See machines"
+            ),
+            ghost("/entities?view=storages", "See storages")
+        ),
+        "prod-mixed" => primary(
+            &format!("/entities?view=machines&proto={}", url_enc(&i.product)),
+            "See machines",
+        ),
+        "prod-unclassified" => format!(
+            "{}{}",
+            primary(
+                &format!("/entities?view=machines&proto={}", url_enc(&i.product)),
+                "See machines"
+            ),
+            ghost("/actions", "Open Actions")
+        ),
+        "below-baseline" => format!(
+            "{}{}",
+            primary(&product_href, "View product"),
+            ghost("/entities?view=machines", "See machines")
+        ),
+        _ => primary(&detail, "Open issue…"),
+    }
+}
+
+/// The V2 issue card (DESIGN V2.7 anatomy): state icon + product +
+/// title + quadrant badge · figure strip · evidence verbatim as
+/// caption · one-line guidance · CTA row.
+fn issue_card(i: &Issue, live: Option<&Live>) -> String {
+    let (cls, variant) = quadrant_style(i.quadrant);
+    let strip = issue_figstrip(i, live);
     format!(
-        "<div class=\"issue {cls}\"><div class=\"p\">{}</div><div class=\"t\"><a href=\"/issue?p={}&t={}\">{}</a></div>\
-         <div class=\"e\">{}</div><div class=\"f\">Fix: {}</div>{}</div>",
+        "<div class=\"issue2 {cls}\"><div class=\"r1\"><span class=\"state-ic\">{}</span><span class=\"p\">{}</span><span class=\"t\"><a href=\"/issue?p={}&t={}\">{}</a></span><span class=\"qb\">{}</span></div>{}\
+         <div class=\"evcap\">{}</div><div class=\"guide\">{}</div><div class=\"ctas\">{}</div></div>",
+        icon(quadrant_icon(i.quadrant)),
         esc(&i.product),
         url_enc(&i.product),
         url_enc(&i.title),
         esc(&i.title),
+        badge(variant, i.quadrant),
+        strip,
         esc(&i.evidence),
         esc(&i.fix),
-        runway,
+        issue_ctas(i, live),
     )
 }
 
-fn issues_html(issues: &[Issue], compact: bool, forecasts: Option<&[Forecast]>) -> String {
+fn issues_html(issues: &[Issue], compact: bool, live: Option<&Live>, hide_empty: bool) -> String {
     let quads = ["Fix now", "Fix later", "Watch", "Ignore for now"];
     let mut h = String::new();
     if compact {
         // Overview form: one card, quadrant heads inside, empty
-        // quadrants skipped, at most 4 cards per quadrant.
+        // quadrants skipped, at most 3 cards per quadrant (V2.1
+        // nesting cap) + a count link to the full board.
         h.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>What needs attention</h2><span class=\"right\"><a href=\"/issues\">All issues →</a></span></div>");
         let mut any = false;
         for q in quads {
@@ -1343,13 +1951,15 @@ fn issues_html(issues: &[Issue], compact: bool, forecasts: Option<&[Forecast]>) 
                 badge(variant, q),
                 items.len()
             ));
-            for i in items.iter().take(4) {
-                h.push_str(&issue_card(i, forecasts));
+            for i in items.iter().take(3) {
+                h.push_str(&issue_card(i, live));
             }
-            if items.len() > 4 {
+            if items.len() > 3 {
                 h.push_str(&format!(
-                    "<div class=\"e\"><a href=\"/issues\">+ {} more…</a></div>",
-                    items.len() - 4
+                    "<div class=\"evcap\"><a href=\"/issues#{}\">+ {} more in {} →</a></div>",
+                    quadrant_anchor(q),
+                    items.len() - 3,
+                    q
                 ));
             }
         }
@@ -1359,18 +1969,21 @@ fn issues_html(issues: &[Issue], compact: bool, forecasts: Option<&[Forecast]>) 
         h.push_str("</div>");
         return h;
     }
-    // Full board: one headed section per quadrant, the "why this
-    // quadrant" copy as a collapsible info callout under the head.
+    // Full board: one anchored section per quadrant, the "why this
+    // quadrant" copy as a collapsed details in the head (V2.2:
+    // explainers are demoted, never deleted).
     for q in quads {
         let items: Vec<&Issue> = issues.iter().filter(|i| i.quadrant == q).collect();
+        if hide_empty && items.is_empty() {
+            continue;
+        }
         let (_, variant) = quadrant_style(q);
         h.push_str(&format!(
-            "<div class=\"quadhead\">{}<span class=\"caption\" style=\"margin:0\">{} issue(s)</span></div>",
+            "<div class=\"quadhead\" id=\"{}\">{}<span class=\"caption\" style=\"margin:0\">{} issue(s)</span>\
+             <details class=\"quadwhy\"><summary>Why this quadrant?</summary><p>{}</p></details></div>",
+            quadrant_anchor(q),
             badge(variant, q),
-            items.len()
-        ));
-        h.push_str(&format!(
-            "<details class=\"callout callout--info\" style=\"padding:8px 16px\"><summary style=\"cursor:pointer\">Why this quadrant?</summary><p style=\"margin-top:8px\">{}</p></details>",
+            items.len(),
             quadrant_why(q)
         ));
         if items.is_empty() {
@@ -1380,7 +1993,7 @@ fn issues_html(issues: &[Issue], compact: bool, forecasts: Option<&[Forecast]>) 
             ));
         }
         for i in items {
-            h.push_str(&issue_card(i, forecasts));
+            h.push_str(&issue_card(i, live));
         }
     }
     h
@@ -1388,16 +2001,22 @@ fn issues_html(issues: &[Issue], compact: bool, forecasts: Option<&[Forecast]>) 
 
 fn pinned_table(session: &Session, live: &Live, issues: &[Issue]) -> String {
     let mut h = String::from(
-        "<div class=\"card tablecard\"><div class=\"cardhead\"><h2>Pinned products</h2><span class=\"right\"><a href=\"/products\">All products →</a></span></div>\
-         <table><thead><tr><th>Product</th><th>Trend (8 mo)</th><th class=\"num\">Quantity</th><th class=\"num\">Stored / cap</th><th class=\"num\">Prod TM/LM</th><th class=\"num\">Cons TM/LM</th><th></th></tr></thead><tbody>",
+        "<div class=\"card tablecard\" id=\"pinned\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Pinned products</h2><span class=\"right\"><a href=\"/products?f=pinned\">All pinned →</a></span></div>\
+         <table class=\"table--compact\"><thead><tr><th>Product</th><th>Trend (8 mo)</th><th class=\"num\">Quantity</th><th>Stored / cap</th><th class=\"num\">Net LM</th><th></th></tr></thead><tbody>",
     );
     let mut ids = live.pinned_ids.clone();
     ids.sort_by_key(|id| live.names.get(id).cloned().unwrap_or_else(|| id.clone()));
+    let total = ids.iter().filter(|id| !live.stats["products"][*id].is_null()).count();
+    let mut shown = 0usize;
     for id in &ids {
         let s = &live.stats["products"][id];
         if s.is_null() {
             continue;
         }
+        if shown >= 6 {
+            break;
+        }
+        shown += 1;
         let name = live.names.get(id).cloned().unwrap_or_else(|| id.clone());
         // Sparkline from the monthly history the live fetch already
         // carries; colour follows the direction of travel.
@@ -1421,8 +2040,20 @@ fn pinned_table(session: &Session, live: &Live, issues: &[Issue]) -> String {
             .find(|i| i.product == name)
             .map(|i| format!(" {}", badge(quadrant_style(i.quadrant).1, i.quadrant)))
             .unwrap_or_default();
+        let stored = s["stored"].as_i64().unwrap_or(0);
+        let cap = s["storageCapacity"].as_i64().unwrap_or(0);
+        let pct = if cap > 0 {
+            stored as f64 / cap as f64 * 100.0
+        } else {
+            0.0
+        };
+        // V2.5: stored/capacity are absolutes — neutral figures,
+        // magnitude via the fill bar; amber only because ≥90% full
+        // is a finding. Net LM is a difference — a delta chip.
+        let bar_color = if pct >= 90.0 { "var(--warning)" } else { "var(--accent)" };
+        let net_lm = crate::flow_at(&s["produced"], 1) - crate::flow_at(&s["consumed"], 1);
         h.push_str(&format!(
-            "<tr><td><a href=\"/product?id={}\">{}</a>{}</td><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{} / {}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td>{}</td></tr>",
+            "<tr><td><a href=\"/product?id={}\">{}</a>{}</td><td>{}</td><td class=\"num\">{}</td><td><span class=\"num\">{} / {}</span> {}</td><td class=\"num\">{}</td><td>{}</td></tr>",
             esc(id),
             esc(&name),
             issue_badge,
@@ -1430,37 +2061,61 @@ fn pinned_table(session: &Session, live: &Live, issues: &[Issue]) -> String {
             fmt_num(&s["quantity"]),
             fmt_num(&s["stored"]),
             fmt_num(&s["storageCapacity"]),
-            flow_pair(&s["produced"]),
-            flow_pair(&s["consumed"]),
+            fillbar(pct, bar_color, 90),
+            delta_chip(net_lm, "LM"),
             prepare_form(session, "PinToggleCmd", json!({"productToToggle": id}), "Unpin", false),
         ));
     }
-    h.push_str("</tbody></table></div>");
+    h.push_str("</tbody></table>");
+    if total > shown {
+        h.push_str(&format!(
+            "<p class=\"caption\" style=\"padding:0 12px 10px\">Showing {} of {} pinned — <a href=\"/products?f=pinned\">see all pinned</a></p>",
+            shown, total
+        ));
+    }
+    h.push_str("</div>");
     h
 }
 
-fn forecasts_html(forecasts: &[Forecast]) -> String {
+fn forecasts_html(forecasts: &[Forecast], issues: &[Issue]) -> String {
     if forecasts.is_empty() {
         return String::new();
     }
     let mut h = String::from(
-        "<div class=\"card tablecard\"><div class=\"cardhead\"><h2>Outlook — what happens next at current rates</h2></div>\
-         <p class=\"caption\" style=\"padding:0 16px\">At current measured rates — any build, pause or trade change moves these dates. The bar runs to the 12-month cap; the tick marks one quarter.</p>\
-         <table><thead><tr><th>Product</th><th>Outlook</th><th>Advice</th></tr></thead><tbody>",
+        "<div class=\"card tablecard\" id=\"outlook\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Outlook — what happens next at current rates</h2></div>\
+         <p class=\"caption\" style=\"padding:0 12px\">At current measured rates — any build, pause or trade change moves these dates. The bar runs to the 12-month cap; the tick marks one quarter.</p>\
+         <table class=\"table--compact\"><thead><tr><th>Product</th><th>Outlook</th><th class=\"num\">Net TM</th><th class=\"num\">Net LM</th><th class=\"num\">Stored</th><th>Guidance</th><th></th></tr></thead><tbody>",
     );
-    for f in forecasts.iter().take(8) {
+    for f in forecasts.iter().take(5) {
         let label = match f.kind {
             "fill" => format!("storage full in ≈ {:.1} months", f.months),
             "stall-runway" => format!("stock lasts ≈ {:.1} months (production stalled)", f.months),
             _ => format!("stock lasts ≈ {:.1} months", f.months),
         };
+        // CTA row 13 (V2.7): View product, plus See the issue when
+        // the board carries a matching one.
+        let mut ctas = format!(
+            "<a class=\"btn btn--sm btn--ghost\" href=\"/products?q={}\">View product</a>",
+            url_enc(&f.product)
+        );
+        if let Some(i) = issues.iter().find(|i| i.product == f.product) {
+            ctas.push_str(&format!(
+                " <a class=\"btn btn--sm btn--ghost\" href=\"/issue?p={}&t={}\">See the issue</a>",
+                url_enc(&i.product),
+                url_enc(&i.title)
+            ));
+        }
         h.push_str(&format!(
-            "<tr><td>{}</td><td>{} <span class=\"sub\">{}</span><div class=\"caption\">Basis: {}</div></td><td>{}</td></tr>",
+            "<tr><td>{}</td><td>{} <span class=\"sub\">{}</span><div class=\"caption\">{}</div></td><td class=\"num\">{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td>{}</td><td>{}</td></tr>",
             esc(&f.product),
             svg_runway(f.months, f.kind),
             esc(&label),
             esc(&f.basis),
+            delta_chip(f.net_tm, "TM"),
+            delta_chip(f.net_lm, "LM"),
+            fmt_num(&json!(f.stored)),
             esc(&f.advice),
+            ctas,
         ));
     }
     h.push_str("</tbody></table></div>");
@@ -1482,48 +2137,69 @@ fn page_overview(state: &State, session: &Session) -> Response {
             );
             body.push_str(&degraded_game(&e));
             body.push_str(&power_panel(state));
+            badge_note(state, None);
             return Response::html(200, layout(state, session, "Overview", &body));
         }
     };
     let issues = compute_issues(&live);
+    badge_note(state, Some(&live));
     let forecasts = compute_forecasts(&live);
     let power = power_data(state);
-    // Stat tile row (DESIGN §5 Overview): Population · Power
-    // balance · Machines working · Fix now.
-    let mut tiles = String::from("<div class=\"stats\">");
+    // Stat tile row (DESIGN V2.3): Population · Power balance ·
+    // Machines working · Fix now — figures, not sentences.
+    let mut tiles = String::from("<div class=\"stats2\">");
     match bridge_json(state, "/coi/v1/status") {
         Some(st) => {
             let starving = st["arePeopleStarving"].as_bool().unwrap_or(false);
-            tiles.push_str(&stat_tile(
-                "POPULATION",
+            tiles.push_str(&stat2_tile(
+                "users",
+                "Population",
                 &fmt_num(&st["population"]),
                 &format!(
-                    "housing {} free · food ≈ {} months{}",
+                    "housing {} free of {} · food ≈ {} months{}",
                     fmt_num(&st["freeHousingCapacity"]),
+                    fmt_num(&st["totalHousingCapacity"]),
                     fmt_num(&st["monthsOfFood"]),
                     if starving { " · <b>STARVING</b>" } else { "" },
                 ),
                 starving,
             ));
         }
-        None => tiles.push_str(&stat_tile(
-            "POPULATION",
+        None => tiles.push_str(&stat2_tile(
+            "users",
+            "Population",
             "—",
             "reported by CoiBridge — not answered right now",
             false,
         )),
     }
     if let Some(p) = &power {
-        tiles.push_str(&stat_tile(
-            "POWER BALANCE",
-            &format!("{} <span class=\"u\">kW</span>", vi(&p["balanceKw"])),
+        let bal = vi(&p["balanceKw"]);
+        // The balance is a difference (V2.5 rule 1): sign colour +
+        // arrow. Generated/consumed/capacity are absolutes and
+        // stay neutral in the context line.
+        let (cls, ic) = if bal > 0 {
+            ("var(--pos)", "up")
+        } else if bal < 0 {
+            ("var(--neg)", "down")
+        } else {
+            ("var(--flat)", "flat")
+        };
+        tiles.push_str(&stat2_tile(
+            "power",
+            "Power balance",
+            &format!(
+                "<span style=\"color:{cls}\">{} {}</span> <span class=\"u\">kW</span>",
+                icon(ic),
+                signed(bal)
+            ),
             &format!(
                 "{} generated · {} consumed · capacity {} kW",
-                vi(&p["generatedKw"]),
-                vi(&p["consumedKw"]),
-                vi(&p["generationCapacityKw"])
+                fmt_num(&json!(vi(&p["generatedKw"]))),
+                fmt_num(&json!(vi(&p["consumedKw"]))),
+                fmt_num(&json!(vi(&p["generationCapacityKw"])))
             ),
-            vi(&p["balanceKw"]) < 0,
+            bal < 0,
         ));
     }
     let mut machine_rows: Option<Vec<Value>> = None;
@@ -1532,8 +2208,9 @@ fn page_overview(state: &State, session: &Session) -> Response {
     }
     if let Some(rows) = &machine_rows {
         let count = |s: &str| rows.iter().filter(|r| r["state"].as_str() == Some(s)).count() as i64;
-        tiles.push_str(&stat_tile(
-            "MACHINES WORKING",
+        tiles.push_str(&stat2_tile(
+            "factory",
+            "Machines working",
             &format!("{} <span class=\"u\">/ {}</span>", count("Working"), rows.len()),
             &format!(
                 "{} {}",
@@ -1544,8 +2221,9 @@ fn page_overview(state: &State, session: &Session) -> Response {
         ));
     }
     let fix_now: Vec<&Issue> = issues.iter().filter(|i| i.quadrant == "Fix now").collect();
-    tiles.push_str(&stat_tile(
-        "FIX NOW",
+    tiles.push_str(&stat2_tile(
+        "alert",
+        "Fix now",
         &fix_now.len().to_string(),
         &fix_now
             .iter()
@@ -1566,8 +2244,8 @@ fn page_overview(state: &State, session: &Session) -> Response {
         ),
     );
     body.push_str(&tiles);
-    body.push_str("<div class=\"cols2\"><div>");
-    body.push_str(&issues_html(&issues, true, Some(&forecasts)));
+    body.push_str("<div class=\"ovgrid\"><div id=\"attention\">");
+    body.push_str(&issues_html(&issues, true, Some(&live), false));
     if let Some(rows) = &machine_rows {
         let count = |s: &str| rows.iter().filter(|r| r["state"].as_str() == Some(s)).count() as i64;
         let (w, s, b, p) = (
@@ -1585,7 +2263,7 @@ fn page_overview(state: &State, session: &Session) -> Response {
             }
         };
         body.push_str(&format!(
-            "<div class=\"card\"><div class=\"cardhead\"><h2>Machine states</h2><span class=\"right badge badge--paused\">via CoiBridge</span></div>{}\
+            "<div class=\"card\" id=\"machines\"><div class=\"cardhead\"><h2>Machine states</h2><span class=\"right badge badge--paused\">via CoiBridge</span></div>{}\
              <div class=\"caption\">{} working ({:.0}%) · {} starved ({:.0}%) · {} blocked ({:.0}%) · {} paused ({:.0}%){} — of {} machines, this snapshot.</div></div>",
             svg_stacked(&[
                 ("var(--ok)", "Working", w),
@@ -1599,19 +2277,21 @@ fn page_overview(state: &State, session: &Session) -> Response {
             rows.len(),
         ));
     }
-    body.push_str("</div><div>");
+    body.push_str("</div><div class=\"ovrail\">");
     if let Some(p) = &power {
+        body.push_str("<div id=\"power\">");
         body.push_str(&power_panel_html(p));
+        body.push_str("</div>");
     }
     body.push_str(&controls_html(session, &live));
     body.push_str("</div></div>");
-    body.push_str(&forecasts_html(&forecasts));
+    body.push_str(&forecasts_html(&forecasts, &issues));
     body.push_str(&pinned_table(session, &live, &issues));
     body.push_str("<div class=\"shotwrap\"><div style=\"display:flex;align-items:center;margin-bottom:10px\"><h2 style=\"margin:0\">Live screenshot</h2><span class=\"caption\" style=\"margin:0 0 0 auto\">refreshed on page load</span></div><img class=\"shot\" src=\"/screenshot.jpg\" alt=\"live screenshot\"></div>");
     Response::html(200, layout(state, session, "Overview", &body))
 }
 
-fn page_issues(state: &State, session: &Session) -> Response {
+fn page_issues(state: &State, session: &Session, req: &Request) -> Response {
     let live = match fetch_live(&client(state)) {
         Ok(l) => l,
         Err(e) => {
@@ -1622,26 +2302,46 @@ fn page_issues(state: &State, session: &Session) -> Response {
                 "",
             );
             body.push_str(&degraded_game(&e));
+            badge_note(state, None);
             return Response::html(200, layout(state, session, "Issues", &body));
         }
     };
     let issues = compute_issues(&live);
-    let forecasts = compute_forecasts(&live);
+    badge_note(state, Some(&live));
+    // The must-fix badge lands here: ?only=fix-now shows just the
+    // Fix now quadrant (same compute_issues data, no second count).
+    let only_fix_now = req.query.get("only").map(|s| s.as_str()) == Some("fix-now");
+    let actions = "<a class=\"btn btn--secondary btn--sm\" href=\"/api/report.md\">Report as markdown</a> <a class=\"btn btn--secondary btn--sm\" href=\"/api/snapshot.json\">Raw snapshot JSON</a>";
     let mut body = page_head(
         "Monitor",
         "Issues",
         "What to fix, in what order — generated live from flows and storage levels.",
-        "",
+        actions,
     );
-    body.push_str(&issues_html(&issues, false, Some(&forecasts)));
-    body.push_str("<details class=\"callout callout--info\"><summary style=\"cursor:pointer\">How the board is built</summary><p style=\"margin-top:8px\">Generated live from production/consumption flows and storage levels. \
+    body.push_str("<details class=\"howit\"><summary>How the board is built</summary><p>Generated live from production/consumption flows and storage levels. \
         Urgency comes from how soon a buffer runs dry or blocks; importance from how much of the \
         factory depends on the product. <b>Click any issue title</b> to open it in depth: why it sits \
         in its quadrant (with the numbers), the full evidence, the forecast, how to fix it — and, \
         where a fix is a game command, buttons that prepare it for the specific storages and \
         machines involved.</p></details>");
-    body.push_str(&productivity_section(state));
-    body.push_str("<p><a class=\"btn btn--secondary\" href=\"/api/report.md\">Report as markdown</a> <a class=\"btn btn--secondary\" href=\"/api/snapshot.json\">Raw snapshot JSON</a></p>");
+    if only_fix_now {
+        let filtered: Vec<Issue> = issues
+            .into_iter()
+            .filter(|i| i.quadrant == "Fix now")
+            .collect();
+        body.push_str(&format!(
+            "<p class=\"caption\">Filtered to <b>Fix now</b> only — {} issue(s). <a href=\"/issues\">Show the full board</a></p>",
+            filtered.len()
+        ));
+        if filtered.is_empty() {
+            body.push_str("<div class=\"empty\">Nothing in ‘Fix now’ right now.</div>");
+        } else {
+            body.push_str(&issues_html(&filtered, false, Some(&live), true));
+        }
+    } else {
+        body.push_str(&issues_html(&issues, false, Some(&live), false));
+        body.push_str(&productivity_section(state));
+    }
     Response::html(200, layout(state, session, "Issues", &body))
 }
 
@@ -1664,7 +2364,7 @@ fn productivity_section(state: &State) -> String {
         return String::new();
     }
     let mut body = String::from(
-        "<div class=\"card\"><div class=\"cardhead\"><h2>Productivity evidence (§5)</h2></div>\
+        "<div class=\"card\" id=\"prod\"><div class=\"cardhead\"><h2>Productivity evidence (§5)</h2></div>\
          <p class=\"sub\">Machine working-share from stored snapshots (bridge census/machines), \
          judged only when the evidence class reaches ESTIMATED — below that, a line reads \
          INSUFFICIENT and means <b>unjudged</b>, not healthy. κ-free self-relative output \
@@ -1726,19 +2426,29 @@ fn productivity_section(state: &State) -> String {
     body
 }
 
-fn page_products(state: &State, session: &Session) -> Response {
+fn page_products(state: &State, session: &Session, req: &Request) -> Response {
     let live = match fetch_live(&client(state)) {
         Ok(l) => l,
         Err(e) => return game_unreachable(state, session, &e),
     };
-    let mut body = page_head(
-        "Monitor",
-        "Products",
-        "Every product in the run — quantities, storage and monthly flows. Virtual products are excluded.",
-        "",
-    );
-    body.push_str("<div class=\"card tablecard\"><div class=\"filterbar\"><input type=\"text\" id=\"tfilter\" placeholder=\"🔍 name, kind, id…\" oninput=\"filterTable()\"><span class=\"count\">click a column header to sort, click again to reverse</span></div>");
-    body.push_str("<table id=\"ptable\"><thead><tr><th>Product</th><th>Kind</th><th class=\"num\">Quantity</th><th class=\"num\">Stored / cap</th><th class=\"num\">Prod TM/LM</th><th class=\"num\">Cons TM/LM</th><th class=\"num\">Net LM</th><th>Pin</th></tr></thead><tbody>");
+    // Facets (V2.1): All · Pinned · In issues · Fluid · Loose ·
+    // Countable, via ?f=. The top-bar jump lands here as ?q= and
+    // seeds the filter (server-side, so the landing is already
+    // narrowed). Pagination is server-side, 60 rows per page; the
+    // client sort works within the rendered page (recorded wart —
+    // server-side ?sort= is the v2.1 follow-up).
+    let facet = req.query.get("f").map(|s| s.as_str()).unwrap_or("all");
+    let q = req.query.get("q").cloned().unwrap_or_default();
+    let page: usize = req
+        .query
+        .get("page")
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(0);
+    let issues = compute_issues(&live);
+    let issue_names: std::collections::HashSet<&str> =
+        issues.iter().map(|i| i.product.as_str()).collect();
+    let mut rows: Vec<(String, String, i64, i64, i64, i64, i64, bool)> = Vec::new();
+    let mut counts = (0usize, 0usize, 0usize, 0usize, 0usize, 0usize);
     if let Some(map) = live.stats["products"].as_object() {
         let mut ids: Vec<&String> = map.keys().collect();
         ids.sort_by_key(|id| live.names.get(*id).cloned().unwrap_or_else(|| id.to_string()));
@@ -1749,31 +2459,150 @@ fn page_products(state: &State, session: &Session) -> Response {
             }
             let s = &map[id];
             let name = live.names.get(id).cloned().unwrap_or_else(|| id.to_string());
-            let net_lm = crate::flow_at(&s["produced"], 1) - crate::flow_at(&s["consumed"], 1);
             let pinned = live.pinned_ids.iter().any(|p| p == id);
-            body.push_str(&format!(
-                "<tr><td><a href=\"/product?id={}\">{}</a></td><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{} / {}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td class=\"num\">{} {}</td><td>{}</td></tr>",
-                esc(id),
-                esc(&name),
-                esc(&kind),
-                fmt_num(&s["quantity"]),
-                fmt_num(&s["stored"]),
-                fmt_num(&s["storageCapacity"]),
-                flow_pair(&s["produced"]),
-                flow_pair(&s["consumed"]),
-                net_lm,
-                svg_flow_pair(
-                    crate::flow_at(&s["produced"], 1),
-                    crate::flow_at(&s["consumed"], 1)
-                ),
-                prepare_form(session, "PinToggleCmd", json!({"productToToggle": id}), if pinned { "Unpin" } else { "Pin" }, false),
+            counts.0 += 1;
+            if pinned {
+                counts.1 += 1;
+            }
+            if issue_names.contains(name.as_str()) {
+                counts.2 += 1;
+            }
+            match kind.as_str() {
+                "fluid" => counts.3 += 1,
+                "loose" => counts.4 += 1,
+                "countable" => counts.5 += 1,
+                _ => {}
+            }
+            let in_facet = match facet {
+                "pinned" => pinned,
+                "issues" => issue_names.contains(name.as_str()),
+                "fluid" => kind == "fluid",
+                "loose" => kind == "loose",
+                "countable" => kind == "countable",
+                _ => true,
+            };
+            if !in_facet {
+                continue;
+            }
+            if !q.is_empty()
+                && !name.to_lowercase().contains(&q.to_lowercase())
+                && !id.to_lowercase().contains(&q.to_lowercase())
+            {
+                continue;
+            }
+            rows.push((
+                id.clone(),
+                name,
+                s["quantity"].as_i64().unwrap_or(0),
+                s["stored"].as_i64().unwrap_or(0),
+                s["storageCapacity"].as_i64().unwrap_or(0),
+                crate::flow_at(&s["produced"], 1) - crate::flow_at(&s["consumed"], 1),
+                crate::flow_at(&s["produced"], 0) - crate::flow_at(&s["consumed"], 0),
+                pinned,
             ));
         }
     }
-    body.push_str("</tbody></table></div>");
+    let _ = session;
+    let total_rows = rows.len();
+    let pages = total_rows.div_ceil(60).max(1);
+    let page = page.min(pages - 1);
+    let facet_label = match facet {
+        "pinned" => "Pinned",
+        "issues" => "In issues",
+        "fluid" => "Fluid",
+        "loose" => "Loose",
+        "countable" => "Countable",
+        _ => "All",
+    };
+    let mut body = page_head(
+        "Monitor",
+        "Products",
+        "Every product in the run — quantities, storage and monthly flows. Virtual products are excluded.",
+        "",
+    );
+    body.push_str("<div class=\"card tablecard\"><div class=\"filterbar\"><form method=\"get\" action=\"/products\" style=\"display:flex;gap:8px;align-items:center;flex:1\">");
+    if facet != "all" {
+        body.push_str(&format!("<input type=\"hidden\" name=\"f\" value=\"{}\">", esc(facet)));
+    }
+    body.push_str(&format!(
+        "<input type=\"text\" name=\"q\" value=\"{}\" placeholder=\"🔍 name, kind, id…\"><button class=\"btn btn--secondary btn--sm\" type=\"submit\">Filter</button></form><span class=\"count\">{} products · {} · page {} of {} · click a column header to sort within the page</span></div>",
+        esc(&q),
+        total_rows,
+        facet_label,
+        page + 1,
+        pages
+    ));
+    body.push_str("<table id=\"ptable\" class=\"table--compact\"><thead><tr><th>Product</th><th>Kind</th><th class=\"num\">Quantity</th><th>Stored / cap</th><th class=\"num\">Prod TM/LM</th><th class=\"num\">Cons TM/LM</th><th class=\"num\">Net TM</th><th class=\"num\">Net LM</th><th>Pin</th></tr></thead><tbody>");
+    for (id, name, qty, stored, cap, net_lm, net_tm, pinned) in
+        rows.iter().skip(page * 60).take(60)
+    {
+        let s = &live.stats["products"][id];
+        let kind = live.kinds.get(id).cloned().unwrap_or_default();
+        let pct = if *cap > 0 {
+            *stored as f64 / *cap as f64 * 100.0
+        } else {
+            0.0
+        };
+        let bar_color = if pct >= 90.0 { "var(--warning)" } else { "var(--accent)" };
+        body.push_str(&format!(
+            "<tr><td><a href=\"/product?id={}\">{}</a></td><td>{}</td><td class=\"num\">{}</td><td><span class=\"num\">{} / {}</span> {}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td>{}</td></tr>",
+            esc(id),
+            esc(name),
+            esc(&kind),
+            fmt_num(&json!(qty)),
+            fmt_num(&json!(stored)),
+            fmt_num(&json!(cap)),
+            fillbar(pct, bar_color, 70),
+            flow_pair(&s["produced"]),
+            flow_pair(&s["consumed"]),
+            delta_chip(*net_tm, "TM"),
+            delta_chip(*net_lm, "LM"),
+            prepare_form(session, "PinToggleCmd", json!({"productToToggle": id}), if *pinned { "Unpin" } else { "Pin" }, false),
+        ));
+    }
+    body.push_str("</tbody></table>");
+    if pages > 1 {
+        let mut pager = String::new();
+        if page > 0 {
+            pager.push_str(&format!(
+                "<a class=\"btn btn--secondary btn--sm\" href=\"/products?f={}&q={}&page={}\">← Prev</a> ",
+                esc(facet),
+                url_enc(&q),
+                page - 1
+            ));
+        }
+        if page + 1 < pages {
+            pager.push_str(&format!(
+                "<a class=\"btn btn--secondary btn--sm\" href=\"/products?f={}&q={}&page={}\">Next →</a>",
+                esc(facet),
+                url_enc(&q),
+                page + 1
+            ));
+        }
+        body.push_str(&format!("<div class=\"pager\">{pager}</div>"));
+    }
+    body.push_str("</div>");
     body.push_str(TABLE_JS);
-    Response::html(200, layout(state, session, "Products", &body))
+    // Rail context: the facet switcher with counts.
+    let facet_link = |f: &str, label: &str, n: usize| {
+        format!(
+            "<a class=\"navitem anchor{}\" href=\"/products?f={}\">{}<span class=\"count\">{}</span></a>",
+            if facet == f { " active" } else { "" },
+            f,
+            label,
+            n
+        )
+    };
+    let mut ctx = String::from("<div class=\"ctx\">FACETS</div>");
+    ctx.push_str(&facet_link("all", "All", counts.0));
+    ctx.push_str(&facet_link("pinned", "Pinned", counts.1));
+    ctx.push_str(&facet_link("issues", "In issues", counts.2));
+    ctx.push_str(&facet_link("fluid", "Fluid", counts.3));
+    ctx.push_str(&facet_link("loose", "Loose", counts.4));
+    ctx.push_str(&facet_link("countable", "Countable", counts.5));
+    Response::html(200, layout_ctx(state, session, "Products", "Products", &ctx, &body))
 }
+
 
 fn sources_table(src: &Value, pid: &str) -> String {
     let mut h = String::new();
@@ -1785,7 +2614,7 @@ fn sources_table(src: &Value, pid: &str) -> String {
             if arr.is_empty() {
                 h.push_str("<div class=\"empty\">None this period.</div>");
             }
-            h.push_str("<table><thead><tr><th>Source</th><th>Detail</th><th class=\"num\">Quantity</th></tr></thead><tbody>");
+            h.push_str("<table class=\"table--compact\"><thead><tr><th>Source</th><th>Detail</th><th class=\"num\">Quantity</th></tr></thead><tbody>");
             for r in arr {
                 let (a, b) = match r["type"].as_str() {
                     Some("recipe") => (
@@ -1837,24 +2666,42 @@ fn page_product(state: &State, session: &Session, req: &Request) -> Response {
         ),
     );
     if !s.is_null() {
-        body.push_str("<div class=\"stats\">");
-        body.push_str(&stat_tile("QUANTITY", &fmt_num(&s["quantity"]), "", false));
-        body.push_str(&stat_tile(
-            "STORED / CAP",
+        // V2.3: tiles carry icons; produced/consumed are absolutes
+        // (neutral pairs); Net is a difference — delta chips only,
+        // never a "0/0" string; Stored/Cap gains the fill bar.
+        let stored = s["stored"].as_i64().unwrap_or(0);
+        let cap = s["storageCapacity"].as_i64().unwrap_or(0);
+        let pct = if cap > 0 { stored as f64 / cap as f64 * 100.0 } else { 0.0 };
+        let net_tm = crate::flow_at(&s["produced"], 0) - crate::flow_at(&s["consumed"], 0);
+        let net_lm = crate::flow_at(&s["produced"], 1) - crate::flow_at(&s["consumed"], 1);
+        body.push_str("<div class=\"stats2\">");
+        body.push_str(&stat2_tile("box", "Quantity", &fmt_num(&s["quantity"]), "", false));
+        body.push_str(&stat2_tile(
+            "layers",
+            "Stored / cap",
             &format!("{} <span class=\"u\">/ {}</span>", fmt_num(&s["stored"]), fmt_num(&s["storageCapacity"])),
-            "",
+            &fillbar(pct, if pct >= 90.0 { "var(--warning)" } else { "var(--accent)" }, 140),
             false,
         ));
-        body.push_str(&stat_tile(
-            "PRODUCED TM/LM",
+        body.push_str(&stat2_tile(
+            "chart",
+            "Produced TM/LM",
             &flow_pair(&s["produced"]),
             "this month / last month",
             false,
         ));
-        body.push_str(&stat_tile(
-            "CONSUMED TM/LM",
+        body.push_str(&stat2_tile(
+            "chart",
+            "Consumed TM/LM",
             &flow_pair(&s["consumed"]),
             "this month / last month",
+            false,
+        ));
+        body.push_str(&stat2_tile(
+            "chart",
+            "Net",
+            &format!("{} {}", delta_chip(net_tm, "TM"), delta_chip(net_lm, "LM")),
+            "",
             false,
         ));
         body.push_str("</div>");
@@ -1864,7 +2711,7 @@ fn page_product(state: &State, session: &Session, req: &Request) -> Response {
     let hist = &live.history["products"][&pid];
     if let Some(q) = hist["quantity"].as_array() {
         let pts: Vec<f64> = q.iter().map(|v| v.as_f64().unwrap_or(0.0)).collect();
-        main.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Monthly history</h2></div>");
+        main.push_str("<div class=\"card\" id=\"history\"><div class=\"cardhead\"><h2>Monthly history</h2></div>");
         if pts.len() >= 2 {
             main.push_str(&svg_sparkline_big(&pts, "var(--accent)"));
             main.push_str(&format!(
@@ -1879,7 +2726,7 @@ fn page_product(state: &State, session: &Session, req: &Request) -> Response {
                 },
             ));
         }
-        main.push_str("<table><thead><tr><th>Month (oldest → now)</th><th class=\"num\">Produced</th><th class=\"num\">Consumed</th><th class=\"num\">Quantity</th></tr></thead><tbody>");
+        main.push_str("<table class=\"table--compact\"><thead><tr><th>Month (oldest → now)</th><th class=\"num\">Produced</th><th class=\"num\">Consumed</th><th class=\"num\">Quantity</th></tr></thead><tbody>");
         for (i, qty) in q.iter().enumerate() {
             main.push_str(&format!(
                 "<tr><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td></tr>",
@@ -1895,7 +2742,8 @@ fn page_product(state: &State, session: &Session, req: &Request) -> Response {
         match get_json(&c, &format!("/api/v1/products/sources?ids={pid}&period={period}")) {
             Ok(src) => {
                 main.push_str(&format!(
-                    "<div class=\"card\"><div class=\"cardhead\"><h2>Sources — {}</h2></div>",
+                    "<div class=\"card\"{}><div class=\"cardhead\"><h2>Sources — {}</h2></div>",
+                    if period == "thisMonth" { " id=\"sources\"" } else { "" },
                     if period == "thisMonth" { "this month" } else { "last month" }
                 ));
                 main.push_str(&sources_table(&src, &pid));
@@ -1936,7 +2784,11 @@ fn page_product(state: &State, session: &Session, req: &Request) -> Response {
         }
     }
     body.push_str(&format!("<div class=\"detail\"><div>{}</div><div>{}</div></div>", main, rail));
-    Response::html(200, layout_nav(state, session, &name, "Products", &body))
+    let ctx = "<div class=\"ctx\">ON THIS PAGE</div>".to_string()
+        + &rail_link("#sources", "Sources")
+        + &rail_link("#history", "Monthly history")
+        + &rail_link("/products", "All products");
+    Response::html(200, layout_ctx(state, session, &name, "Products", &ctx, &body))
 }
 
 // ---------------------------------------------------------------------------
@@ -2039,20 +2891,21 @@ fn page_actions(state: &State, session: &Session) -> Response {
         None => body.push_str(&degraded_game("controls unavailable — the game API did not answer")),
     }
     body.push_str(&format!(
-        "<div class=\"card\"><div class=\"cardhead\"><h2>Global priorities</h2></div>\
-         <div class=\"callout callout--info\">Sets one of the game's global priorities by id (SetGlobalPriorityCmd). \
+        "<div class=\"card\" id=\"prio\"><div class=\"cardhead\"><h2>Global priorities</h2></div>\
+         <details class=\"howit\"><summary>How this form works</summary><p>Sets one of the game's global priorities by id (SetGlobalPriorityCmd). \
          The API does not publish the valid ids, so this is a plain entry form: a wrong id makes the \
          game return failure and changes nothing — attempts are audit-logged either way, and \
-         confirmed ids will be listed here as they're verified.</div>\
+         confirmed ids will be listed here as they're verified.</p></details>\
          <form method=\"post\" action=\"/actions/prepare-priority\">\
          <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
+         <div class=\"form-grid\">\
          <div class=\"field\"><label for=\"gp-id\">Priority id</label><input id=\"gp-id\" type=\"text\" name=\"priorityId\" required></div>\
-         <div class=\"field\"><label for=\"gp-val\">Value</label><input id=\"gp-val\" type=\"text\" name=\"priority\" value=\"0\" size=\"5\" required></div>\
-         <button type=\"submit\">Prepare…</button></form></div>",
+         <div class=\"field\"><label for=\"gp-val\">Value</label><input id=\"gp-val\" type=\"text\" name=\"priority\" value=\"0\" required></div>\
+         <div class=\"field\"><label>&nbsp;</label><button type=\"submit\">Prepare…</button></div></div></form></div>",
         esc(&session.csrf)
     ));
     if bridge_present(state) {
-        body.push_str("<div class=\"panel\"><h2 style=\"margin-top:0\">Fix actions — entity-targeted ✅ unlocked by CoiBridge</h2>\
+        body.push_str("<div class=\"panel\" id=\"fix\"><h2 style=\"margin-top:0\">Fix actions — entity-targeted ✅ unlocked by CoiBridge</h2>\
             <p>The bridge's entity directory is live, so the companion can address individual machines \
             and storages. The controls live where they're useful: on each <a href=\"/issues\">issue's detail \
             page</a> (the exact storages and machines involved in that issue) and on the \
@@ -2068,7 +2921,7 @@ fn page_actions(state: &State, session: &Session) -> Response {
             <tr><td>Flip a pipe's direction</td><td>—</td><td class=\"lock\">🔒 not a thing in CoI: pipe flow is pressure-driven (SPEC §12 A7)</td></tr>\
             </table></div>");
     } else {
-        body.push_str("<div class=\"panel\"><h2 style=\"margin-top:0\">Fix actions — locked for now</h2>\
+        body.push_str("<div class=\"panel\" id=\"fix\"><h2 style=\"margin-top:0\">Fix actions — locked for now</h2>\
             <p>These need a <b>numeric entity id</b> for the specific machine or storage. The game's web API \
             deliberately serves no entity directory (checked live: sources rows carry machine <i>types</i>, \
             not instances), so the companion cannot address an individual machine yet. The CoiBridge mod's \
@@ -2081,11 +2934,11 @@ fn page_actions(state: &State, session: &Session) -> Response {
             <tr><td>Upgrade a belt / pipe</td><td>—</td><td class=\"lock\">🔒 no vanilla command exists (SPEC §12.7)</td></tr>\
             </table></div>");
     }
-    body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\"><h2>Audit log</h2><span class=\"right\"><a href=\"/log\">Full activity log →</a></span></div>");
+    body.push_str("<div class=\"card tablecard\" id=\"audit\"><div class=\"cardhead\"><h2>Audit log</h2><span class=\"right\"><a href=\"/log\">Full activity log →</a></span></div>");
     match store(state) {
         Ok(st) => match st.audit_recent(20) {
             Ok(rows) if !rows.is_empty() => {
-                body.push_str("<table><thead><tr><th>When</th><th>Action</th><th>Detail</th><th>Outcome</th></tr></thead><tbody>");
+                body.push_str("<table class=\"table--compact\"><thead><tr><th>When</th><th>Action</th><th>Detail</th><th>Outcome</th></tr></thead><tbody>");
                 for (ts, action, detail) in rows {
                     let outcome = if detail.contains("FAILED") {
                         badge("critical", "failed")
@@ -2823,9 +3676,10 @@ fn new_job_id() -> String {
     )
 }
 
-fn page_place(state: &State, session: &Session) -> Response {
+fn page_place(state: &State, session: &Session, req: &Request) -> Response {
     let lib = blueprint_library();
     let jobs_dir = builder_jobs_dir(&state.db_path);
+    let ind_want = req.query.get("ind").cloned().unwrap_or_default();
     let mut h = page_head(
         "Game",
         "Place a blueprint",
@@ -2855,51 +3709,81 @@ fn page_place(state: &State, session: &Session) -> Response {
         esc(&jobs_dir.display().to_string()),
         esc(&sv(&lib["testing_status"]))
     ));
-    h.push_str("<div class=\"card tablecard\"><table><thead><tr><th>Blueprint</th><th>Module</th><th class=\"num\">Items</th><th>Research gate</th><th>Place</th></tr></thead><tbody>");
+    // Industries as collapse groups (V2.1/V2.2): the first group
+    // opens by default, or the one ?ind= names; the rail carries
+    // the industry facets.
+    let mut ctx = String::from("<div class=\"ctx\">INDUSTRIES</div>");
     if let Some(entries) = lib["entries"].as_array() {
+        let mut modules: Vec<String> = Vec::new();
         for e in entries {
-            let kinds = &e["kinds"];
-            let breakdown = [
-                ("buildings", kinds["buildings"].as_i64().unwrap_or(0)),
-                ("transports", kinds["transports"].as_i64().unwrap_or(0)),
-                ("trees", kinds["trees"].as_i64().unwrap_or(0)),
-                ("other", kinds["other"].as_i64().unwrap_or(0)),
-            ]
-            .iter()
-            .filter(|(_, n)| *n > 0)
-            .map(|(label, n)| format!("{n} {label}"))
-            .collect::<Vec<_>>()
-            .join(" · ");
-            let gate = if e["research_gate"].is_null() {
-                "—".to_string()
-            } else {
-                sv(&e["research_gate"])
-            };
-            h.push_str(&format!(
-                "<tr><td><b>{}</b><br><span class=\"sub mono\">{}</span></td><td>{}{}</td><td class=\"num\">{} <span class=\"sub\">({})</span></td><td>{}</td>\
-                 <td><form method=\"post\" action=\"/place/prepare\"><input type=\"hidden\" name=\"csrf\" value=\"{}\"><input type=\"hidden\" name=\"slug\" value=\"{}\">\
-                 anchor x <input name=\"ax\" size=\"5\" value=\"0\"> y <input name=\"ay\" size=\"5\" value=\"0\"> z <input name=\"az\" size=\"3\" value=\"0\"> \
-                 <select name=\"rotation\"><option value=\"0\">0°</option><option value=\"90\">90°</option><option value=\"180\">180°</option><option value=\"270\">270°</option></select> \
-                 <button class=\"btn--sm\" type=\"submit\">Prepare…</button></form></td></tr>",
-                esc(&sv(&e["name"])),
-                esc(&sv(&e["slug"])),
-                esc(&sv(&e["module"])),
-                if e["layer"].as_str().is_some_and(|l| !l.is_empty()) {
-                    format!(" · {}", esc(&sv(&e["layer"])))
-                } else {
-                    String::new()
-                },
-                e["item_count"].as_i64().unwrap_or(0),
-                breakdown,
-                esc(&gate),
-                session.csrf,
-                esc(&sv(&e["slug"])),
+            let m = sv(&e["module"]);
+            if !modules.contains(&m) {
+                modules.push(m);
+            }
+        }
+        for (mi, module) in modules.iter().enumerate() {
+            let group: Vec<&Value> = entries
+                .iter()
+                .filter(|e| sv(&e["module"]) == *module)
+                .collect();
+            ctx.push_str(&format!(
+                "<a class=\"navitem anchor{}\" href=\"/place?ind={}\">{}<span class=\"count\">{}</span></a>",
+                if ind_want == *module { " active" } else { "" },
+                url_enc(module),
+                esc(module),
+                group.len()
             ));
+            let open = if ind_want.is_empty() { mi == 0 } else { ind_want == *module };
+            h.push_str(&format!(
+                "<details class=\"indgroup\" id=\"ind-{}\"{}><summary>{}<span class=\"count\">{} layouts</span></summary><table class=\"table--compact\"><thead><tr><th>Blueprint</th><th class=\"num\">Items</th><th>Research gate</th><th>Place</th></tr></thead><tbody>",
+                module
+                    .to_lowercase()
+                    .chars()
+                    .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+                    .collect::<String>(),
+                if open { " open" } else { "" },
+                esc(module),
+                group.len()
+            ));
+            for e in group {
+                let kinds = &e["kinds"];
+                let breakdown = [
+                    ("buildings", kinds["buildings"].as_i64().unwrap_or(0)),
+                    ("transports", kinds["transports"].as_i64().unwrap_or(0)),
+                    ("trees", kinds["trees"].as_i64().unwrap_or(0)),
+                    ("other", kinds["other"].as_i64().unwrap_or(0)),
+                ]
+                .iter()
+                .filter(|(_, n)| *n > 0)
+                .map(|(label, n)| format!("{n} {label}"))
+                .collect::<Vec<_>>()
+                .join(" · ");
+                let gate = if e["research_gate"].is_null() {
+                    "—".to_string()
+                } else {
+                    sv(&e["research_gate"])
+                };
+                h.push_str(&format!(
+                    "<tr><td><b>{}</b><br><span class=\"sub mono\">{}</span></td><td class=\"num\">{} <span class=\"sub\">({})</span></td><td>{}</td>\
+                     <td><form method=\"post\" action=\"/place/prepare\"><input type=\"hidden\" name=\"csrf\" value=\"{}\"><input type=\"hidden\" name=\"slug\" value=\"{}\">\
+                     anchor x <input name=\"ax\" size=\"5\" value=\"0\"> y <input name=\"ay\" size=\"5\" value=\"0\"> z <input name=\"az\" size=\"3\" value=\"0\"> \
+                     <select name=\"rotation\"><option value=\"0\">0°</option><option value=\"90\">90°</option><option value=\"180\">180°</option><option value=\"270\">270°</option></select> \
+                     <button class=\"btn btn--sm btn--ghost\" type=\"submit\">Prepare…</button></form></td></tr>",
+                    esc(&sv(&e["name"])),
+                    esc(&sv(&e["slug"])),
+                    e["item_count"].as_i64().unwrap_or(0),
+                    breakdown,
+                    esc(&gate),
+                    session.csrf,
+                    esc(&sv(&e["slug"])),
+                ));
+            }
+            h.push_str("</tbody></table></details>");
         }
     }
-    h.push_str("</tbody></table></div>");
-    Response::html(200, layout(state, session, "Place a blueprint", &h))
+    Response::html(200, layout_ctx(state, session, "Place a blueprint", "Place", &ctx, &h))
 }
+
 
 fn do_place_prepare(state: &State, session: &Session, req: &Request) -> Response {
     if let Err(r) = check_csrf(session, req) {
@@ -3439,10 +4323,11 @@ fn page_designate(state: &State, session: &Session) -> Response {
     body.push_str(&latest_designation_panel(state, existing.as_deref()));
 
     // Pad planner form.
-    body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>New pad</h2></div>");
+    body.push_str("<div class=\"card\" id=\"pad\"><div class=\"cardhead\"><h2>New pad</h2></div>");
     body.push_str(&format!(
         "<form method=\"post\" action=\"/designate/prepare\">\
          <input type=\"hidden\" name=\"csrf\" value=\"{}\"><input type=\"hidden\" name=\"op\" value=\"pad\">\
+         <div class=\"form-grid\">\
          <div class=\"field\"><label for=\"dg-x0\">x from</label><input id=\"dg-x0\" type=\"number\" name=\"x0\" required></div>\
          <div class=\"field\"><label for=\"dg-y0\">y from</label><input id=\"dg-y0\" type=\"number\" name=\"y0\" required></div>\
          <div class=\"field\"><label for=\"dg-x1\">x to (exclusive)</label><input id=\"dg-x1\" type=\"number\" name=\"x1\" required></div>\
@@ -3453,7 +4338,7 @@ fn page_designate(state: &State, session: &Session) -> Response {
          <option value=\"DumpingDesignator\">Dumping</option>\
          <option value=\"LevelDesignator\">Levelling</option></select></div>\
          <div class=\"field\"><label for=\"dg-name\">plan name</label><input id=\"dg-name\" type=\"text\" name=\"name\" maxlength=\"120\" placeholder=\"optional — shown on the confirmation page\"></div>\
-         <button type=\"submit\">Prepare…</button></form>",
+         <div class=\"field\"><label>&nbsp;</label><button type=\"submit\">Prepare…</button></div></div></form>",
         session.csrf
     ));
     body.push_str("<p class=\"sub\">The rectangle snaps OUTWARD to whole cells (origins on the 4-grid). Prepare fetches the rectangle plus a one-cell margin of live terrain, levels every cell to the target, and lists every boundary vertex whose step to the terrain outside breaks the 0/±1 snapping rule — the game accepts such cells silently, so the warning is yours to read before confirming. Pit planning from deposits is not offered yet: the bridge serves no per-column rock layers, and a pit without the spike/purity gates would be a worse plan, not a faster one.</p></div>");
@@ -3462,14 +4347,14 @@ fn page_designate(state: &State, session: &Session) -> Response {
     match &existing {
         None => body.push_str(&degraded_bridge("Designation read-back", "0.6.6")),
         Some(rows) => {
-            body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Current designations</h2></div>");
+            body.push_str("<div class=\"card tablecard\" id=\"live\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Current designations</h2></div>");
             if rows.is_empty() {
                 body.push_str("<div class=\"empty\">No mining, dumping or levelling designations are currently marked.</div>");
             } else {
                 body.push_str(&format!(
-                    "<form method=\"post\" action=\"/designate/prepare\">\
+                    "<form method=\"post\" action=\"/designate/prepare\" id=\"remove\">\
                      <input type=\"hidden\" name=\"csrf\" value=\"{}\"><input type=\"hidden\" name=\"op\" value=\"remove\">\
-                     <table><thead><tr><th>Remove</th><th>Kind</th><th>Origin</th><th>Corners (origin, +X, +XY, +Y)</th><th>Target band</th><th>State</th><th class=\"num\">Jobs</th></tr></thead><tbody>",
+                     <table class=\"table--compact\"><thead><tr><th>Remove</th><th>Kind</th><th>Origin</th><th>Corners (origin, +X, +XY, +Y)</th><th>Target band</th><th>State</th><th class=\"num\">Jobs</th></tr></thead><tbody>",
                     session.csrf
                 ));
                 for (i, r) in rows.iter().enumerate() {
@@ -4077,10 +4962,15 @@ fn do_designate_confirm(state: &State, session: &Session, req: &Request) -> Resp
 // Catalogue — every command the game exposes, and what we know about it
 // ---------------------------------------------------------------------------
 
-fn page_catalogue(state: &State, session: &Session) -> Response {
+fn page_catalogue(state: &State, session: &Session, req: &Request) -> Response {
+    let _ = session;
     let verified = CATALOGUE.iter().filter(|c| c.status == "verified").count();
     let excluded = CATALOGUE.iter().filter(|c| c.status == "excluded").count();
     let entity = CATALOGUE.iter().filter(|c| c.entity).count();
+    // Facets (V2.1): ?domain= and ?status= filter server-side;
+    // the client filter then works within the rendered rows.
+    let domain_f = req.query.get("domain").cloned().unwrap_or_default();
+    let status_f = req.query.get("status").cloned().unwrap_or_default();
     let mut body = page_head(
         "Library",
         "Actions understood — the command catalogue",
@@ -4088,26 +4978,26 @@ fn page_catalogue(state: &State, session: &Session) -> Response {
         "",
     );
     body.push_str(
-        "<div class=\"callout callout--info\">Purposes are read from command names and argument schemas; \
+        "<details class=\"howit\"><summary>How to read this catalogue</summary><p>Purposes are read from command names and argument schemas; \
          only commands marked <b>verified</b> have actually been executed and observed through \
          this website's confirm flow. This registry is step A of the solo-play road: an agent \
-         can only play with hands that are understood.</div>",
+         can only play with hands that are understood.</p></details>",
     );
-    body.push_str(&format!(
-        "<div class=\"cols\">\
-         <div class=\"col\"><h2>{} commands</h2><p>{} target a specific entity (addressable via the bridge census); {} are global.</p></div>\
-         <div class=\"col\"><h2>{} verified live</h2><p>Executed through the prepare → confirm → audit flow on the real game. {} excluded by policy (see its note). Every other command is <b>wired</b>: preparable from its row below through a generic schema form — the exact JSON is always shown before anything is sent.</p></div>\
-         <div class=\"col\"><h2>Construction: the primitive exists</h2><p><b>CreateStaticEntityCmd</b> places a building/transport from a prototype at a tile transform, with <b>FinishBuildOfStaticEntityCmd</b> beside it, <b>CreateTrainTrackEntityWithDirectionCmd</b> for rails, and full train-line / train-network / vehicle-build-queue creation commands. Whether placement creates a construction site or a finished building — and how TileTransform encodes position — is untested: sandbox-save experiments are the next step, never the live save.</p></div>\
-         </div>",
-        CATALOGUE.len(),
-        entity,
-        CATALOGUE.len() - entity,
-        verified,
-        excluded,
-    ));
-    body.push_str("<div class=\"card tablecard\"><div class=\"filterbar\"><input id=\"tfilter\" type=\"search\" placeholder=\"🔍 Filter commands…\"><span class=\"count\">status: verified = executed live · wired = preparable, unverified · excluded = policy refusal</span></div>");
-    body.push_str("<table id=\"ctable\"><thead><tr><th>Domain</th><th>Command</th><th>Purpose & args</th><th>Targets</th><th>Status</th></tr></thead><tbody>");
-    for c in CATALOGUE {
+    body.push_str("<div class=\"stats2\">");
+    body.push_str(&stat2_tile("search", "Commands", &CATALOGUE.len().to_string(), &format!("{} target a specific entity · {} global", entity, CATALOGUE.len() - entity), false));
+    body.push_str(&stat2_tile("check", "Verified live", &verified.to_string(), "executed through prepare → confirm → audit", false));
+    body.push_str(&stat2_tile("alert", "Excluded by policy", &excluded.to_string(), "never preparable — see its note", excluded > 0));
+    body.push_str("</div>");
+    body.push_str(
+        "<details class=\"howit\"><summary>Construction: the primitive exists</summary><p><b>CreateStaticEntityCmd</b> places a building/transport from a prototype at a tile transform, with <b>FinishBuildOfStaticEntityCmd</b> beside it, <b>CreateTrainTrackEntityWithDirectionCmd</b> for rails, and full train-line / train-network / vehicle-build-queue creation commands. Whether placement creates a construction site or a finished building — and how TileTransform encodes position — is untested: sandbox-save experiments are the next step, never the live save.</p></details>",
+    );
+    let shown: Vec<_> = CATALOGUE
+        .iter()
+        .filter(|c| (domain_f.is_empty() || c.domain == domain_f) && (status_f.is_empty() || c.status == status_f))
+        .collect();
+    body.push_str(&format!("<div class=\"card tablecard\"><div class=\"filterbar\"><input id=\"tfilter\" type=\"search\" placeholder=\"🔍 Filter commands…\"><span class=\"count\">{} of {} commands · status: verified = executed live · wired = preparable, unverified · excluded = policy refusal</span></div>", shown.len(), CATALOGUE.len()));
+    body.push_str("<table id=\"ctable\" class=\"table--compact\"><thead><tr><th>Domain</th><th>Command</th><th>Purpose & args</th><th>Targets</th><th>Status</th></tr></thead><tbody>");
+    for c in &shown {
         let status = match c.status {
             "verified" => badge("ok", "verified"),
             "excluded" => badge("critical", "excluded"),
@@ -4120,7 +5010,7 @@ fn page_catalogue(state: &State, session: &Session) -> Response {
             if c.status == "excluded" {
                 String::new()
             } else {
-                format!("<br><a class=\"btn btn--sm\" href=\"/prepare?cmd={}\">Prepare…</a>", esc(c.name))
+                format!("<br><a class=\"btn btn--sm btn--ghost\" href=\"/prepare?cmd={}\">Prepare…</a>", esc(c.name))
             },
             esc(c.purpose),
             esc(c.args),
@@ -4137,18 +5027,41 @@ fn page_catalogue(state: &State, session: &Session) -> Response {
     body.push_str("</tbody></table></div>");
     body.push_str(TABLE_JS);
     body.push_str("<script>wireTable('ctable','tfilter');</script>");
-    Response::html(200, layout(state, session, "Command catalogue", &body))
+    // Rail context: domain facets with counts + status facets.
+    let mut domains: Vec<&str> = CATALOGUE.iter().map(|c| c.domain).collect();
+    domains.sort_unstable();
+    domains.dedup();
+    let mut ctx = String::from("<div class=\"ctx\">DOMAINS</div>");
+    ctx.push_str(&format!(
+        "<a class=\"navitem anchor{}\" href=\"/catalogue\">All domains<span class=\"count\">{}</span></a>",
+        if domain_f.is_empty() { " active" } else { "" },
+        CATALOGUE.len()
+    ));
+    for d in domains {
+        let n = CATALOGUE.iter().filter(|c| c.domain == d).count();
+        ctx.push_str(&format!(
+            "<a class=\"navitem anchor{}\" href=\"/catalogue?domain={}\">{}<span class=\"count\">{}</span></a>",
+            if domain_f == d { " active" } else { "" },
+            url_enc(d),
+            esc(d),
+            n
+        ));
+    }
+    ctx.push_str("<div class=\"ctx\">STATUS</div>");
+    for (sv_, label) in [("verified", "Verified"), ("wired", "Wired"), ("excluded", "Excluded")] {
+        let n = CATALOGUE.iter().filter(|c| c.status == sv_).count();
+        ctx.push_str(&format!(
+            "<a class=\"navitem anchor{}\" href=\"/catalogue?status={}\">{}<span class=\"count\">{}</span></a>",
+            if status_f == sv_ { " active" } else { "" },
+            sv_,
+            label,
+            n
+        ));
+    }
+    Response::html(200, layout_ctx(state, session, "Command catalogue", "Catalogue", &ctx, &body))
 }
 
-// ---------------------------------------------------------------------------
-// Guides — failure-mode library, linked from issues
-// ---------------------------------------------------------------------------
 
-/// Which guides speak to a given issue. Rules are deliberately
-/// simple and visible: storage failures → Storage + Transport;
-/// seasonal producers → Farming; oil-chain products → Oil & diesel;
-/// stalls → Priorities + Transport (a stall is usually a delivery
-/// or attention problem before it is a production problem).
 fn guides_for_issue(issue: &Issue, pid: Option<&str>) -> Vec<&'static Guide> {
     let mut out: Vec<&'static Guide> = Vec::new();
     let mut push = |id: &str| {
@@ -4259,6 +5172,8 @@ fn page_plans(state: &State, session: &Session, _req: &Request) -> Response {
         body.push_str("<div class=\"err\">Baked-in verdict data failed to parse.</div>");
         return Response::html(200, layout(state, session, "Plans", &body));
     };
+    // Rail context (V2.1): the phase anchors across both plans.
+    let mut ctx = String::from("<div class=\"ctx\">PHASES</div>");
     for (i, p) in plans.iter().enumerate() {
         let pid = p["id"].as_str().unwrap_or("?");
         let doc = plan_docs.get(i);
@@ -4277,6 +5192,18 @@ fn page_plans(state: &State, session: &Session, _req: &Request) -> Response {
             }
         }
         if let Some(phases) = p["phases"].as_array() {
+            // Plan-header counts as figures (V2.3); the phase
+            // evidence lines themselves stay prose — a gate
+            // evidence string is an argument, not a measurement.
+            let n_complete = phases.iter().filter(|ph| ph["status"].as_str() == Some("COMPLETE")).count();
+            let n_active = phases.iter().filter(|ph| ph["status"].as_str() == Some("ACTIVE")).count();
+            let n_held = phases.iter().filter(|ph| ph["status"].as_str() == Some("HELD")).count();
+            body.push_str(&figstrip(&[
+                fig("Phases", &phases.len().to_string(), false),
+                fig("Complete", &n_complete.to_string(), false),
+                fig("Active", &n_active.to_string(), false),
+                fig("Held", &n_held.to_string(), false),
+            ]));
             for ph in phases {
                 let status = ph["status"].as_str().unwrap_or("");
                 let sb = match status {
@@ -4285,8 +5212,13 @@ fn page_plans(state: &State, session: &Session, _req: &Request) -> Response {
                     "HELD" => badge("paused", "HELD"),
                     _ => badge("paused", status),
                 };
+                ctx.push_str(&rail_link(
+                    &format!("#{}", ph["id"].as_str().unwrap_or("")),
+                    ph["name"].as_str().unwrap_or(""),
+                ));
                 body.push_str(&format!(
-                    "<div class=\"phase\"><b>{}</b> {}<div class=\"ev\">{}</div></div>",
+                    "<div class=\"phase\" id=\"{}\"><b>{}</b> {}<div class=\"ev\">{}</div></div>",
+                    esc(ph["id"].as_str().unwrap_or("")),
                     esc(ph["name"].as_str().unwrap_or("")),
                     sb,
                     esc(ph["id"].as_str().unwrap_or("")),
@@ -4381,7 +5313,7 @@ fn page_plans(state: &State, session: &Session, _req: &Request) -> Response {
             body.push_str("<div class=\"callout callout--ok\">Plan complete by its gates — no active phase, no next orders.</div>");
         }
     }
-    Response::html(200, layout(state, session, "Plans", &body))
+    Response::html(200, layout_ctx(state, session, "Plans", "Plans", &ctx, &body))
 }
 
 fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
@@ -4401,7 +5333,7 @@ fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
     );
 
     // ---- Contracts ----
-    body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Contracts</h2></div>");
+    body.push_str("<div class=\"card tablecard\" id=\"contracts\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Contracts</h2></div>");
     match bridge_json(state, "/coi/v1/contracts") {
         Some(v) => {
             body.push_str(&format!(
@@ -4445,7 +5377,7 @@ fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
     body.push_str("</div>");
 
     // ---- Quick trades (CoiBridge v0.6.1) ----
-    body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Quick trades</h2></div>");
+    body.push_str("<div class=\"card\" id=\"quick\"><div class=\"cardhead\"><h2>Quick trades</h2></div>");
     match bridge_json(state, "/coi/v1/quick-trades") {
         Some(v) => {
             body.push_str("<table class=\"sortable\"><thead><tr><th>Trade</th><th>You receive</th><th>You pay</th><th>Unity cost (raw)</th><th>Step</th><th>State</th><th></th></tr></thead><tbody>");
@@ -4492,7 +5424,7 @@ fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
     body.push_str("</div>");
 
     // ---- Loans ----
-    body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Loans</h2></div>");
+    body.push_str("<div class=\"card\" id=\"loans\"><div class=\"cardhead\"><h2>Loans</h2></div>");
     match bridge_json(state, "/coi/v1/loans") {
         Some(v) => {
             body.push_str(&format!(
@@ -4559,7 +5491,7 @@ fn page_trade(state: &State, session: &Session, _req: &Request) -> Response {
     body.push_str("</div>");
 
     // ---- Edicts ----
-    body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Edicts</h2></div>");
+    body.push_str("<div class=\"card\" id=\"edicts\"><div class=\"cardhead\"><h2>Edicts</h2></div>");
     match bridge_json(state, "/coi/v1/edicts") {
         Some(v) => {
             body.push_str("<table class=\"sortable\"><thead><tr><th>Edict</th><th>Enabled</th><th>Active</th><th>Can enable</th><th>Why / why not</th></tr></thead><tbody>");
@@ -4611,7 +5543,17 @@ fn page_guides(state: &State, session: &Session) -> Response {
         ));
     }
     body.push_str("</div>");
-    Response::html(200, layout(state, session, "Guides", &body))
+    Response::html(200, layout_ctx(state, session, "Guides", "Guides", &guides_ctx(), &body))
+}
+
+/// The rail context for the Library's guide pages: the guide
+/// titles themselves (V2.1 tree).
+fn guides_ctx() -> String {
+    let mut ctx = String::from("<div class=\"ctx\">GUIDES</div>");
+    for g in GUIDES {
+        ctx.push_str(&rail_link(&format!("/guide?id={}", g.id), g.title));
+    }
+    ctx
 }
 
 fn page_guide(state: &State, session: &Session, req: &Request) -> Response {
@@ -4645,7 +5587,7 @@ fn page_guide(state: &State, session: &Session, req: &Request) -> Response {
         if !rel.is_empty() {
             main.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>In your factory right now</h2></div>");
             for i in rel {
-                main.push_str(&issue_card(i, None));
+                main.push_str(&issue_card(i, Some(&live)));
             }
             main.push_str("</div>");
         }
@@ -4667,7 +5609,7 @@ fn page_guide(state: &State, session: &Session, req: &Request) -> Response {
     }
     rail.push_str("</div>");
     body.push_str(&format!("<div class=\"detail\"><div>{}</div><div>{}</div></div>", main, rail));
-    Response::html(200, layout_nav(state, session, g.title, "Guides", &body))
+    Response::html(200, layout_ctx(state, session, g.title, "Guides", &guides_ctx(), &body))
 }
 
 // ---------------------------------------------------------------------------
@@ -4791,33 +5733,52 @@ fn power_panel_html(v: &Value) -> String {
     let cap = vi(&v["generationCapacityKw"]).max(1);
     let gen_pct = vi(&v["generatedKw"]) as f64 / cap as f64 * 100.0;
     let cons_pct = vi(&v["consumedKw"]) as f64 / cap as f64 * 100.0;
+    let kw = |n: i64| format!("{} <span class=\"u\">kW</span>", fmt_num(&json!(n)));
+    // V2.3 mapping: every measurement is a figure. Generated /
+    // consumed / capacity are absolutes (neutral); the balance is
+    // the difference and renders as a delta chip. The old
+    // demanded/wasted sentence becomes the second figstrip.
+    let strip1 = figstrip(&[
+        fig("Generated", &kw(vi(&v["generatedKw"])), false),
+        fig("Consumed", &kw(vi(&v["consumedKw"])), false),
+        fig("Balance", &delta_chip(balance, ""), false),
+        fig(
+            "Headroom",
+            &kw(vi(&v["generationCapacityKw"]) - vi(&v["generatedKw"])),
+            false,
+        ),
+    ]);
+    let strip2 = figstrip(&[
+        fig("Demanded", &kw(vi(&v["demandedKw"])), false),
+        fig("Surplus demand", &kw(vi(&v["surplusDemandedKw"])), false),
+        fig("Wasted", &kw(vi(&v["wastedKw"])), false),
+        fig("Generators", &fmt_num(&v["generators"]), false),
+        fig("Consumers", &fmt_num(&v["consumers"]), false),
+    ]);
+    let deficit_cta = if balance < 0 {
+        "<div class=\"ctas\" style=\"display:flex;gap:6px;margin-top:10px\"><a class=\"btn btn--sm\" href=\"/actions\">Open Actions…</a><a class=\"btn btn--sm btn--ghost\" href=\"/entities?view=machines\">See generators</a></div>"
+    } else {
+        ""
+    };
     format!(
         "<div class=\"card\"><div class=\"cardhead\"><h2>Electric power</h2><span class=\"right\">{}</span></div>\
-         <div class=\"kv\"><span>Generated <b style=\"color:var(--text-1)\">{} <span class=\"u\">kW</span></b></span><span>·</span>\
-         <span>Consumed <b style=\"color:var(--text-1)\">{} <span class=\"u\">kW</span></b></span><span>·</span>\
-         <span>Balance <b style=\"color:var(--text-1)\">{} <span class=\"u\">kW</span></b></span><span>·</span>\
-         <span>Capacity {} / {} <span class=\"u\">kW</span></span></div>\
-         <div style=\"margin-top:10px\"><div class=\"caption\" style=\"margin:0 0 4px\">Generation vs capacity</div>{}</div>\
+         {}\
+         <div style=\"margin-top:10px\"><div class=\"caption\" style=\"margin:0 0 4px\">Generation vs capacity ({} / {} <span class=\"u\">kW</span>)</div>{}</div>\
          <div style=\"margin-top:6px\"><div class=\"caption\" style=\"margin:0 0 4px\">Consumption vs capacity</div>{}</div>\
-         <div class=\"caption\">Demanded {} kW (surplus demand {} kW) · wasted {} kW · \
-         {} generator(s), {} consumer(s) — this tick, via CoiBridge.</div>{}</div>",
+         <div style=\"margin-top:10px\">{}</div>\
+         <div class=\"caption\">This tick, via CoiBridge.</div>{}{}</div>",
         if balance >= 0 {
             badge("ok", "balanced")
         } else {
             badge("critical", "deficit")
         },
-        vi(&v["generatedKw"]),
-        vi(&v["consumedKw"]),
-        balance,
+        strip1,
         vi(&v["generationCapacityKw"]),
         vi(&v["maxGenerationCapacityKw"]),
         fillbar(gen_pct, "var(--accent)", 420),
         fillbar(cons_pct, "var(--paused)", 420),
-        vi(&v["demandedKw"]),
-        vi(&v["surplusDemandedKw"]),
-        vi(&v["wastedKw"]),
-        vi(&v["generators"]),
-        vi(&v["consumers"]),
+        strip2,
+        deficit_cta,
         averages_line,
     )
 }
@@ -4971,7 +5932,7 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
     // per-entity Act tables follow full-width below the grid.
     body.push_str("<div class=\"detail\"><div>");
     body.push_str(&format!(
-        "<div class=\"card {cls}\"><div class=\"cardhead\"><h2>Why \u{2018}{}\u{2019}?</h2></div><p>{}</p></div>",
+        "<div class=\"card {cls}\" id=\"why\"><div class=\"cardhead\"><h2>Why \u{2018}{}\u{2019}?</h2></div><p>{}</p></div>",
         esc(issue.quadrant),
         quadrant_why(issue.quadrant),
     ));
@@ -4979,19 +5940,49 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
     if let Some(id) = &pid {
         let s = &live.stats["products"][id];
         if !s.is_null() {
+            let qty = s["quantity"].as_i64().unwrap_or(0);
+            let stored = s["stored"].as_i64().unwrap_or(0);
+            let cap = s["storageCapacity"].as_i64().unwrap_or(0);
+            let net_lm = crate::flow_at(&s["produced"], 1) - crate::flow_at(&s["consumed"], 1);
+            let cons_lm = crate::flow_at(&s["consumed"], 1);
+            // Headline figures (V2.3): Stock · Stored/Cap · Net LM
+            // (a difference — delta chip) · Cover. The produced /
+            // consumed TM/LM pairs are genuine pairs and stay .kv.
+            let cover = if net_lm < 0 {
+                Some(qty as f64 / (-net_lm) as f64)
+            } else if cons_lm > 0 {
+                Some(qty as f64 / cons_lm as f64)
+            } else {
+                None
+            };
+            let pct = if cap > 0 { stored as f64 / cap as f64 * 100.0 } else { 0.0 };
+            body.push_str("<div class=\"stats2\" id=\"numbers\">");
+            body.push_str(&stat2_tile("box", "Stock", &fmt_num(&s["quantity"]), "", false));
+            body.push_str(&stat2_tile(
+                "layers",
+                "Stored / cap",
+                &format!("{} <span class=\"u\">/ {}</span>", fmt_num(&s["stored"]), fmt_num(&s["storageCapacity"])),
+                &fillbar(pct, if pct >= 90.0 { "var(--warning)" } else { "var(--accent)" }, 140),
+                false,
+            ));
+            body.push_str(&stat2_tile("chart", "Net LM", &delta_chip(net_lm, "LM"), "", false));
+            body.push_str(&stat2_tile(
+                "clock",
+                "Cover",
+                &match cover {
+                    Some(m) => format!("{m:.1} <span class=\"u\">months</span>"),
+                    None => "—".to_string(),
+                },
+                "",
+                cover.map(|m| m < 3.0).unwrap_or(false),
+            ));
+            body.push_str("</div>");
             body.push_str(&format!(
-                "<div class=\"card\"><div class=\"cardhead\"><h2>The numbers</h2></div>\
-                 <div class=\"kvrow\"><span class=\"k\">Quantity</span><span><b>{}</b></span></div>\
-                 <div class=\"kvrow\"><span class=\"k\">Stored / capacity</span><span>{} / {}</span></div>\
+                "<div class=\"card\"><div class=\"cardhead\"><h2>Flows</h2></div>\
                  <div class=\"kvrow\"><span class=\"k\">Produced TM/LM</span><span>{}</span></div>\
-                 <div class=\"kvrow\"><span class=\"k\">Consumed TM/LM</span><span>{}</span></div>\
-                 <div class=\"kvrow\"><span class=\"k\">Net last month</span><span><b>{}</b> <span class=\"u\">/mo</span></span></div></div>",
-                fmt_num(&s["quantity"]),
-                fmt_num(&s["stored"]),
-                fmt_num(&s["storageCapacity"]),
+                 <div class=\"kvrow\"><span class=\"k\">Consumed TM/LM</span><span>{}</span></div></div>",
                 flow_pair(&s["produced"]),
                 flow_pair(&s["consumed"]),
-                crate::flow_at(&s["produced"], 1) - crate::flow_at(&s["consumed"], 1),
             ));
         }
         // On-demand monthly history for this product (pinned or not).
@@ -5022,7 +6013,7 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
         }
     }
     body.push_str(&format!(
-        "<div class=\"card\"><div class=\"cardhead\"><h2>Evidence</h2></div><p>{}</p></div>",
+        "<div class=\"card\" id=\"evidence\"><div class=\"cardhead\"><h2>Evidence</h2></div><p>{}</p></div>",
         esc(&issue.evidence)
     ));
     if let Some(f) = fc {
@@ -5032,14 +6023,14 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
             _ => format!("stock lasts ≈ {:.1} months", f.months),
         };
         body.push_str(&format!(
-            "<div class=\"card\"><div class=\"cardhead\"><h2>Outlook</h2></div><p>{} <b>{}</b></p><div class=\"caption\">Basis: {}</div></div>",
+            "<div class=\"card\" id=\"outlook\"><div class=\"cardhead\"><h2>Outlook</h2></div><p>{} <b>{}</b></p><div class=\"caption\">{}</div></div>",
             svg_runway(f.months, f.kind),
             esc(&label),
             esc(&f.basis),
         ));
     }
     body.push_str(&format!(
-        "<div class=\"card\"><div class=\"cardhead\"><h2>How to fix it</h2></div><p>{}</p></div>",
+        "<div class=\"card\" id=\"fix\"><div class=\"cardhead\"><h2>How to fix it</h2></div><p>{}</p></div>",
         esc(&issue.fix)
     ));
     body.push_str("</div><div>");
@@ -5189,7 +6180,7 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
                                     "ToggleEnabledCmd",
                                     json!({"entityId": eid}),
                                     &format!("Pause / resume {proto} #{eid} (at {pos}) — toggles its enabled state."),
-                                    "⏯ Toggle",
+                                    "Toggle",
                                 ),
                                 btns,
                             ));
@@ -5210,7 +6201,12 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
         }
     }
     body.push_str("<p class=\"sub\"><a href=\"/issues\">← Back to the board</a></p>");
-    Response::html(200, layout(state, session, "Issue detail", &body))
+    let ctx = "<div class=\"ctx\">ON THIS PAGE</div>".to_string()
+        + &rail_link("#why", "Why this quadrant")
+        + &rail_link("#numbers", "The numbers")
+        + &rail_link("#evidence", "Evidence")
+        + &rail_link("#fix", "Fix panel");
+    Response::html(200, layout_ctx(state, session, "Issue detail", "Issues", &ctx, &body))
 }
 
 /// Machines per instance (CoiBridge v0.6.4's GET /coi/v1/machines):
@@ -5221,8 +6217,11 @@ fn page_issue(state: &State, session: &Session, req: &Request) -> Response {
 /// when the game API itself did not answer — so it is computed once
 /// at the top of page_entities. Malformed rows never panic: missing
 /// fields render as "—".
-fn machines_section(state: &State) -> String {
-    let mut s = String::from("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Machines (per-instance)</h2></div>");
+/// Machines per-instance table, one server-side page of 60
+/// (V2.1 3-viewport rule; the client filter/sort works within the
+/// rendered page). `page` is 0-based.
+fn machines_section(state: &State, page: usize) -> String {
+    let mut s = String::from("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Machines (per-instance)</h2></div>");
     let Some(v) = bridge_json(state, "/coi/v1/machines") else {
         s.push_str(&degraded_bridge("Per-instance machine states", "v0.6.4"));
         s.push_str("</div>");
@@ -5265,13 +6264,17 @@ fn machines_section(state: &State) -> String {
     for st in states {
         opts.push_str(&format!("<option value=\"{}\">{}</option>", esc(st), esc(st)));
     }
+    let pages = rows.len().div_ceil(60).max(1);
+    let page = page.min(pages - 1);
     s.push_str(&format!(
         "<div class=\"filterbar\"><input type=\"text\" id=\"mfilter\" placeholder=\"🔍 proto, id, recipe…\" oninput=\"filterMachines()\">\
          <label>State <select id=\"mstate\" onchange=\"filterMachines()\">{}</select></label>\
-         <span class=\"count\">{}</span></div>\
-         <table id=\"mtable\"><thead><tr><th>Id</th><th>Proto</th><th>Pos</th><th>State</th><th>Recipe(s)</th><th>Paused</th><th>Enabled</th></tr></thead><tbody>",
+         <span class=\"count\">{} · page {} of {}</span></div>\
+         <table id=\"mtable\" class=\"table--compact\"><thead><tr><th>Id</th><th>Proto</th><th>Pos</th><th>State</th><th>Recipe(s)</th><th>Paused</th><th>Enabled</th></tr></thead><tbody>",
         opts,
-        summary
+        summary,
+        page + 1,
+        pages
     ));
     let flag = |v: &Value| -> &'static str {
         match v.as_bool() {
@@ -5280,7 +6283,7 @@ fn machines_section(state: &State) -> String {
             None => "—",
         }
     };
-    for r in &rows {
+    for r in rows.iter().skip(page * 60).take(60) {
         let id = match r["id"].as_i64() {
             Some(n) => format!("#{n}"),
             None => "—".to_string(),
@@ -5323,14 +6326,29 @@ fn machines_section(state: &State) -> String {
             flag(&r["isEnabled"]),
         ));
     }
-    s.push_str("</tbody></table></div>");
+    s.push_str("</tbody></table>");
+    if pages > 1 {
+        let mut pager = String::new();
+        if page > 0 {
+            pager.push_str(&format!(
+                "<a class=\"btn btn--secondary btn--sm\" href=\"/entities?view=machines&page={}\">← Prev</a> ",
+                page - 1
+            ));
+        }
+        if page + 1 < pages {
+            pager.push_str(&format!(
+                "<a class=\"btn btn--secondary btn--sm\" href=\"/entities?view=machines&page={}\">Next →</a>",
+                page + 1
+            ));
+        }
+        s.push_str(&format!("<div class=\"pager\">{pager}</div>"));
+    }
+    s.push_str("</div>");
     s.push_str(MACHINES_JS);
     s
 }
 
-/// Machines-table filter: the same idiom as TABLE_JS's filterTable,
-/// scoped to #mtable (the storages table owns #ptable/#tfilter),
-/// plus an exact-match state dropdown reading each row's data-state.
+
 const MACHINES_JS: &str = "<script>
 function filterMachines(){var q=document.getElementById('mfilter').value.toLowerCase();var st=document.getElementById('mstate').value;document.querySelectorAll('#mtable tbody tr').forEach(function(r){var ok=r.textContent.toLowerCase().indexOf(q)>=0;if(ok&&st!==''){ok=r.getAttribute('data-state')===st}r.style.display=ok?'':'none'})}
 </script>";
@@ -5373,9 +6391,10 @@ fn page_terrain(state: &State, session: &Session, req: &Request) -> Response {
     let target: Option<f64> = q.get("target").and_then(|s| s.parse::<f64>().ok());
 
     // Headline tiles.
-    let mut tiles = String::from("<div class=\"stats\">");
-    tiles.push_str(&stat_tile(
-        "MAP",
+    let mut tiles = String::from("<div class=\"stats2\">");
+    tiles.push_str(&stat2_tile(
+        "layers",
+        "Map",
         &format!("{} × {}", fmt_num(&t["width"]), fmt_num(&t["height"])),
         &format!(
             "playable x {}–{}, y {}–{}",
@@ -5386,8 +6405,9 @@ fn page_terrain(state: &State, session: &Session, req: &Request) -> Response {
         ),
         false,
     ));
-    tiles.push_str(&stat_tile(
-        "HEIGHT RANGE (TILES)",
+    tiles.push_str(&stat2_tile(
+        "chart",
+        "Height range (tiles)",
         &format!(
             "{} → {}",
             fmt_tiles(vi(&t["minHeightRaw"])),
@@ -5396,8 +6416,9 @@ fn page_terrain(state: &State, session: &Session, req: &Request) -> Response {
         "1 tile = 2 m · heights are floored into entity Z",
         false,
     ));
-    tiles.push_str(&stat_tile(
-        "OCEAN TILES",
+    tiles.push_str(&stat2_tile(
+        "anchor",
+        "Ocean tiles",
         &fmt_num(&t["oceanTiles"]),
         &format!("of {} tiles", fmt_num(&t["tilesCount"])),
         false,
@@ -5459,24 +6480,28 @@ fn page_terrain(state: &State, session: &Session, req: &Request) -> Response {
         }
         if !grid.is_empty() {
             body.push_str(&format!(
-                "<div class=\"card\"><div class=\"cardhead\"><h2>Height map</h2></div>\
-                 <p class=\"sub\">{} Height range shown: <b>{:.2} → {:.2} tiles</b>. North (y = 0) is up.</p>{}</div>",
+                "<div class=\"card\" id=\"heightmap\"><div class=\"cardhead\"><h2>Height map</h2></div>\
+                 <p class=\"sub\">{}</p>{}<p class=\"caption\">North (y = 0) is up.</p>{}</div>",
                 esc(&caption),
-                mn,
-                mx,
+                figstrip(&[
+                    fig("Min height", &format!("{mn:.2} <span class=\"u\">tiles</span>"), false),
+                    fig("Max height", &format!("{mx:.2} <span class=\"u\">tiles</span>"), false),
+                    fig("Tiles", &fmt_num(&json!(grid.len())), false),
+                ]),
                 svg_heatmap(&grid, gw, gh, mn, mx),
             ));
         }
         // Region + target form.
         body.push_str(&format!(
-            "<div class=\"card\"><div class=\"cardhead\"><h2>Region &amp; earthworks</h2></div>\
+            "<div class=\"card\" id=\"region\"><div class=\"cardhead\"><h2>Region &amp; earthworks</h2></div>\
              <form method=\"get\" action=\"/terrain\">\
+             <div class=\"form-grid\">\
              <div class=\"field\"><label for=\"tr-x0\">x from</label><input id=\"tr-x0\" type=\"number\" name=\"rx0\" value=\"{}\" required></div>\
              <div class=\"field\"><label for=\"tr-y0\">y from</label><input id=\"tr-y0\" type=\"number\" name=\"ry0\" value=\"{}\" required></div>\
              <div class=\"field\"><label for=\"tr-x1\">x to (exclusive)</label><input id=\"tr-x1\" type=\"number\" name=\"rx1\" value=\"{}\" required></div>\
              <div class=\"field\"><label for=\"tr-y1\">y to (exclusive)</label><input id=\"tr-y1\" type=\"number\" name=\"ry1\" value=\"{}\" required></div>\
              <div class=\"field\"><label for=\"tr-t\">target height (tiles)</label><input id=\"tr-t\" type=\"text\" name=\"target\" value=\"{}\" placeholder=\"e.g. 12.5\"></div>\
-             <button type=\"submit\">Show region</button></form>\
+             <div class=\"field\"><label>&nbsp;</label><button type=\"submit\">Show region</button></div></div></form>\
              <p class=\"sub\">Exact heights are fetched on demand; the bridge caps a region at 16,384 tiles. With a target height, the estimator sums the height deltas: cut = above target (mine away), fill = below target (dump). Volumes in tiles-cubed and m³ (1 tile³ = 8 m³).</p></div>",
             rx0.unwrap_or(vi(&t["limits"]["minX"])),
             ry0.unwrap_or(vi(&t["limits"]["minY"])),
@@ -5486,21 +6511,24 @@ fn page_terrain(state: &State, session: &Session, req: &Request) -> Response {
         ));
         if let (Some(r), Some(tg)) = (&region, target) {
             let ew = crate::terrain::estimate(&r.heights, tg);
-            let mut tiles = String::from("<div class=\"stats\">");
-            tiles.push_str(&stat_tile(
-                "CUT — MINE AWAY",
-                &format!("{:.0} m³", ew.cut_m3()),
+            let mut tiles = String::from("<div class=\"stats2\">");
+            tiles.push_str(&stat2_tile(
+                "layers",
+                "Cut — mine away",
+                &format!("{:.0} <span class=\"u\">m³</span>", ew.cut_m3()),
                 &format!("{:.1} tiles³ over {} tiles above target", ew.cut_tiles3, ew.tiles_above),
                 false,
             ));
-            tiles.push_str(&stat_tile(
-                "FILL — DUMP",
-                &format!("{:.0} m³", ew.fill_m3()),
+            tiles.push_str(&stat2_tile(
+                "layers",
+                "Fill — dump",
+                &format!("{:.0} <span class=\"u\">m³</span>", ew.fill_m3()),
                 &format!("{:.1} tiles³ over {} tiles below target", ew.fill_tiles3, ew.tiles_below),
                 false,
             ));
-            tiles.push_str(&stat_tile(
-                "ALREADY AT TARGET",
+            tiles.push_str(&stat2_tile(
+                "check",
+                "Already at target",
                 &format!("{}", ew.tiles_at),
                 &format!("of {} tiles in the region", ew.tiles),
                 false,
@@ -5529,7 +6557,7 @@ fn page_terrain(state: &State, session: &Session, req: &Request) -> Response {
                 .unwrap_or_else(|| pid.trim_start_matches("Product_").to_string())
         };
         if let Some(mats) = d["materials"].as_array() {
-            body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>On-map resources — totals by material</h2></div><table><thead><tr><th>Product</th><th>Material</th><th class=\"num\">Tiles</th><th class=\"num\">Remaining</th></tr></thead><tbody>");
+            body.push_str("<div class=\"card tablecard\" id=\"deposits\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>On-map resources — totals by material</h2></div><table class=\"table--compact\"><thead><tr><th>Product</th><th>Material</th><th class=\"num\">Tiles</th><th class=\"num\">Remaining</th></tr></thead><tbody>");
             for m in mats {
                 body.push_str(&format!(
                     "<tr><td>{}</td><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td></tr>",
@@ -5543,7 +6571,7 @@ fn page_terrain(state: &State, session: &Session, req: &Request) -> Response {
         }
         if let Some(deps) = d["deposits"].as_array() {
             body.push_str(&format!(
-                "<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Deposit regions</h2></div><table><thead><tr><th>Product</th><th>Bounds (x, y)</th><th class=\"num\">Tiles</th><th class=\"num\">Remaining</th></tr></thead><tbody>"
+                "<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Deposit regions</h2></div><table class=\"table--compact\"><thead><tr><th>Product</th><th>Bounds (x, y)</th><th class=\"num\">Tiles</th><th class=\"num\">Remaining</th></tr></thead><tbody>"
             ));
             let shown = deps.len().min(200);
             for dep in &deps[..shown] {
@@ -5577,11 +6605,11 @@ fn page_terrain(state: &State, session: &Session, req: &Request) -> Response {
     match bridge_json(state, "/coi/v1/designations") {
         Some(dz) => {
             let rows = dz["designations"].as_array().cloned().unwrap_or_default();
-            body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Terrain designations</h2></div>");
+            body.push_str("<div class=\"card tablecard\" id=\"designations\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Terrain designations</h2></div>");
             if rows.is_empty() {
                 body.push_str("<div class=\"empty\">No mining or dumping designations are currently marked.</div>");
             } else {
-                body.push_str("<table><thead><tr><th>Kind</th><th>Area (x, y)</th><th class=\"num\">Tiles</th><th>Target height</th><th>State</th><th class=\"num\">Jobs</th></tr></thead><tbody>");
+                body.push_str("<table class=\"table--compact\"><thead><tr><th>Kind</th><th>Area (x, y)</th><th class=\"num\">Tiles</th><th>Target height</th><th>State</th><th class=\"num\">Jobs</th></tr></thead><tbody>");
                 for r in &rows {
                     let kind = r["kind"].as_str().unwrap_or("other");
                     let kind_badge = match kind {
@@ -5618,8 +6646,41 @@ fn page_terrain(state: &State, session: &Session, req: &Request) -> Response {
     Response::html(200, layout(state, session, "Terrain", &body))
 }
 
+/// The rail context for Entities: the four sub-views (V2.1).
+fn entities_ctx(view: &str) -> String {
+    let mut ctx = String::from("<div class=\"ctx\">VIEWS</div>");
+    for (v, label) in [
+        ("summary", "Summary"),
+        ("storages", "Storages"),
+        ("machines", "Machines"),
+        ("network", "Network"),
+    ] {
+        ctx.push_str(&format!(
+            "<a class=\"navitem anchor{}\" href=\"/entities?view={}\">{}</a>",
+            if view == v { " active" } else { "" },
+            v,
+            label
+        ));
+    }
+    ctx
+}
+
 fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
-    let machines_html = machines_section(state);
+    // Sub-views (V2.1): Summary · Storages · Machines · Network
+    // via ?view=. Old deep links keep working: /entities?proto=X
+    // lands on Machines pre-filtered to that proto.
+    let view = req
+        .query
+        .get("view")
+        .map(|s| s.as_str())
+        .unwrap_or(if req.query.contains_key("proto") { "machines" } else { "summary" })
+        .to_string();
+    let page: usize = req
+        .query
+        .get("page")
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(0);
+    let ctx = entities_ctx(&view);
     let live = match fetch_live(&client(state)) {
         Ok(l) => l,
         Err(e) => {
@@ -5630,8 +6691,7 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
                 "",
             );
             html.push_str(&degraded_game(&e));
-            html.push_str(&machines_html);
-            return Response::html(200, layout(state, session, "Entities", &html));
+            return Response::html(200, layout_ctx(state, session, "Entities", "Entities", &ctx, &html));
         }
     };
     let mut body = page_head(
@@ -5642,269 +6702,411 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
     );
     if !bridge_present(state) {
         body.push_str("<div class=\"callout callout--danger\"><b>CoiBridge is not answering.</b> Install the mod (Mods\\CoiBridge), load the save with it, and run <code>web_api_start</code> — this page then shows every storage and machine the companion can address, with controls.</div>");
-        body.push_str(&machines_html);
-        return Response::html(200, layout(state, session, "Entities", &body));
+        return Response::html(200, layout_ctx(state, session, "Entities", "Entities", &ctx, &body));
     }
-    if let (Some(st), Some(rs)) = (
-        bridge_json(state, "/coi/v1/status"),
-        bridge_json(state, "/coi/v1/research"),
-    ) {
-        let cur = &rs["current"];
-        body.push_str(&format!(
-            "<div class=\"card\"><div class=\"kv\"><span>Population <b style=\"color:var(--text-1)\">{}</b></span><span>·</span><span>housing {} free of {}</span><span>·</span><span>months of food <b style=\"color:var(--text-1)\">{}</b>{}</span></div>\
-             <div style=\"margin-top:10px\"><span>Research: <b>{}</b> — {:.1}% ({} of {} steps), {} in queue · {} researched · lab {}</span> {}</div></div>",
-            st["population"],
-            st["freeHousingCapacity"],
-            st["totalHousingCapacity"],
-            st["monthsOfFood"],
-            if st["arePeopleStarving"].as_bool().unwrap_or(false) { " · <b>STARVING</b>" } else { "" },
-            esc(&pretty_research(cur["id"].as_str().unwrap_or(""))),
-            pct_raw(&cur["progressPerc"]),
-            cur["stepsDone"],
-            cur["stepsDone"].as_i64().unwrap_or(0) + cur["remainingSteps"].as_i64().unwrap_or(0),
-            rs["queue"].as_array().map(|a| a.len()).unwrap_or(0),
-            rs["researchedCount"],
-            if rs["hasActiveLab"].as_bool().unwrap_or(false) { "active" } else { "idle" },
-            fillbar(pct_raw(&cur["progressPerc"]), "var(--accent)", 160),
-        ));
-    }
-    // Set a storage's product — one form for any storage id.
-    {
-        let mut ids: Vec<&String> = live.names.keys().collect();
-        ids.sort_by_key(|id| live.names.get(*id).cloned().unwrap_or_default());
-        let mut opts = String::new();
-        for id in ids {
-            let k = live.kinds.get(id).cloned().unwrap_or_default();
-            if k == "virtual" {
-                continue;
-            }
-            opts.push_str(&format!(
-                "<option value=\"{}\">{}</option>",
-                esc(id),
-                esc(live.names.get(id).map(|s| s.as_str()).unwrap_or(id))
-            ));
-        }
-        body.push_str(&format!(
-            "<div class=\"card\"><div class=\"cardhead\"><h2>Set a storage's product</h2></div>\
-             <form method=\"post\" action=\"/actions/prepare-storage-product\">\
-             <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
-             <div class=\"field\"><label for=\"ssp-id\">Storage id</label><input id=\"ssp-id\" type=\"text\" name=\"storageId\" size=\"7\" required></div>\
-             <div class=\"field\"><label for=\"ssp-prod\">Product</label><select id=\"ssp-prod\" name=\"productId\">{}</select></div>\
-             <button type=\"submit\">Prepare…</button></form>\
-             <p class=\"sub\">Goes through the same confirmation page, which warns you if the storage currently holds something else.</p></div>",
-            esc(&session.csrf),
-            opts,
-        ));
-    }
-    // Train lines in detail (CoiBridge v0.6): ids, networks, schedules.
-    if let Some(td) = bridge_json(state, "/coi/v1/trains-detail") {
-        if let Some(lines) = td["lines"].as_array() {
-            if !lines.is_empty() {
-                body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Train lines (detail)</h2></div><table><thead><tr><th>Id</th><th>Line</th><th>Network</th><th>Trains</th><th>Stations</th><th>Schedule</th></tr></thead><tbody>");
-                for l in lines {
-                    let net = if l["network"].is_null() {
-                        "—".to_string()
-                    } else {
-                        format!("{} (#{})", esc(&sv(&l["network"]["name"])), vi(&l["network"]["id"]))
-                    };
-                    let sched = l["schedule"]
-                        .as_array()
-                        .map(|a| {
-                            a.iter()
-                                .map(|i| sv(&i["type"]).to_string())
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        })
-                        .unwrap_or_default();
-                    body.push_str(&format!(
-                        "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
-                        vi(&l["id"]),
-                        esc(&sv(&l["name"])),
-                        net,
-                        vi(&l["trains"]),
-                        vi(&l["stations"]),
-                        esc(&sched),
-                    ));
-                }
-                body.push_str("</tbody></table></div>");
-            }
-        }
-    }
-    // Storages.
-    if let Some(storages) = bridge_json(state, "/coi/v1/storages") {
-        let rows = storages["storages"].as_array().cloned().unwrap_or_default();
-        body.push_str(&format!(
-            "<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Storages</h2></div><div class=\"filterbar\"><input type=\"text\" id=\"tfilter\" placeholder=\"🔍 product, proto, id…\" oninput=\"filterTable()\"><span class=\"count\">{} storages</span></div>\
-             <table id=\"ptable\"><thead><tr><th>Id</th><th>Storage</th><th>Product</th><th class=\"num\">Qty / cap</th><th class=\"num\">Full</th><th>Input</th><th>Output</th><th>Logistics</th></tr></thead><tbody>",
-            rows.len()
-        ));
-        for r in &rows {
-            body.push_str(&storage_row_html(session, r, &live));
-        }
-        body.push_str("</tbody></table></div>");
-    }
-    // Machines per instance (CoiBridge v0.6.4) — computed at the top
-    // of the page so the section also renders on the degraded paths.
-    body.push_str(&machines_html);
-    // Machines: summary by proto, or one proto's instances.
-    if let (Some(census), Some(topo)) = (
-        bridge_json(state, "/coi/v1/census"),
-        bridge_json(state, "/coi/v1/topology"),
-    ) {
-        // Non-default priorities (CoiBridge v0.6.1 census): the
-        // "priorities" map is entityId → general priority, holding
-        // ONLY entities whose value differs from their proto default.
-        // Absent on v0.5-era censuses — the panel is then omitted.
-        if let Some(prios) = census["priorities"].as_object() {
-            if !prios.is_empty() {
-                let mut entries: Vec<(&String, &Value)> = prios.iter().collect();
-                entries.sort_by_key(|(k, _)| k.parse::<i64>().unwrap_or(0));
+    let status = bridge_json(state, "/coi/v1/status");
+    let research = bridge_json(state, "/coi/v1/research");
+    match view.as_str() {
+        "storages" => {
+            if let Some(storages) = bridge_json(state, "/coi/v1/storages") {
+                let all = storages["storages"].as_array().cloned().unwrap_or_default();
+                let product_filter = req.query.get("product").cloned();
+                let rows: Vec<&Value> = all
+                    .iter()
+                    .filter(|r| match &product_filter {
+                        Some(pf) => sv(&r["product"]) == *pf,
+                        None => true,
+                    })
+                    .collect();
+                let pages = rows.len().div_ceil(60).max(1);
+                let page = page.min(pages - 1);
                 body.push_str(&format!(
-                    "<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Non-default priorities ({})</h2></div>\
-                     <p class=\"sub\">Entities whose general priority differs from their prototype default (CoiBridge census).</p>\
-                     <table><thead><tr><th>Entity</th><th>Type</th><th>Position</th><th>General priority</th></tr></thead><tbody>",
-                    entries.len()
-                ));
-                for (eid, pv) in entries {
-                    let idn = eid.parse::<i64>().unwrap_or(0);
-                    let ent = topo["entities"]
-                        .as_array()
-                        .and_then(|a| a.iter().find(|e| e["id"].as_i64() == Some(idn)));
-                    let (proto, pos) = match ent {
-                        Some(e) => (
-                            sv(&e["proto"]),
-                            format!(
-                                "{},{}",
-                                e["pos"][0].as_i64().unwrap_or(0),
-                                e["pos"][1].as_i64().unwrap_or(0)
-                            ),
+                    "<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Storages</h2></div><div class=\"filterbar\"><input type=\"text\" id=\"tfilter\" placeholder=\"🔍 product, proto, id…\" oninput=\"filterTable()\"><span class=\"count\">{} storages{} · page {} of {}</span></div>\
+                     <table id=\"ptable\" class=\"table--compact\"><thead><tr><th>Id</th><th>Storage</th><th>Product</th><th class=\"num\">Qty / cap</th><th class=\"num\">Full</th><th>Input</th><th>Output</th><th>Logistics</th></tr></thead><tbody>",
+                    rows.len(),
+                    match &product_filter {
+                        Some(pf) => format!(
+                            " · filtered to {} (<a href=\"/entities?view=storages\">clear</a>)",
+                            esc(live.names.get(pf).map(|s| s.as_str()).unwrap_or(pf.as_str()))
                         ),
-                        None => ("—".to_string(), "—".to_string()),
+                        None => String::new(),
+                    },
+                    page + 1,
+                    pages
+                ));
+                for r in rows.iter().skip(page * 60).take(60) {
+                    body.push_str(&storage_row_html(session, r, &live));
+                }
+                body.push_str("</tbody></table>");
+                if pages > 1 {
+                    let pf = match &product_filter {
+                        Some(pf) => format!("&product={}", url_enc(pf)),
+                        None => String::new(),
                     };
+                    let mut pager = String::new();
+                    if page > 0 {
+                        pager.push_str(&format!(
+                            "<a class=\"btn btn--secondary btn--sm\" href=\"/entities?view=storages{}&page={}\">← Prev</a> ",
+                            pf,
+                            page - 1
+                        ));
+                    }
+                    if page + 1 < pages {
+                        pager.push_str(&format!(
+                            "<a class=\"btn btn--secondary btn--sm\" href=\"/entities?view=storages{}&page={}\">Next →</a>",
+                            pf,
+                            page + 1
+                        ));
+                    }
+                    body.push_str(&format!("<div class=\"pager\">{pager}</div>"));
+                }
+                body.push_str("</div>");
+            } else {
+                body.push_str(&degraded_bridge("Storage data", "0.6"));
+            }
+        }
+        "machines" => {
+            body.push_str(&machines_section(state, page));
+            if let (Some(census), Some(topo)) = (
+                bridge_json(state, "/coi/v1/census"),
+                bridge_json(state, "/coi/v1/topology"),
+            ) {
+                if let Some(proto) = req.query.get("proto") {
+                    let instances: Vec<&Value> = topo["entities"]
+                        .as_array()
+                        .map(|a| a.iter().filter(|e| sv(&e["proto"]) == *proto).collect())
+                        .unwrap_or_default();
+                    let recipes: Vec<String> = census["machines"][proto]["recipes"]
+                        .as_array()
+                        .map(|a| a.iter().map(|v| sv(v)).collect())
+                        .unwrap_or_default();
+                    let pages = instances.len().div_ceil(60).max(1);
+                    let page = page.min(pages - 1);
                     body.push_str(&format!(
-                        "<tr><td>#{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
-                        idn,
-                        esc(&proto),
-                        esc(&pos),
-                        vi(pv),
+                        "<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>{} — {} instance(s)</h2><span class=\"right\"><a href=\"/entities?view=machines\">All machine types</a></span></div><table class=\"table--compact\"><thead><tr><th>Id</th><th>Position</th><th>Pause / resume</th><th>Recipes (toggle)</th><th>General priority</th></tr></thead><tbody>",
+                        esc(proto),
+                        instances.len()
                     ));
+                    for e in instances.iter().skip(page * 60).take(60) {
+                        let eid = e["id"].as_i64().unwrap_or(0);
+                        let pos = format!(
+                            "{},{}",
+                            e["pos"][0].as_i64().unwrap_or(0),
+                            e["pos"][1].as_i64().unwrap_or(0)
+                        );
+                        let mut btns = String::new();
+                        for r in &recipes {
+                            btns.push_str(&prepare_form_labeled(
+                                session,
+                                "MachineToggleRecipeActiveCmd",
+                                json!({"machineId": eid, "recipeId": r}),
+                                &format!("Toggle recipe {r} on {proto} #{eid} (at {pos})."),
+                                r,
+                            ));
+                            btns.push(' ');
+                        }
+                        if btns.is_empty() {
+                            btns = "<span class=\"sub\">—</span>".into();
+                        }
+                        body.push_str(&format!(
+                            "<tr><td>#{}</td><td>{}</td><td>{}</td><td>{}</td><td>\
+                             <form method=\"post\" action=\"/actions/prepare-entity-priority\" style=\"display:inline\">\
+                             <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
+                             <input type=\"hidden\" name=\"entityId\" value=\"{}\">\
+                             <input type=\"hidden\" name=\"label\" value=\"{}\">\
+                             <input type=\"text\" name=\"priority\" value=\"0\" size=\"4\"> \
+                             <button class=\"btn btn--sm btn--ghost\" type=\"submit\">Set</button></form></td></tr>",
+                            eid,
+                            esc(&pos),
+                            prepare_form_labeled(
+                                session,
+                                "ToggleEnabledCmd",
+                                json!({"entityId": eid}),
+                                &format!("Pause / resume {proto} #{eid} (at {pos}) — toggles its enabled state."),
+                                "Toggle",
+                            ),
+                            btns,
+                            esc(&session.csrf),
+                            eid,
+                            esc(&format!("{proto} #{eid} (at {pos})")),
+                        ));
+                    }
+                    body.push_str("</tbody></table>");
+                    if pages > 1 {
+                        let mut pager = String::new();
+                        if page > 0 {
+                            pager.push_str(&format!(
+                                "<a class=\"btn btn--secondary btn--sm\" href=\"/entities?view=machines&proto={}&page={}\">← Prev</a> ",
+                                url_enc(proto),
+                                page - 1
+                            ));
+                        }
+                        if page + 1 < pages {
+                            pager.push_str(&format!(
+                                "<a class=\"btn btn--secondary btn--sm\" href=\"/entities?view=machines&proto={}&page={}\">Next →</a>",
+                                url_enc(proto),
+                                page + 1
+                            ));
+                        }
+                        body.push_str(&format!("<div class=\"pager\">{pager}</div>"));
+                    }
+                    body.push_str("</div>");
+                } else if let Some(machines) = census["machines"].as_object() {
+                    let mut protos: Vec<&String> = machines.keys().collect();
+                    protos.sort();
+                    body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Machine types</h2></div><table class=\"table--compact\"><thead><tr><th>Machine</th><th class=\"num\">Instances</th><th>States</th><th></th></tr></thead><tbody>");
+                    for proto in protos {
+                        let count = topo["entities"]
+                            .as_array()
+                            .map(|a| a.iter().filter(|e| sv(&e["proto"]) == *proto).count())
+                            .unwrap_or(0);
+                        body.push_str(&format!(
+                            "<tr><td>{}</td><td class=\"num\">{}</td><td>{}</td><td><a class=\"btn btn--ghost btn--sm\" href=\"/entities?view=machines&proto={}\">Open</a></td></tr>",
+                            esc(proto),
+                            count,
+                            esc(&machines[proto]["states"].to_string()),
+                            url_enc(proto),
+                        ));
+                    }
+                    body.push_str("</tbody></table></div>");
                 }
-                body.push_str("</tbody></table></div>");
             }
         }
-        let total = census["transports"]["total"].as_i64().unwrap_or(0);
-        let conn = census["transports"]["fullyConnected"].as_i64().unwrap_or(0);
-        body.push_str(&format!(
-            "<h2>Machines & transports</h2><p class=\"sub\">{} entities total · transports {} of {} fully connected.</p>",
-            census["totalEntities"],
-            conn,
-            total,
-        ));
-        let bad: Vec<&Value> = topo["transports"]
-            .as_array()
-            .map(|a| a.iter().filter(|t| !t["fullyConnected"].as_bool().unwrap_or(false)).collect())
-            .unwrap_or_default();
-        if !bad.is_empty() {
-            body.push_str(&format!("<h3>Not fully connected ({})</h3><table><tr><th>Id</th><th>Type</th><th>From</th><th>To</th></tr>", bad.len()));
-            for t in bad.iter().take(40) {
-                let fp = |v: &Value| format!("{},{}", v[0].as_i64().unwrap_or(0), v[1].as_i64().unwrap_or(0));
-                body.push_str(&format!(
-                    "<tr><td>#{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
-                    t["id"].as_i64().unwrap_or(0),
-                    esc(&sv(&t["proto"])),
-                    fp(&t["from"]),
-                    fp(&t["to"]),
-                ));
-            }
-            body.push_str("</table>");
-        }
-        if let Some(proto) = req.query.get("proto") {
-            let instances: Vec<&Value> = topo["entities"]
-                .as_array()
-                .map(|a| a.iter().filter(|e| sv(&e["proto"]) == *proto).collect())
-                .unwrap_or_default();
-            let recipes: Vec<String> = census["machines"][proto]["recipes"]
-                .as_array()
-                .map(|a| a.iter().map(|v| sv(v)).collect())
-                .unwrap_or_default();
-            body.push_str(&format!(
-                "<h3>{} — {} instance(s)</h3><table><tr><th>Id</th><th>Position</th><th>Pause / resume</th><th>Recipes (toggle)</th><th>General priority</th></tr>",
-                esc(proto),
-                instances.len()
-            ));
-            for e in instances.iter().take(60) {
-                let eid = e["id"].as_i64().unwrap_or(0);
-                let pos = format!(
-                    "{},{}",
-                    e["pos"][0].as_i64().unwrap_or(0),
-                    e["pos"][1].as_i64().unwrap_or(0)
-                );
-                let mut btns = String::new();
-                for r in &recipes {
-                    btns.push_str(&prepare_form_labeled(
-                        session,
-                        "MachineToggleRecipeActiveCmd",
-                        json!({"machineId": eid, "recipeId": r}),
-                        &format!("Toggle recipe {r} on {proto} #{eid} (at {pos})."),
-                        r,
-                    ));
-                    btns.push(' ');
+        "network" => {
+            if let Some(td) = bridge_json(state, "/coi/v1/trains-detail") {
+                if let Some(lines) = td["lines"].as_array() {
+                    if !lines.is_empty() {
+                        body.push_str(&format!(
+                            "<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>{} Train lines (detail)</h2></div><table class=\"table--compact\"><thead><tr><th>Id</th><th>Line</th><th>Network</th><th>Trains</th><th>Stations</th><th>Schedule</th></tr></thead><tbody>",
+                            icon("train")
+                        ));
+                        for l in lines {
+                            let net = if l["network"].is_null() {
+                                "—".to_string()
+                            } else {
+                                format!("{} (#{})", esc(&sv(&l["network"]["name"])), vi(&l["network"]["id"]))
+                            };
+                            let sched = l["schedule"]
+                                .as_array()
+                                .map(|a| {
+                                    a.iter()
+                                        .map(|i| sv(&i["type"]).to_string())
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                })
+                                .unwrap_or_default();
+                            body.push_str(&format!(
+                                "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                                vi(&l["id"]),
+                                esc(&sv(&l["name"])),
+                                net,
+                                vi(&l["trains"]),
+                                vi(&l["stations"]),
+                                esc(&sched),
+                            ));
+                        }
+                        body.push_str("</tbody></table></div>");
+                    }
                 }
-                if btns.is_empty() {
-                    btns = "<span class=\"sub\">—</span>".into();
-                }
+            }
+            if let (Some(census), Some(topo)) = (
+                bridge_json(state, "/coi/v1/census"),
+                bridge_json(state, "/coi/v1/topology"),
+            ) {
+                let total = census["transports"]["total"].as_i64().unwrap_or(0);
+                let conn = census["transports"]["fullyConnected"].as_i64().unwrap_or(0);
                 body.push_str(&format!(
-                    "<tr><td>#{}</td><td>{}</td><td>{}</td><td>{}</td><td>\
-                     <form method=\"post\" action=\"/actions/prepare-entity-priority\" style=\"display:inline\">\
-                     <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
-                     <input type=\"hidden\" name=\"entityId\" value=\"{}\">\
-                     <input type=\"hidden\" name=\"label\" value=\"{}\">\
-                     <input type=\"text\" name=\"priority\" value=\"0\" size=\"4\"> \
-                     <button type=\"submit\">Set</button></form></td></tr>",
-                    eid,
-                    esc(&pos),
-                    prepare_form_labeled(
-                        session,
-                        "ToggleEnabledCmd",
-                        json!({"entityId": eid}),
-                        &format!("Pause / resume {proto} #{eid} (at {pos}) — toggles its enabled state."),
-                        "⏯ Toggle",
-                    ),
-                    btns,
-                    esc(&session.csrf),
-                    eid,
-                    esc(&format!("{proto} #{eid} (at {pos})")),
+                    "<div class=\"stats2\">{}{}{}</div>",
+                    stat2_tile("factory", "Entities total", &fmt_num(&census["totalEntities"]), "", false),
+                    stat2_tile("truck", "Transports", &fmt_num(&json!(total)), "", false),
+                    stat2_tile("check", "Fully connected", &fmt_num(&json!(conn)), &format!("of {} transports", fmt_num(&json!(total))), false),
                 ));
-            }
-            body.push_str("</table>");
-            if instances.len() > 60 {
-                body.push_str("<p class=\"sub\">Showing the first 60 instances.</p>");
-            }
-        } else if let Some(machines) = census["machines"].as_object() {
-            let mut protos: Vec<&String> = machines.keys().collect();
-            protos.sort();
-            body.push_str("<table><tr><th>Machine</th><th>Instances</th><th>States</th><th></th></tr>");
-            for proto in protos {
-                let count = topo["entities"]
+                // Non-default priorities (CoiBridge v0.6.1 census).
+                if let Some(prios) = census["priorities"].as_object() {
+                    if !prios.is_empty() {
+                        let mut entries: Vec<(&String, &Value)> = prios.iter().collect();
+                        entries.sort_by_key(|(k, _)| k.parse::<i64>().unwrap_or(0));
+                        body.push_str(&format!(
+                            "<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Non-default priorities ({})</h2></div>\
+                             <p class=\"sub\" style=\"padding:0 12px\">Entities whose general priority differs from their prototype default (CoiBridge census).</p>\
+                             <table class=\"table--compact\"><thead><tr><th>Entity</th><th>Type</th><th>Position</th><th>General priority</th></tr></thead><tbody>",
+                            entries.len()
+                        ));
+                        for (eid, pv) in entries {
+                            let idn = eid.parse::<i64>().unwrap_or(0);
+                            let ent = topo["entities"]
+                                .as_array()
+                                .and_then(|a| a.iter().find(|e| e["id"].as_i64() == Some(idn)));
+                            let (proto, pos) = match ent {
+                                Some(e) => (
+                                    sv(&e["proto"]),
+                                    format!(
+                                        "{},{}",
+                                        e["pos"][0].as_i64().unwrap_or(0),
+                                        e["pos"][1].as_i64().unwrap_or(0)
+                                    ),
+                                ),
+                                None => ("—".to_string(), "—".to_string()),
+                            };
+                            body.push_str(&format!(
+                                "<tr><td>#{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                                idn,
+                                esc(&proto),
+                                esc(&pos),
+                                vi(pv),
+                            ));
+                        }
+                        body.push_str("</tbody></table></div>");
+                    }
+                }
+                let bad: Vec<&Value> = topo["transports"]
                     .as_array()
-                    .map(|a| a.iter().filter(|e| sv(&e["proto"]) == *proto).count())
-                    .unwrap_or(0);
-                body.push_str(&format!(
-                    "<tr><td>{}</td><td>{}</td><td>{}</td><td><a class=\"btn btn--secondary btn--sm\" href=\"/entities?proto={}\">Open</a></td></tr>",
-                    esc(proto),
-                    count,
-                    esc(&machines[proto]["states"].to_string()),
-                    url_enc(proto),
+                    .map(|a| a.iter().filter(|t| !t["fullyConnected"].as_bool().unwrap_or(false)).collect())
+                    .unwrap_or_default();
+                if !bad.is_empty() {
+                    body.push_str(&format!("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Not fully connected ({})</h2></div><table class=\"table--compact\"><thead><tr><th>Id</th><th>Type</th><th>From</th><th>To</th></tr></thead><tbody>", bad.len()));
+                    for t in bad.iter().take(40) {
+                        let fp = |v: &Value| format!("{},{}", v[0].as_i64().unwrap_or(0), v[1].as_i64().unwrap_or(0));
+                        body.push_str(&format!(
+                            "<tr><td>#{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                            t["id"].as_i64().unwrap_or(0),
+                            esc(&sv(&t["proto"])),
+                            fp(&t["from"]),
+                            fp(&t["to"]),
+                        ));
+                    }
+                    body.push_str("</tbody></table></div>");
+                }
+            }
+        }
+        _ => {
+            // Summary: headline tiles + flagged-only mini-tables +
+            // the set-product form as a horizontal form card.
+            if let (Some(st), Some(rs)) = (&status, &research) {
+                let cur = &rs["current"];
+                let starving = st["arePeopleStarving"].as_bool().unwrap_or(false);
+                body.push_str("<div class=\"stats2\">");
+                body.push_str(&stat2_tile(
+                    "users",
+                    "Population",
+                    &fmt_num(&st["population"]),
+                    &format!("housing {} free of {}", fmt_num(&st["freeHousingCapacity"]), fmt_num(&st["totalHousingCapacity"])),
+                    false,
+                ));
+                body.push_str(&stat2_tile(
+                    "box",
+                    "Housing free",
+                    &fmt_num(&st["freeHousingCapacity"]),
+                    &format!("of {} total capacity", fmt_num(&st["totalHousingCapacity"])),
+                    false,
+                ));
+                body.push_str(&stat2_tile(
+                    "wheat",
+                    "Food cover",
+                    &format!("{} <span class=\"u\">months</span>", fmt_num(&st["monthsOfFood"])),
+                    if starving { "<b>STARVING</b>" } else { "months of food" },
+                    starving,
+                ));
+                body.push_str(&stat2_tile(
+                    "flask",
+                    "Research",
+                    &esc(&pretty_research(cur["id"].as_str().unwrap_or(""))),
+                    &format!(
+                        "{:.1}% · {} of {} steps · {} in queue {}",
+                        pct_raw(&cur["progressPerc"]),
+                        cur["stepsDone"],
+                        cur["stepsDone"].as_i64().unwrap_or(0) + cur["remainingSteps"].as_i64().unwrap_or(0),
+                        rs["queue"].as_array().map(|a| a.len()).unwrap_or(0),
+                        fillbar(pct_raw(&cur["progressPerc"]), "var(--accent)", 120),
+                    ),
+                    false,
+                ));
+                body.push_str("</div>");
+            }
+            // Flagged storages: ≥90% full, first 10.
+            if let Some(storages) = bridge_json(state, "/coi/v1/storages") {
+                let rows = storages["storages"].as_array().cloned().unwrap_or_default();
+                let flagged: Vec<&Value> = rows
+                    .iter()
+                    .filter(|r| {
+                        let cap = r["capacity"].as_i64().unwrap_or(0);
+                        cap > 0 && r["quantity"].as_i64().unwrap_or(0) as f64 >= 0.9 * cap as f64
+                    })
+                    .collect();
+                if !flagged.is_empty() {
+                    body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Storages nearly full</h2><span class=\"right\"><a href=\"/entities?view=storages\">See all →</a></span></div><table class=\"table--compact\"><thead><tr><th>Id</th><th>Storage</th><th>Product</th><th class=\"num\">Qty / cap</th><th class=\"num\">Full</th></tr></thead><tbody>");
+                    for r in flagged.iter().take(10) {
+                        let cap = r["capacity"].as_i64().unwrap_or(0);
+                        let qty = r["quantity"].as_i64().unwrap_or(0);
+                        let pctf = if cap > 0 { qty as f64 / cap as f64 * 100.0 } else { 0.0 };
+                        body.push_str(&format!(
+                            "<tr><td>#{}</td><td>{}</td><td>{}</td><td class=\"num\">{} / {}</td><td class=\"num\">{:.0}%</td></tr>",
+                            r["id"].as_i64().unwrap_or(0),
+                            esc(&sv(&r["proto"])),
+                            esc(live.names.get(&sv(&r["product"])).map(|s| s.as_str()).unwrap_or("")),
+                            fmt_num(&json!(qty)),
+                            fmt_num(&json!(cap)),
+                            pctf,
+                        ));
+                    }
+                    body.push_str("</tbody></table></div>");
+                }
+            }
+            // Flagged machines: starved or blocked, first 10.
+            if let Some(m) = bridge_json(state, "/coi/v1/machines") {
+                let rows = m["machines"].as_array().cloned().unwrap_or_default();
+                let flagged: Vec<&Value> = rows
+                    .iter()
+                    .filter(|r| matches!(r["state"].as_str(), Some("NotEnoughInput") | Some("OutputFull")))
+                    .collect();
+                if !flagged.is_empty() {
+                    body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Machines starved or blocked</h2><span class=\"right\"><a href=\"/entities?view=machines\">See all →</a></span></div><table class=\"table--compact\"><thead><tr><th>Id</th><th>Proto</th><th>State</th></tr></thead><tbody>");
+                    for r in flagged.iter().take(10) {
+                        let stt = r["state"].as_str().unwrap_or("");
+                        body.push_str(&format!(
+                            "<tr><td>#{}</td><td>{}</td><td>{}</td></tr>",
+                            r["id"].as_i64().unwrap_or(0),
+                            esc(&sv(&r["proto"])),
+                            if stt == "NotEnoughInput" { badge("starved", "Starved") } else { badge("blocked", "Blocked") },
+                        ));
+                    }
+                    body.push_str("</tbody></table></div>");
+                }
+            }
+            // Set a storage's product — one form for any storage id.
+            let mut ids: Vec<&String> = live.names.keys().collect();
+            ids.sort_by_key(|id| live.names.get(*id).cloned().unwrap_or_default());
+            let mut opts = String::new();
+            for id in ids {
+                let k = live.kinds.get(id).cloned().unwrap_or_default();
+                if k == "virtual" {
+                    continue;
+                }
+                opts.push_str(&format!(
+                    "<option value=\"{}\">{}</option>",
+                    esc(id),
+                    esc(live.names.get(id).map(|s| s.as_str()).unwrap_or(id))
                 ));
             }
-            body.push_str("</table>");
+            body.push_str(&format!(
+                "<div class=\"card\"><div class=\"cardhead\"><h2>Set a storage's product</h2></div>\
+                 <form method=\"post\" action=\"/actions/prepare-storage-product\">\
+                 <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
+                 <div class=\"form-grid\">\
+                 <div class=\"field\"><label for=\"ssp-id\">Storage id</label><input id=\"ssp-id\" type=\"text\" name=\"storageId\" required></div>\
+                 <div class=\"field\"><label for=\"ssp-prod\">Product</label><select id=\"ssp-prod\" name=\"productId\">{}</select></div>\
+                 <div class=\"field\"><label>&nbsp;</label><button type=\"submit\">Prepare…</button></div></div></form>\
+                 <p class=\"sub\">Goes through the same confirmation page, which warns you if the storage currently holds something else.</p></div>",
+                esc(&session.csrf),
+                opts,
+            ));
         }
     }
     body.push_str(TABLE_JS);
-    Response::html(200, layout(state, session, "Entities", &body))
+    Response::html(200, layout_ctx(state, session, "Entities", "Entities", &ctx, &body))
 }
 
-/// Tiny client-side table filter/sort (no framework, our own pages).
+
 const TABLE_JS: &str = "<script>
 function filterTable(){var q=document.getElementById('tfilter').value.toLowerCase();document.querySelectorAll('#ptable tbody tr').forEach(function(r){r.style.display=r.textContent.toLowerCase().indexOf(q)>=0?'':'none'})}
 document.querySelectorAll('#ptable thead th').forEach(function(th,i){th.style.cursor='pointer';th.title='Click to sort';th.addEventListener('click',function(){var tb=document.querySelector('#ptable tbody');var rows=Array.prototype.slice.call(tb.rows);var dir=th.getAttribute('data-dir')==='asc'?'desc':'asc';th.setAttribute('data-dir',dir);rows.sort(function(a,b){var x=a.cells[i].textContent.trim(),y=b.cells[i].textContent.trim();var sx=x.trim().charAt(0)==='-'?-1:1,sy=y.trim().charAt(0)==='-'?-1:1;var nx=sx*parseFloat(x.replace(/[^0-9.]/g,'')),ny=sy*parseFloat(y.replace(/[^0-9.]/g,''));var c=(!isNaN(nx)&&!isNaN(ny)&&/[0-9]/.test(x)&&/[0-9]/.test(y))?nx-ny:x.localeCompare(y);return dir==='asc'?c:-c});rows.forEach(function(r){tb.appendChild(r)})})});
@@ -5916,7 +7118,7 @@ document.querySelectorAll('#ptable thead th').forEach(function(th,i){th.style.cu
 
 fn page_snapshots(state: &State, session: &Session, req: &Request) -> Response {
     let take_form = format!(
-        "<form method=\"post\" action=\"/snapshots/take\"><input type=\"hidden\" name=\"csrf\" value=\"{}\"><button type=\"submit\">Take a snapshot now</button></form>",
+        "<form method=\"post\" action=\"/snapshots/take\" id=\"take\"><input type=\"hidden\" name=\"csrf\" value=\"{}\"><button type=\"submit\">Take a snapshot now</button></form>",
         esc(&session.csrf)
     );
     let mut body = page_head(
@@ -5932,16 +7134,16 @@ fn page_snapshots(state: &State, session: &Session, req: &Request) -> Response {
         Ok(st) => {
             match st.counts() {
                 Ok((snaps, rows, issues)) => body.push_str(&format!(
-                    "<div class=\"stats\">{}{}{}</div>",
-                    stat_tile("Snapshots", &format!("{snaps}"), "", false),
-                    stat_tile("Product rows", &format!("{rows}"), "", false),
-                    stat_tile("Stored issues", &format!("{issues}"), "", false),
+                    "<div class=\"stats2\" id=\"store\">{}{}{}</div>",
+                    stat2_tile("layers", "Snapshots", &format!("{snaps}"), "", false),
+                    stat2_tile("box", "Product rows", &format!("{rows}"), "", false),
+                    stat2_tile("alert", "Stored issues", &format!("{issues}"), "", false),
                 )),
                 Err(e) => body.push_str(&format!("<div class=\"err\">{}</div>", esc(&e))),
             }
             if let Ok(list) = st.recent_snapshots(20) {
                 if !list.is_empty() {
-                    body.push_str("<div class=\"card tablecard\"><table><thead><tr><th>#</th><th>Game date</th><th class=\"num\">Tick</th><th>Taken</th><th class=\"num\">Products</th><th class=\"num\">Issues</th></tr></thead><tbody>");
+                    body.push_str("<div class=\"card tablecard\" id=\"list\"><table class=\"table--compact\"><thead><tr><th>#</th><th>Game date</th><th class=\"num\">Tick</th><th>Taken</th><th class=\"num\">Products</th><th class=\"num\">Issues</th></tr></thead><tbody>");
                     for (id, date, tick, taken, prods, issues) in list {
                         body.push_str(&format!(
                             "<tr><td>{id}</td><td>{}</td><td class=\"num mono\">{tick}</td><td>{}</td><td class=\"num\">{prods}</td><td class=\"num\">{issues}</td></tr>",
@@ -5962,7 +7164,7 @@ fn page_snapshots(state: &State, session: &Session, req: &Request) -> Response {
                 names.sort();
                 names.dedup();
                 let mut any = false;
-                let mut tbl = String::from("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Trends across snapshots</h2></div><table><thead><tr><th>Product</th><th>Trend</th><th>First → last</th></tr></thead><tbody>");
+                let mut tbl = String::from("<div class=\"card tablecard\" id=\"trends\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Trends across snapshots</h2></div><table class=\"table--compact\"><thead><tr><th>Product</th><th>Trend</th><th>First → last</th></tr></thead><tbody>");
                 for name in names {
                     if let Ok(rows) = st.trend(&name) {
                         let mine: Vec<_> = rows.iter().filter(|r| r.7 == name).collect();
@@ -6112,7 +7314,7 @@ fn import_qos_feed_now(state: &State, st: &Store) -> QosImportReport {
 }
 
 fn page_log(state: &State, session: &Session, req: &Request) -> Response {
-    const PAGE_SIZE: i64 = 200;
+    const PAGE_SIZE: i64 = 50;
     let src_filter = req.query.get("source").map(|s| s.as_str()).unwrap_or("all");
     let source = match src_filter {
         "companion" | "qos" | "system" => Some(src_filter),
@@ -6149,8 +7351,17 @@ fn page_log(state: &State, session: &Session, req: &Request) -> Response {
             if report.found {
                 match (&report.stats, &report.error) {
                     (Some(s), _) => body.push_str(&format!(
-                        "<p class=\"caption\">QoS feed: <span class=\"mono\">{}</span> — this load imported {} new, skipped {} already stored, {} malformed line(s).</p>",
-                        esc(&report.path), s.imported, s.skipped, s.malformed
+                        "<div style=\"display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px\"><p class=\"caption\" style=\"margin:0\">QoS feed: <span class=\"mono\">{}</span> — this load:</p>{}</div>",
+                        esc(&report.path),
+                        figstrip(&[
+                            fig("New", &s.imported.to_string(), false),
+                            fig("Skipped", &s.skipped.to_string(), false),
+                            if s.malformed > 0 {
+                                format!("<div class=\"fig\"><div class=\"figl\">Malformed</div><div class=\"figv\" style=\"color:var(--critical)\">{}</div></div>", s.malformed)
+                            } else {
+                                fig("Malformed", "0", false)
+                            },
+                        ])
                     )),
                     (None, Some(e)) => body.push_str(&format!(
                         "<div class=\"err\">QoS feed import failed ({}): {}</div>",
@@ -6244,9 +7455,18 @@ fn page_log(state: &State, session: &Session, req: &Request) -> Response {
                         }
                         None => String::new(),
                     };
+                    // CTA row 14 (V2.7): a refused QoS job gets a
+                    // re-prepare link back to its family's page.
+                    let reprepare = if r.source == "qos" && r.action.contains("Refused") {
+                        let hay = format!("{} {}", r.summary.as_deref().unwrap_or(""), r.payload_json.as_deref().unwrap_or("")).to_lowercase();
+                        let href = if hay.contains("designat") { "/designate" } else { "/place" };
+                        format!(" <a class=\"btn btn--sm btn--ghost\" href=\"{href}\">Re-prepare</a>")
+                    } else {
+                        String::new()
+                    };
                     body.push_str(&format!(
                         "<div class=\"feedrow\"><span class=\"time mono\">{}</span>{}<div style=\"flex:1;min-width:0\">\
-                         <div><b>{}</b> <span class=\"sub\">{}</span> {}</div>\
+                         <div><b>{}</b> <span class=\"sub\">{}</span> {}{}</div>\
                          <div>{}</div>\
                          <div class=\"caption\">{} · {}</div>{}</div></div>",
                         esc(&time),
@@ -6254,6 +7474,7 @@ fn page_log(state: &State, session: &Session, req: &Request) -> Response {
                         esc(&r.action),
                         esc(r.category.as_deref().unwrap_or("")),
                         outcome_badge,
+                        reprepare,
                         esc(r.summary.as_deref().unwrap_or("")),
                         esc(r.actor.as_deref().unwrap_or("—")),
                         game,
@@ -6293,7 +7514,22 @@ fn page_log(state: &State, session: &Session, req: &Request) -> Response {
         }
         Err(e) => body.push_str(&format!("<div class=\"err\">{}</div>", esc(&e))),
     }
-    Response::html(200, layout(state, session, "Log", &body))
+    let mut ctx = String::from("<div class=\"ctx\">SOURCES</div>");
+    for (v, label) in [
+        ("all", "All sources"),
+        ("companion", "Companion"),
+        ("qos", "QoS mods"),
+        ("system", "System"),
+    ] {
+        ctx.push_str(&format!(
+            "<a class=\"navitem anchor{}\" href=\"/log?source={}&q={}\">{}</a>",
+            if src_filter == v { " active" } else { "" },
+            v,
+            url_enc(search),
+            label
+        ));
+    }
+    Response::html(200, layout_ctx(state, session, "Log", "Log", &ctx, &body))
 }
 
 // ---------------------------------------------------------------------------
@@ -6330,7 +7566,13 @@ fn pretty_research(id: &str) -> String {
     out
 }
 
-fn page_research(state: &State, session: &Session) -> Response {
+fn page_research(state: &State, session: &Session, req: &Request) -> Response {
+    // Tabs (V2.1): Current & queue · Catalogue · Completed, via
+    // ?tab=. The catalogue is letter-grouped with a rail A–Z
+    // index; per-node Start/Unqueue moved to the node detail page
+    // (/research/node) — rows keep Queue only.
+    let tab = req.query.get("tab").map(|s| s.as_str()).unwrap_or("current");
+    let rs = bridge_json(state, "/coi/v1/research");
     let mut body = page_head(
         "Game",
         "Research",
@@ -6338,110 +7580,238 @@ fn page_research(state: &State, session: &Session) -> Response {
         "",
     );
     body.push_str(
-        "<div class=\"callout callout--info\">Commands are validated against the game's own catalogue below (250 nodes), and the game accepts \
+        "<details class=\"howit\"><summary>How research commands work</summary><p>Commands are validated against the game's own catalogue (250 nodes), and the game accepts \
          or rejects each one. Starting a node that isn't available yet returns failure and changes nothing. \
          Queueing several nodes and letting the game work through them works the same way. Every attempt is audit-logged. \
-         Current state and completed nodes come from the CoiBridge research route — the vanilla API does not report research.</div>",
+         Current state and completed nodes come from the CoiBridge research route — the vanilla API does not report research.</p></details>",
     );
-    // Current research card — with progress + queue from the bridge
-    // payload when present (DESIGN §2.1), Stop form always.
-    let rs = bridge_json(state, "/coi/v1/research");
-    body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Current research</h2></div>");
-    if let Some(rsv) = &rs {
-        let cur = &rsv["current"];
-        let cur_id = cur["id"].as_str().unwrap_or("");
-        if !cur_id.is_empty() {
-            let pct = pct_raw(&cur["progressPerc"]);
-            let queue_html: String = rsv["queue"]
-                .as_array()
-                .map(|a| {
-                    a.iter()
-                        .map(|q| format!("<span class=\"statcap\">{}</span>", esc(&pretty_research(&sv(q)))))
-                        .collect::<Vec<_>>()
-                        .join(" → ")
-                })
-                .unwrap_or_default();
-            body.push_str(&format!(
-                "<p><b>{}</b> — {:.1}%</p>{}<p class=\"sub\">Queue: {}</p>",
-                esc(&pretty_research(cur_id)),
-                pct,
-                fillbar(pct, "var(--accent)", 420),
-                if queue_html.is_empty() { "empty".to_string() } else { queue_html },
-            ));
-        }
-    }
-    body.push_str("<p>");
-    body.push_str(&prepare_form(
-        session,
-        "ResearchStopCmd",
-        json!({}),
-        "⏹ Stop current research",
-        false,
-    ));
-    body.push_str("</p><p class=\"sub\">Stops whatever is currently being researched (the game keeps the spent progress rules as usual).</p></div>");
-    // Completed research (CoiBridge v0.6.2): the bridge research
-    // route's "researched" array of completed node ids. Absent on
-    // older mods (or when the game is off) — the page is unchanged.
-    if let Some(rs) = &rs {
-        if let Some(done) = rs["researched"].as_array() {
-            let count = if rs["researchedCount"].is_null() {
-                done.len() as i64
-            } else {
-                vi(&rs["researchedCount"])
-            };
-            let names: Vec<String> = done
-                .iter()
-                .map(|v| esc(&pretty_research(&sv(v))))
-                .collect();
-            body.push_str(&format!(
-                "<div class=\"card\"><div class=\"cardhead\"><h2>Completed research</h2><span class=\"right\">{} nodes</span></div><p>{}</p></div>",
-                count,
-                if names.is_empty() {
-                    "— none yet —".to_string()
-                } else {
-                    names.join(" · ")
-                },
-            ));
-        }
-    }
-    body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Catalogue</h2></div>");
-    body.push_str(
-        "<div class=\"filterbar\"><input type=\"text\" id=\"rq\" placeholder=\"🔍 Filter research…\" oninput=\"filterResearch()\"></div>\
-         <script>function filterResearch(){var q=document.getElementById('rq').value.toLowerCase();\
-         document.querySelectorAll('tr[data-r]').forEach(function(r){r.style.display=r.getAttribute('data-r').toLowerCase().includes(q)?'':'none';});}</script>",
-    );
-    body.push_str("<table><thead><tr><th>Research</th><th>Node id</th><th>Actions</th></tr></thead><tbody>");
-    for id in research_ids() {
-        let pretty = pretty_research(id);
-        body.push_str(&format!(
-            "<tr data-r=\"{} {}\"><td>{}</td><td class=\"sub mono\">{}</td><td>{} {} {}</td></tr>",
-            esc(&pretty),
-            esc(id),
-            esc(&pretty),
-            esc(id),
-            prepare_form(session, "ResearchStartCmd", json!({"nodeId": id}), "Start", false),
-            prepare_form(
-                session,
-                "ResearchQueueDequeueCmd",
-                json!({"nodeId": id, "isEnqueue": true}),
-                "Queue",
-                false
-            ),
-            prepare_form(
-                session,
-                "ResearchQueueDequeueCmd",
-                json!({"nodeId": id, "isEnqueue": false}),
-                "Unqueue",
-                false
-            ),
+    let mut ctx = String::from("<div class=\"ctx\">VIEWS</div>");
+    for (t, label) in [
+        ("current", "Current & queue"),
+        ("catalogue", "Catalogue"),
+        ("completed", "Completed"),
+    ] {
+        ctx.push_str(&format!(
+            "<a class=\"navitem anchor{}\" href=\"/research?tab={}\">{}</a>",
+            if tab == t { " active" } else { "" },
+            t,
+            label
         ));
     }
-    body.push_str("</tbody></table></div>");
-    Response::html(200, layout(state, session, "Research", &body))
+    match tab {
+        "catalogue" => {
+            // Letter index of the pretty names actually present.
+            let mut letters: Vec<char> = research_ids()
+                .iter()
+                .filter_map(|id| pretty_research(id).chars().next())
+                .collect();
+            letters.sort_unstable();
+            letters.dedup();
+            ctx.push_str("<div class=\"ctx\">INDEX</div>");
+            for l in &letters {
+                ctx.push_str(&rail_link(&format!("#L-{l}"), &l.to_string()));
+            }
+            body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:12px 12px 0\"><h2>Catalogue</h2></div>");
+            body.push_str(
+                "<div class=\"filterbar\"><input type=\"text\" id=\"rq\" placeholder=\"🔍 Filter research…\" oninput=\"filterResearch()\"></div>\
+                 <script>function filterResearch(){var q=document.getElementById('rq').value.toLowerCase();\
+                 document.querySelectorAll('tr[data-r]').forEach(function(r){r.style.display=r.getAttribute('data-r').toLowerCase().includes(q)?'':'none';});}</script>",
+            );
+            let mut sorted: Vec<&String> = research_ids().iter().collect();
+            sorted.sort_by_key(|id| pretty_research(id));
+            let mut cur_letter = '\0';
+            let mut table_open = false;
+            for id in sorted {
+                let pretty = pretty_research(id);
+                let letter = pretty.chars().next().unwrap_or('?');
+                if letter != cur_letter {
+                    if table_open {
+                        body.push_str("</tbody></table>");
+                    }
+                    cur_letter = letter;
+                    body.push_str(&format!("<div class=\"letterhead\" id=\"L-{letter}\">{letter}</div>"));
+                    body.push_str("<table class=\"table--compact\"><tbody>");
+                    table_open = true;
+                }
+                body.push_str(&format!(
+                    "<tr data-r=\"{} {}\"><td><a href=\"/research/node?id={}\">{}</a></td><td class=\"mono\">{}</td><td>{}</td></tr>",
+                    esc(&pretty),
+                    esc(id),
+                    url_enc(id),
+                    esc(&pretty),
+                    esc(id),
+                    prepare_form(
+                        session,
+                        "ResearchQueueDequeueCmd",
+                        json!({"nodeId": id, "isEnqueue": true}),
+                        "Queue",
+                        false
+                    ),
+                ));
+            }
+            if table_open {
+                body.push_str("</tbody></table>");
+            }
+            body.push_str("</div>");
+        }
+        "completed" => {
+            match &rs {
+                Some(rsv) => match rsv["researched"].as_array() {
+                    Some(done) => {
+                        let count = if rsv["researchedCount"].is_null() {
+                            done.len() as i64
+                        } else {
+                            vi(&rsv["researchedCount"])
+                        };
+                        let mut chips = String::new();
+                        for v in done {
+                            let id = sv(v);
+                            chips.push_str(&format!(
+                                "<a class=\"chip\" href=\"/research/node?id={}\">{}</a>",
+                                url_enc(&id),
+                                esc(&pretty_research(&id))
+                            ));
+                        }
+                        body.push_str(&format!(
+                            "<div class=\"card\"><div class=\"cardhead\"><h2>Completed research</h2><span class=\"right\">{} nodes</span></div><div class=\"chips\">{}</div></div>",
+                            count,
+                            if chips.is_empty() { "— none yet —".to_string() } else { chips },
+                        ));
+                    }
+                    None => body.push_str(&degraded_bridge("Completed research", "0.6.2")),
+                },
+                None => body.push_str(&degraded_bridge("Completed research", "0.6.2")),
+            }
+        }
+        _ => {
+            body.push_str("<div class=\"card\"><div class=\"cardhead\"><h2>Current research</h2></div>");
+            if let Some(rsv) = &rs {
+                let cur = &rsv["current"];
+                let cur_id = cur["id"].as_str().unwrap_or("");
+                if !cur_id.is_empty() {
+                    let pct = pct_raw(&cur["progressPerc"]);
+                    let queue_html: String = rsv["queue"]
+                        .as_array()
+                        .map(|a| {
+                            a.iter()
+                                .map(|q| {
+                                    format!(
+                                        "<a class=\"chip\" href=\"/research/node?id={}\">{}</a>",
+                                        url_enc(&sv(q)),
+                                        esc(&pretty_research(&sv(q)))
+                                    )
+                                })
+                                .collect::<Vec<_>>()
+                                .join(" → ")
+                        })
+                        .unwrap_or_default();
+                    body.push_str(&format!(
+                        "<p><b><a href=\"/research/node?id={}\">{}</a></b> — {:.1}%</p>{}<p class=\"sub\">Queue: {}</p>",
+                        url_enc(cur_id),
+                        esc(&pretty_research(cur_id)),
+                        pct,
+                        fillbar(pct, "var(--accent)", 420),
+                        if queue_html.is_empty() { "empty".to_string() } else { queue_html },
+                    ));
+                } else {
+                    body.push_str("<p class=\"sub\">No research is running right now.</p>");
+                }
+            } else {
+                body.push_str(&degraded_bridge("Current research", "0.6.2"));
+            }
+            body.push_str("<p>");
+            body.push_str(&prepare_form(
+                session,
+                "ResearchStopCmd",
+                json!({}),
+                "Stop current research",
+                false,
+            ));
+            body.push_str("</p><p class=\"sub\">Stops whatever is currently being researched (the game keeps the spent progress rules as usual).</p></div>");
+        }
+    }
+    Response::html(200, layout_ctx(state, session, "Research", "Research", &ctx, &body))
 }
 
-/// The global-priority form posts id+value here; build the command args
-/// and reuse the standard prepare flow (validation + confirm page).
+/// One research node (V2.1): status from the bridge research
+/// route, and the Start / Queue / Unqueue prepares that used to
+/// crowd every catalogue row.
+fn page_research_node(state: &State, session: &Session, req: &Request) -> Response {
+    let id = match req.query.get("id") {
+        Some(id) if research_ids().iter().any(|r| r == id) => id.clone(),
+        _ => return Response::redirect("/research?tab=catalogue"),
+    };
+    let pretty = pretty_research(&id);
+    let rs = bridge_json(state, "/coi/v1/research");
+    let (status, status_ctx) = match &rs {
+        Some(rsv) => {
+            let cur_id = rsv["current"]["id"].as_str().unwrap_or("");
+            if cur_id == id {
+                (
+                    "Researching now".to_string(),
+                    format!("{:.1}% complete", pct_raw(&rsv["current"]["progressPerc"])),
+                )
+            } else if rsv["researched"]
+                .as_array()
+                .map(|a| a.iter().any(|v| sv(v) == id))
+                .unwrap_or(false)
+            {
+                ("Researched".to_string(), "completed".to_string())
+            } else if let Some(pos) = rsv["queue"]
+                .as_array()
+                .and_then(|a| a.iter().position(|v| sv(v) == id))
+            {
+                (format!("Queued · position {}", pos + 1), "in the queue".to_string())
+            } else {
+                ("Not started".to_string(), "available to start or queue".to_string())
+            }
+        }
+        None => ("Unknown".to_string(), "CoiBridge is not answering".to_string()),
+    };
+    let mut body = page_head(
+        "Game",
+        &pretty,
+        &format!("Research node · {}", id),
+        "<a class=\"btn btn--secondary btn--sm\" href=\"/research?tab=catalogue\">← Catalogue</a>",
+    );
+    body.push_str("<div class=\"stats2\">");
+    body.push_str(&stat2_tile("flask", "Status", &esc(&status), &esc(&status_ctx), false));
+    body.push_str(&stat2_tile("layers", "Node id", &format!("<span class=\"mono\" style=\"font-size:15px\">{}</span>", esc(&id)), "", false));
+    body.push_str("</div>");
+    // Start is this page's one primary; Queue/Unqueue are ghosts.
+    body.push_str(&format!(
+        "<div class=\"card\"><div class=\"cardhead\"><h2>Actions</h2></div>\
+         <form method=\"post\" action=\"/actions/prepare\" style=\"display:inline\">\
+         <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
+         <input type=\"hidden\" name=\"type\" value=\"ResearchStartCmd\">\
+         <input type=\"hidden\" name=\"args\" value=\"{}\">\
+         <button class=\"btn btn--sm\" type=\"submit\">Start research</button></form> {} {}\
+         <p class=\"sub\">Every action goes through the §12 prepare → confirm → audit flow; the game accepts or rejects each one.</p></div>",
+        esc(&session.csrf),
+        esc(&json!({"nodeId": id}).to_string()),
+        prepare_form(
+            session,
+            "ResearchQueueDequeueCmd",
+            json!({"nodeId": id, "isEnqueue": true}),
+            "Queue",
+            false
+        ),
+        prepare_form(
+            session,
+            "ResearchQueueDequeueCmd",
+            json!({"nodeId": id, "isEnqueue": false}),
+            "Unqueue",
+            false
+        ),
+    ));
+    let ctx = "<div class=\"ctx\">VIEWS</div>".to_string()
+        + &rail_link("/research?tab=current", "Current & queue")
+        + &rail_link("/research?tab=catalogue", "Catalogue")
+        + &rail_link("/research?tab=completed", "Completed");
+    Response::html(200, layout_ctx(state, session, &pretty, "Research", &ctx, &body))
+}
+
+
 fn do_prepare_priority(state: &State, session: &Session, req: &Request) -> Response {
     if let Err(r) = check_csrf(session, req) {
         return r;
@@ -6462,7 +7832,7 @@ fn do_prepare_priority(state: &State, session: &Session, req: &Request) -> Respo
             ("type".into(), "SetGlobalPriorityCmd".into()),
             ("args".into(), args.to_string()),
         ]),
-        cookies: HashMap::new(),
+        host: String::new(),
     };
     do_prepare(state, session, &fake)
 }
@@ -6505,5 +7875,130 @@ mod tests {
     fn iso_utc_format() {
         assert_eq!(iso_utc(1793883600), "2026-11-05T13:00:00Z");
         assert_eq!(iso_utc(0), "1970-01-01T00:00:00Z");
+    }
+
+    /// DESIGN V2.5 acceptance semantics: a difference renders
+    /// signed with an arrow; a measured zero is the muted flat
+    /// chip; absolutes never pass through here at all.
+    #[test]
+    fn delta_chip_semantics() {
+        let pos = delta_chip(295, "LM");
+        assert!(pos.contains("delta--pos") && pos.contains("#i-up") && pos.contains("+295"), "{pos}");
+        let neg = delta_chip(-77, "TM");
+        assert!(neg.contains("delta--neg") && neg.contains("#i-down") && neg.contains("\u{2212}77"), "{neg}");
+        let flat = delta_chip(0, "LM");
+        assert!(flat.contains("delta--flat") && flat.contains("#i-flat"), "{flat}");
+        assert!(flat.contains(">0 <") || flat.contains(" 0 "), "{flat}");
+    }
+
+    #[test]
+    fn signed_formatting() {
+        assert_eq!(signed(1234), "+1,234");
+        assert_eq!(signed(-77), "\u{2212}77");
+        assert_eq!(signed(0), "0");
+    }
+
+    fn test_state() -> State {
+        State {
+            cfg: Config {
+                authority: "127.0.0.1:3073".into(),
+                host_header: "127.0.0.1:3073".into(),
+                proxy: None,
+            },
+            db_path: ":memory:".into(),
+            csrf: "test-csrf".into(),
+            port: 8484,
+            badge: Mutex::new(BadgeCache {
+                count: None,
+                reachable: false,
+                updated: 0,
+            }),
+            prepared: Mutex::new(HashMap::new()),
+            prepared_jobs: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn test_req(host: &str) -> Request {
+        Request {
+            method: "GET".into(),
+            path: "/".into(),
+            query: HashMap::new(),
+            form: HashMap::new(),
+            host: host.into(),
+        }
+    }
+
+    /// The login-removal hardening: only the loopback names on
+    /// the configured port are answered.
+    #[test]
+    fn host_check_accepts_only_loopback_on_port() {
+        let st = test_state();
+        assert!(host_ok(&st, &test_req("127.0.0.1:8484")));
+        assert!(host_ok(&st, &test_req("localhost:8484")));
+        assert!(host_ok(&st, &test_req("LOCALHOST:8484")));
+        assert!(!host_ok(&st, &test_req("evil.example:8484")));
+        assert!(!host_ok(&st, &test_req("127.0.0.1:9999")));
+        assert!(!host_ok(&st, &test_req("")));
+    }
+
+    /// The badge endpoint answers from cache only: before any
+    /// page fetch the count is null (never a dressed-up stale
+    /// number), and the badge markup carries the words "must fix"
+    /// in every state.
+    #[test]
+    fn must_fix_endpoint_starts_null() {
+        let st = test_state();
+        let r = api_must_fix_count(&st);
+        let body = String::from_utf8(r.body).unwrap();
+        assert!(body.contains("\"count\":null"), "{body}");
+        assert!(body.contains("\"reachable\":false"), "{body}");
+        let badge_html = mustfix_badge(&st);
+        assert!(badge_html.contains("must fix"), "{badge_html}");
+        assert!(badge_html.contains("/issues?only=fix-now"), "{badge_html}");
+    }
+
+    /// §V2.5 power examples: a +1 kW balance is a green delta, a
+    /// −900 kW balance a red one, and the 38,000 kW capacity is a
+    /// neutral absolute (no delta chip on its figure).
+    #[test]
+    fn power_panel_number_semantics() {
+        let pos = power_panel_html(&serde_json::json!({
+            "generatedKw": 38001, "consumedKw": 38000, "balanceKw": 1,
+            "generationCapacityKw": 38000
+        }));
+        assert!(pos.contains("delta--pos") && pos.contains("+1"), "{pos}");
+        assert!(pos.contains("38,000"), "{pos}");
+        let neg = power_panel_html(&serde_json::json!({
+            "generatedKw": 37100, "consumedKw": 38000, "balanceKw": -900,
+            "generationCapacityKw": 38000
+        }));
+        assert!(neg.contains("delta--neg") && neg.contains("\u{2212}900"), "{neg}");
+        // The deficit panel carries the spec'd CTA row (V2.7 row 12).
+        assert!(neg.contains("Open Actions"), "{neg}");
+        assert!(!pos.contains("Open Actions"), "{pos}");
+    }
+
+    /// Badge states: alert with the count when issues exist;
+    /// after the game drops, the same count is labelled
+    /// "last known" and greyed — never dressed as live.
+    #[test]
+    fn must_fix_badge_states() {
+        let st = test_state();
+        {
+            let mut b = st.badge.lock().unwrap_or_else(|p| p.into_inner());
+            b.count = Some(3);
+            b.reachable = true;
+        }
+        let alert = mustfix_badge(&st);
+        assert!(alert.contains("mustfix--alert") && alert.contains("3 must fix"), "{alert}");
+        {
+            let mut b = st.badge.lock().unwrap_or_else(|p| p.into_inner());
+            b.reachable = false;
+        }
+        let off = mustfix_badge(&st);
+        assert!(off.contains("mustfix--off") && off.contains("last known"), "{off}");
+        let r = api_must_fix_count(&st);
+        let body = String::from_utf8(r.body).unwrap();
+        assert!(body.contains("\"count\":3") && body.contains("\"reachable\":false"), "{body}");
     }
 }
