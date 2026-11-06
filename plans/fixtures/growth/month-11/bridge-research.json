@@ -7,18 +7,18 @@
   "scienceCost": 80
  },
  "queue": [
-  "ResearchCp2"
+  "ResearchCp2Packing"
  ],
  "researchedCount": 8,
  "hasActiveLab": true,
  "researched": [
-  "ResearchCp1Production",
+  "ResearchCpPacking",
   "ResearchPowerAndMaintenance",
   "ResearchTradeDock",
   "ResearchVehicleAndMining",
   "ResearchBeacon",
   "ResearchTools",
   "ResearchBasicDiesel",
-  "ResearchRubber"
+  "ResearchRubberProduction"
  ]
 }

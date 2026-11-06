@@ -1,6 +1,6 @@
 {
  "current": {
-  "id": "ResearchCp2",
+  "id": "ResearchCp2Packing",
   "progressPerc": 30000,
   "stepsDone": 24,
   "remainingSteps": 56,
@@ -10,14 +10,14 @@
  "researchedCount": 9,
  "hasActiveLab": true,
  "researched": [
-  "ResearchCp1Production",
+  "ResearchCpPacking",
   "ResearchPowerAndMaintenance",
   "ResearchTradeDock",
   "ResearchVehicleAndMining",
   "ResearchBeacon",
   "ResearchTools",
   "ResearchBasicDiesel",
-  "ResearchRubber",
+  "ResearchRubberProduction",
   "ResearchCopperRefinement"
  ]
 }

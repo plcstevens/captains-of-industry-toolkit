@@ -1,6 +1,6 @@
 {
  "current": {
-  "id": "ResearchRubber",
+  "id": "ResearchRubberProduction",
   "progressPerc": 60000,
   "stepsDone": 36,
   "remainingSteps": 24,
@@ -12,7 +12,7 @@
  "researchedCount": 7,
  "hasActiveLab": true,
  "researched": [
-  "ResearchCp1Production",
+  "ResearchCpPacking",
   "ResearchPowerAndMaintenance",
   "ResearchTradeDock",
   "ResearchVehicleAndMining",
