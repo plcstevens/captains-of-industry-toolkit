@@ -20,7 +20,7 @@ phase-1 exit threshold.
   food stock is 300 (240 potato + 60 vegetables) against an 80/month
   burn in `stats.json` → 3.75 months, recorded as 4. Not starving.
 - **Research** (`bridge-research.json`): `researchedCount` **0**,
-  `hasActiveLab` true (2 labs), current node `ResearchCp1Production`
+  `hasActiveLab` true (2 labs), current node `ResearchCpPacking`
   (the plan's candidate id for "Construction") at 43.750%
   (35/80 steps — stepsDone + remainingSteps = scienceCost), queue
   `[ResearchPowerAndMaintenance]`. This file **does** include a

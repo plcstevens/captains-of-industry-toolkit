@@ -30,10 +30,15 @@
       "confirmation": null,
       "gameDate": "1-1-18",
       "orderId": "p1-research-construction",
-      "payload": null,
+      "payload": {
+        "args": {
+          "nodeId": "ResearchCpPacking"
+        },
+        "type": "ResearchStartCmd"
+      },
       "phase": "phase-1-scrap-starter",
-      "reason": "placeholder research id (unsourced)",
-      "status": "skipped",
+      "reason": null,
+      "status": "prepared",
       "step": 0
     },
     {
@@ -93,17 +98,82 @@
     },
     {
       "confirmation": null,
-      "gameDate": "1-5-15",
-      "orderId": "p3-research-trading-dock",
+      "gameDate": "1-3-15",
+      "orderId": "p2-research-power-and-maintenance",
       "payload": {
         "args": {
-          "nodeId": "ResearchTradeDock"
+          "nodeId": "ResearchPowerAndMaintenance"
         },
         "type": "ResearchStartCmd"
       },
-      "phase": "phase-3-mining-vehicles",
+      "phase": "phase-2-assembly-power-maintenance",
       "reason": null,
       "status": "prepared",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-3-15",
+      "orderId": "p2-build-assemblies",
+      "payload": null,
+      "phase": "phase-2-assembly-power-maintenance",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-3-15",
+      "orderId": "p2-enable-construction-parts-recipe",
+      "payload": null,
+      "phase": "phase-2-assembly-power-maintenance",
+      "reason": "manual-step order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-3-15",
+      "orderId": "p2-build-maintenance-depot",
+      "payload": null,
+      "phase": "phase-2-assembly-power-maintenance",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-3-15",
+      "orderId": "p2-build-first-farm",
+      "payload": null,
+      "phase": "phase-2-assembly-power-maintenance",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-3-15",
+      "orderId": "p2-pin-construction-parts",
+      "payload": {
+        "args": {
+          "productToToggle": "Product_ConstructionParts"
+        },
+        "type": "PinToggleCmd"
+      },
+      "phase": "phase-2-assembly-power-maintenance",
+      "reason": null,
+      "status": "prepared",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-5-15",
+      "orderId": "p3-research-trading-dock",
+      "payload": null,
+      "phase": "phase-3-mining-vehicles",
+      "reason": "research node ResearchTradeDock already researched — nothing to start",
+      "status": "skipped",
       "step": 4
     },
     {
@@ -195,10 +265,15 @@
       "confirmation": null,
       "gameDate": "1-8-15",
       "orderId": "p4-research-concrete-production",
-      "payload": null,
+      "payload": {
+        "args": {
+          "nodeId": "ResearchConcreteAdvanced"
+        },
+        "type": "ResearchStartCmd"
+      },
       "phase": "phase-4-concrete-diesel-rubber",
-      "reason": "placeholder research id (unsourced)",
-      "status": "skipped",
+      "reason": null,
+      "status": "prepared",
       "step": 7
     },
     {
@@ -250,10 +325,15 @@
       "confirmation": null,
       "gameDate": "1-8-15",
       "orderId": "p4-research-synthetic-rubber",
-      "payload": null,
+      "payload": {
+        "args": {
+          "nodeId": "ResearchRubberProduction"
+        },
+        "type": "ResearchStartCmd"
+      },
       "phase": "phase-4-concrete-diesel-rubber",
-      "reason": "placeholder research id (unsourced)",
-      "status": "skipped",
+      "reason": null,
+      "status": "prepared",
       "step": 7
     },
     {
@@ -328,7 +408,7 @@
   "plan": {
     "file": "plans/fresh-start-v1.json",
     "id": "fresh-start",
-    "version": "1.2.2"
+    "version": "1.3.0"
   },
   "runner": "coi play — prepare-only, no apply path",
   "schema": "coi-play-session/1",
@@ -336,7 +416,7 @@
     "dir": "plans/fixtures/growth",
     "kind": "state-seq"
   },
-  "startedAtUnix": 1793905567,
+  "startedAtUnix": 1793993305,
   "steps": [
     {
       "events": [
@@ -409,8 +489,20 @@
         },
         {
           "phase": "phase-2-assembly-power-maintenance",
-          "status": "HELD AT ENTRY GATE (UNEVALUABLE)",
+          "status": "ACTIVE",
           "type": "phase_entered"
+        },
+        {
+          "orders": [
+            "p2-research-power-and-maintenance",
+            "p2-build-assemblies",
+            "p2-enable-construction-parts-recipe",
+            "p2-build-maintenance-depot",
+            "p2-build-first-farm",
+            "p2-pin-construction-parts"
+          ],
+          "phase": "phase-2-assembly-power-maintenance",
+          "type": "orders_recorded"
         }
       ],
       "gameDate": "1-3-15",
@@ -418,7 +510,7 @@
       "phaseStatuses": {
         "phase-0-scout-bootstrap": "COMPLETE",
         "phase-1-scrap-starter": "COMPLETE",
-        "phase-2-assembly-power-maintenance": "HELD AT ENTRY GATE (UNEVALUABLE)",
+        "phase-2-assembly-power-maintenance": "ACTIVE",
         "phase-3-mining-vehicles": "NOT REACHED",
         "phase-4-concrete-diesel-rubber": "NOT REACHED",
         "phase-5-copper-construction2-food": "NOT REACHED",
@@ -435,7 +527,7 @@
       "phaseStatuses": {
         "phase-0-scout-bootstrap": "COMPLETE",
         "phase-1-scrap-starter": "COMPLETE",
-        "phase-2-assembly-power-maintenance": "HELD AT ENTRY GATE (UNEVALUABLE)",
+        "phase-2-assembly-power-maintenance": "ACTIVE",
         "phase-3-mining-vehicles": "NOT REACHED",
         "phase-4-concrete-diesel-rubber": "NOT REACHED",
         "phase-5-copper-construction2-food": "NOT REACHED",

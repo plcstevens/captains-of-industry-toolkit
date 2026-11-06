@@ -12,7 +12,7 @@
         "verdict": "TRUE"
       },
       {
-        "evidence": "[TRUE] research.current = ResearchCp1Production; [TRUE] len(queue) = 1 [\"ResearchPowerAndMaintenance\"]",
+        "evidence": "[TRUE] research.current = ResearchCpPacking; [TRUE] len(queue) = 1 [\"ResearchPowerAndMaintenance\"]",
         "predicate": "any(research.current() != 'none'; research.queue_length() > 0)",
         "verdict": "TRUE"
       }
@@ -25,10 +25,15 @@
       "confirmation": null,
       "gameDate": "1-1-18",
       "orderId": "p1-research-construction",
-      "payload": null,
+      "payload": {
+        "args": {
+          "nodeId": "ResearchCpPacking"
+        },
+        "type": "ResearchStartCmd"
+      },
       "phase": "phase-1-scrap-starter",
-      "reason": "placeholder research id (unsourced)",
-      "status": "skipped",
+      "reason": null,
+      "status": "prepared",
       "step": 0
     },
     {
@@ -148,15 +153,15 @@
   "plan": {
     "file": "plans/fresh-start-v1.json",
     "id": "fresh-start",
-    "version": "1.2.2"
+    "version": "1.3.0"
   },
   "runner": "coi play — prepare-only, no apply path",
   "schema": "coi-play-session/1",
   "source": {
-    "dir": "/tmp/fs-early-seq",
+    "dir": "plans/fixtures/early-game",
     "kind": "state-seq"
   },
-  "startedAtUnix": 1793905567,
+  "startedAtUnix": 1793993305,
   "steps": [
     {
       "events": [
@@ -200,7 +205,7 @@
         "phase-6-automation-expansion": "NOT REACHED",
         "phase-7-rail-introduction": "NOT REACHED"
       },
-      "stateDir": "/tmp/fs-early-seq/month-01",
+      "stateDir": "plans/fixtures/early-game",
       "step": 0
     }
   ]

@@ -1,17 +1,17 @@
-# CoI play session — fresh-start v1.2.2
+# CoI play session — fresh-start v1.3.0
 
 > **PREPARE-ONLY — nothing was executed.** This transcript is a walk over captured state files by `coi play`, the supervised session runner. The runner has **no apply path**: it opens no sockets, prepares nothing through the §12 flow, and sends nothing to a game. Payloads below are the exact command envelopes a supervised executor *would* prepare; a human reviews them and confirms each one in the companion website.
 
-- Plan: `plans/fresh-start-v1.json` — `fresh-start` v1.2.2
-- Source: state sequence `/tmp/fs-early-seq` — 1 snapshot(s), 1-1-18 .. 1-1-18
+- Plan: `plans/fresh-start-v1.json` — `fresh-start` v1.3.0
+- Source: state sequence `plans/fixtures/early-game` — 1 snapshot(s), 1-1-18 .. 1-1-18
 - Runner: coi play — prepare-only, no apply path
-- Started (unix): 1793905567
+- Started (unix): 1793993305
 
 ## Walk (prefix by prefix, §4.3.1)
 
 Step k uses the prefix states[0..=k]; phase statuses are re-derived from that prefix alone, exactly as a live executor's history grows. An order is recorded once, at the first step its phase is ACTIVE.
 
-### Step 0 — `month-01` — game date 1-1-18
+### Step 0 — `early-game` — game date 1-1-18
 
 - Phase statuses: `phase-0-scout-bootstrap` COMPLETE · `phase-1-scrap-starter` ACTIVE · `phase-2-assembly-power-maintenance` NOT REACHED · `phase-3-mining-vehicles` NOT REACHED · `phase-4-concrete-diesel-rubber` NOT REACHED · `phase-5-copper-construction2-food` NOT REACHED · `phase-6-automation-expansion` NOT REACHED · `phase-7-rail-introduction` NOT REACHED
 - Loop phase: `phase-1-scrap-starter` [ACTIVE]
@@ -19,7 +19,7 @@ Step k uses the prefix states[0..=k]; phase statuses are re-derived from that pr
 - Phase completed: `phase-0-scout-bootstrap` — exit gate TRUE — evidence: [TRUE] population = 100 (bridge-status.json); [TRUE] freeHousingCapacity = 60 (bridge-status.json)
 - Phase entered: `phase-1-scrap-starter` [ACTIVE]
 - Orders recorded for `phase-1-scrap-starter` (first ACTIVE step, plan order):
-  - `p1-research-construction` — SKIPPED — placeholder research id (unsourced)
+  - `p1-research-construction` — PREPARED — payload `{"args":{"nodeId":"ResearchCpPacking"},"type":"ResearchStartCmd"}`
   - `p1-research-queue-first15` — SKIPPED — manual-step order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command
   - `p1-build-starter-cluster` — SKIPPED — place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command
   - `p1-tree-clearing-and-dumping` — SKIPPED — manual-step order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command
@@ -47,7 +47,7 @@ After the final snapshot the loop position is `phase-1-scrap-starter`, whose exi
 
 - `product.quantity(product=Product_Iron) >= 100` — **FALSE** — Product_Iron.quantity = 42
 - `research.has_active_lab() == True` — **TRUE** — hasActiveLab = True
-- `any(research.current() != 'none'; research.queue_length() > 0)` — **TRUE** — [TRUE] research.current = ResearchCp1Production; [TRUE] len(queue) = 1 ["ResearchPowerAndMaintenance"]
+- `any(research.current() != 'none'; research.queue_length() > 0)` — **TRUE** — [TRUE] research.current = ResearchCpPacking; [TRUE] len(queue) = 1 ["ResearchPowerAndMaintenance"]
 
 The session halts here. The next action is human: review the prepared payloads in the session JSON and confirm them in the companion website (§12); the runner itself applies nothing.
 

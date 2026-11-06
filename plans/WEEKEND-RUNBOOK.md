@@ -1,67 +1,117 @@
-# WEEKEND RUNBOOK — supervised fresh-start session (Update 4.3)
+# WEEKEND RUNBOOK v2 — supervised fresh-start session (Update 4.3)
 
-Plan: `fresh-start-v1` **v1.2.2** — New Haven, normal, game 0.8.8.
-Posture: Claudius prepares and reports; **Philip confirms every apply**
-in the companion website (§12 flow). The runner is prepare-only by
-construction — nothing reaches the game except through a confirmed
-website action or a confirmed QoSBuilder job.
+Plan: `fresh-start-v1` **v1.3.0** — New Haven, normal, game 0.8.8.
+Bridge: **CoiBridge 0.6.5**. Companion: current staged `coi.exe`.
+Posture (Philip, 2026-11-06): "You do it all yourself — the point is
+you play." Claudius does everything the VM can reach: proof reads,
+captures, snapshots, runner passes, job preparation, the play loop,
+Log watching. Philip's part is the physical minimum below, plus the
+clicks that are his **by posture, not by necessity**: every §12
+confirm in the website (confirm-each-step, decided 2026-11-05) and
+the in-game acts no channel can perform for him.
 
-## 0. Gate zero — prove saving works before playing
+**v2 change:** the plan's last research placeholder is retired.
+"Construction" is `ResearchCpPacking` — sourced from the shipped
+game's own proto registrations (plan v1.3.0 changelog has the full
+evidence, incl. five sibling retirements and one corrected id,
+ResearchRepairDock). Nobody reads node ids off the research screen
+any more; the first-15 queue below names real ids throughout.
 
-The QoS 0.1.1 calendar mods break saving (serializer bug); suite
-**0.5.1** is the fix, and its live proof is a save **and a reload**:
+## PHILIP — physical minimum
 
-1. Quit the game. Swap mod folders: CoiBridge 0.6.4 (already in),
-   QoS suite **0.5.1** (replace the 0.1.1 feature folders wholesale —
-   never keep them alongside), QoSBuilder 0.1.0 alongside.
-2. Start a **new game**: New Haven, normal difficulty (the executor
-   refuses a map/difficulty/version mismatch — §3.1).
-3. **Save immediately, then reload that save.** Both must succeed
-   before anything else happens. If the reload fails, stop and
-   report — do not play on an unproven stack.
-4. Settings → Miscellaneous: mods enabled. QoS features stay **OFF**
-   (they ship off) until step 5. QoSBuilder's `enabled` stays off
-   until step 4.
+Do these, in this order. Everything else is Claudius's.
 
-## 1. Bring the channels up (Philip, ~2 minutes)
+1. **Files onto the PC:** quit the game; copy `dist/weekend-bundle/`
+   across; replace `coi.exe` in its existing folder (keep `coi.db`
+   beside it); unzip the three mod zips into
+   `%APPDATA%\Captain of Industry\Mods\`, replacing the `CoiBridge`,
+   `QoS*` and `QoSBuilder` folders wholesale — **never keep the old
+   0.1.1 QoS folders alongside the 0.5.1 ones** (they break saving).
+2. **Hub installs (in-game Mods browser):** Auto Terrain
+   Designations · Auto Forestry Designations · Research Queue ·
+   Terrain Grid Only.
+3. **Game started, mods on:** launch the game; Settings →
+   Miscellaneous → mods enabled.
+4. **Web API:** open the console, run `web_api_start` (needed after
+   every game start).
+5. **Tailscale forward:** `tailscale serve --bg --tcp=3073 tcp://localhost:3073`
+6. **Companion:** start `coi.exe` → website at
+   http://127.0.0.1:8484 (no login — the site just opens; existing
+   `coi.db` carries over — snapshots and audit history intact).
 
-- Console: `web_api_start` (needed after every game start).
-- Tailscale serve on (the VM reaches the game only through it).
-- Start `coi.exe` → website at http://127.0.0.1:8484 (login
-  `captain`; the existing `coi.db` next to the exe carries over).
+Then say "up" in chat. From that line on, Claudius drives.
 
-## 2. First capture (Claudius)
+## CLAUDIUS — everything else, in order
 
-- Pull game-info / status / research / census / products; take the
-  first snapshot into the companion store. Record the new **gameId**
-  (the run's identity — a change mid-run halts the loop) and confirm
-  the game reports 0.8.8.
-- Phase-0 verification against the plan's assumptions, reported
-  before unpausing: starting diesel > 0 (the globals invariant is
-  armed on it), scrap / concrete / copper opening quantities,
-  population + housing baseline, researchedCount baseline.
+### A. Shakedown on a scratch save (BEFORE the fresh run)
 
-## 3. Phase 0 with Philip's eyes
+The four Hub mods are unproven on this stack; ATD declares its own
+4.3 support *experimental*. They earn their place on a throwaway
+save first, so a bad interaction costs a scratch colony, never the
+real run.
 
-- Philip does the scout manual-step in-game: Layers view — oil patch
-  bearing/distance, coal, limestone, iron distance, coastline/docks
-  south. Claudius records it; **nothing is placed yet**.
-- Philip queues the first-15 research list in the research UI —
-  while queueing, read the real node id shown for **"Construction"**
-  (the plan's one §4.5 placeholder; sole candidate
-  `ResearchCp1Production`). That single reading retires the
-  placeholder by plan amendment.
-- Claudius prepares phase-0/1 command orders in the website
-  (pause, pins); Philip confirms each; Claudius verifies post-state
-  from live reads, never from the "ok".
+1. Philip starts any throwaway game (any map) and saves it once.
+2. Claudius verifies from live reads: all routes answer, census
+   sane, no errors in the Log after a game day passes with the
+   Hub mods loaded.
+3. ATD smoke test: Philip paints one small mining designation in
+   the scratch save; Claudius confirms via `/coi/v1/designations`
+   that it registers and reads back with sane target heights.
+4. Research Queue smoke test: Philip queues two nodes; Claudius
+   confirms the queue reads correctly and vanilla research still
+   advances.
+5. Any misbehaviour → that mod is dropped from the weekend stack;
+   the fresh run proceeds without it. Terrain Grid Only is
+   cosmetic — drop on any doubt.
 
-## 4. First builder job — a small starter layout
+### B. Gate zero — prove saving works (fresh run)
+
+The QoS 0.1.1 calendar mods broke saving (serializer bug); suite
+0.5.1 is the fix, and its live proof is a save **and a reload**.
+This proof is still owed.
+
+1. Philip starts the **new game**: New Haven, normal difficulty
+   (the executor refuses a map/difficulty/version mismatch — §3.1).
+2. Philip **saves immediately, then reloads that save.** Both must
+   succeed before anything else happens. If the reload fails:
+   stop, report, do not play on an unproven stack. (The clicks are
+   Philip's because only he is at the machine; Claudius verifies
+   the reloaded state from live reads the moment the API is back.)
+3. QoS features stay **OFF** (they ship off) until section E.
+   QoSBuilder's `enabled` stays off until section D.
+
+### C. First capture + phase 0
+
+1. Claudius pulls game-info / status / research / census /
+   products / terrain + deposits; takes the first snapshot into
+   the companion store. Records the new **gameId** (the run's
+   identity — a change mid-run halts the loop) and confirms the
+   game reports 0.8.8.
+2. Phase-0 verification against the plan's assumptions, reported
+   before unpausing: starting diesel > 0 (the globals invariant is
+   armed on it), scrap / concrete / copper opening quantities,
+   population + housing baseline, researchedCount baseline.
+3. **Scout (Philip's eyes, Claudius records):** Layers view — oil
+   patch bearing/distance, coal, limestone, iron distance,
+   coastline/docks south. Nothing is placed yet.
+4. **First-15 queue (Philip, one UI pass):** queue the plan's
+   first-15 list in the research UI. Every id is now sourced
+   (plan v1.3.0): Tools → Vehicle & Mining → Trading Dock →
+   Construction (`ResearchCpPacking`) → Power & Maintenance
+   (`ResearchPowerAndMaintenance`) → … — the full annotated list
+   is the `p1-research-queue-first15` step in the plan.
+5. Claudius prepares phase-0/1 command orders in the website
+   (pause, pins, research starts); Philip confirms each (§12);
+   Claudius verifies post-state from live reads, never from the
+   "ok".
+
+### D. First builder job — a small starter layout
 
 Default (zero-risk) order of experiments:
 
-- **(Optional, 5 min, throwaway save)** One `concrete-v1` job on a
-  scratch save to watch the whole circuit once: /place prepare →
-  confirm → job file → day-end claim → Log events → census diff.
+- **(Optional, 5 min, on the scratch save)** One `concrete-v1`
+  job to watch the whole circuit once: /place prepare → confirm →
+  job file → day-end claim → Log events → census diff.
 - **(The real first job)** Phase 1's starter-cluster core:
   **`iron-v1`** (26 items) via /place, at an anchor Philip picks
   from the scout, rotation as authored. QoSBuilder `enabled` on
@@ -76,15 +126,15 @@ Default (zero-risk) order of experiments:
   manual single-building placement by Philip — no pack asset
   contains them.
 
-## 5. Only after the above
+### E. Only after the above
 
 - Enable **one** QoS feature (Chickens is the gentle start) and let
-  a game day pass; watch its actions in the Log.
+  a game day pass; Claudius watches its actions in the Log.
 - Then settle into the loop: observe → runner pass over the live
   sequence → prepare due orders → Philip confirms → verify →
   snapshot at every phase checkpoint.
 
-## What to watch in the Log
+## What to watch in the Log (Claudius)
 
 - Every companion apply (exact envelope, outcome) — the audit trail.
 - QoS events: `JobClaimed` / `JobScheduled` / `JobRefused` (with

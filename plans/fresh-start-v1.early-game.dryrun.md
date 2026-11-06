@@ -2,14 +2,14 @@
 
 > **DRY RUN — nothing was executed.** This report is a read-only evaluation of a plan file against local state captures. No command was prepared, confirmed, applied or sent anywhere; no game was contacted. Orders below are what a supervised executor *would* prepare next.
 
-# Plan dry-run: fresh-start v1.1.0
+# Plan dry-run: fresh-start v1.3.0
 
 - Title: Fresh start — New Haven (normal, Update 4) to self-sufficiency + first rail
 - Map/difficulty (plan): {'name': 'New Haven', 'difficulty': 'normal'} — executor map/difficulty/version match is a live check (§3.1) and cannot be settled from captures; not asserted here.
 - Plan game_version: 0.8.8
 - Requires bridge: >=0.5.0
 - State source: `plans/fixtures/early-game` capture files — game-info date **1-1-18**, tick **51840**, gameId `fixture-early-game-0001`, paused=True, speed=1
-- Population 100, housing 160 (free 60, homeless 0), monthsOfFood 4, starving False; researchedCount 0, current research ResearchCp1Production
+- Population 100, housing 160 (free 60, homeless 0), monthsOfFood 4, starving False; researchedCount 0, current research ResearchCpPacking
 
 ## State-source mapping used by this evaluator
 
@@ -70,7 +70,7 @@ Intent: Consume the comms-station scrap pile in a DISPOSABLE starter cluster: sc
 **Exit gate: FALSE**
 - **FALSE** — `product.quantity(product=Product_Iron) >= 100` — Product_Iron.quantity = 42
 - **TRUE** — `research.has_active_lab() == True` — hasActiveLab = True
-- **TRUE** — `any(research.current() != 'none'; research.queue_length() > 0)` — [TRUE] research.current = ResearchCp1Production; [TRUE] len(queue) = 1 ['ResearchPowerAndMaintenance']
+- **TRUE** — `any(research.current() != 'none'; research.queue_length() > 0)` — [TRUE] research.current = ResearchCpPacking; [TRUE] len(queue) = 1 ['ResearchPowerAndMaintenance']
 
 Checks (evaluated against current state):
 - `p1-scrap-runway` (warning, action=pause-and-report): **FALSE** — not firing — Product_IronScrap.quantity = 850
@@ -83,7 +83,7 @@ Fallbacks: {"on_gate_stall": "pause-and-report", "stall_after": {"months": 2}, "
 Intent: Construction researched → ~4 manual assemblies near the smelter (construction parts priority 1, then mechanical parts, then electronics), maintenance depot online, one farm near the settlement. This is the power+maintenance stability phase: maintenance must never stall from here on.
 
 **Entry gate: FALSE**
-- **UNEVALUABLE** — `research.completed(node=<placeholder Research<Construction>>) == True (implicit)` — node is a §4.5 placeholder (Research<Construction>) — manual-only, never auto-evaluated
+- **FALSE** — `research.completed(node=ResearchCpPacking) == True (implicit)` — ResearchCpPacking in researched list = False
 - **FALSE** — `product.quantity(product=Product_Iron) >= 100` — Product_Iron.quantity = 42
 
 **Exit gate: FALSE**
@@ -171,7 +171,7 @@ Intent: Conveyor Belts kill the truck chaos: electric assemblies, belt-fed lines
 
 **Exit gate: FALSE**
 - **FALSE** — `research.completed(node=ResearchConveyorBelts) == True (implicit)` — ResearchConveyorBelts in researched list = False
-- **FALSE** — `research.completed(node=ResearchShipDockRepair) == True (implicit)` — ResearchShipDockRepair in researched list = False
+- **FALSE** — `research.completed(node=ResearchRepairDock) == True (implicit)` — ResearchRepairDock in researched list = False
 - **FALSE** — `research.completed(node=ResearchFuelStation) == True (implicit)` — ResearchFuelStation in researched list = False
 - **UNEVALUABLE** — `all(any(product.produced(product=Product_ConstructionParts2, window=lastMonth) > 0; product.consumed(product=Product_ConstructionParts2, window=lastMonth) > 0); product.net_flow(product=Product_ConstructionParts2, window=lastMonth) >= 0)` — [UNEVALUABLE] [UNEVALUABLE] Product_ConstructionParts2 not in stats.json products (selector matched zero rows); [UNEVALUABLE] Product_ConstructionParts2 not in stats.json products (selector matched zero rows); [UNEVALUABLE] Product_ConstructionParts2 not in stats.json products (selector matched zero rows)
 - **TRUE** — `census.transports_fully_connected_ratio() >= 0.95` — fullyConnected 4/4 = 1.0000
@@ -206,15 +206,15 @@ Fallbacks: {"on_gate_stall": "skip-phase", "stall_after": {"months": 3}, "on_che
 
 For active phase `phase-1-scrap-starter` [ACTIVE], in plan order:
 
-- **p1-research-construction** — HELD — §4.5 placeholder id in args — manual-only until a human sources the id
-  - command `ResearchStartCmd` args={"nodeId": {"placeholder": "Research<Construction>", "display_name": "Construction", "status": "unsourced-id", "candidates": ["ResearchCp1Production (exists in research_ids.txt, but its display name is unconfirmed \u2014 do NOT assume it is this node)"], "confirm": "Read the node id off the in-game research screen / companion research page before first use."}}
-  - note: Research order #1 (research-order.md): unlocks assemblies, Construction Parts I, Mechanical Parts, Electronics I. Display name 'Construction' is U4-verified (research-tree.md) and the tree calls it a starting tech — it may already be complete at t0, in which case this order is skipped by its verify. No exact id exists in the extracted id list, hence the placeholder: this order is manual-only until the id is sourced.
+- **p1-research-construction** — WOULD PREPARE (command, §12 prepare step — not sent)
+  - command `ResearchStartCmd` args={"nodeId": "ResearchCpPacking"}
+  - note: Research order #1 (research-order.md): unlocks assemblies, Construction Parts I, Mechanical Parts, Electronics I. Id SOURCED 2026-11-06 (plan v1.3.0): shipped proto registration Start("Construction", Ids.Research.CpPacking) in Mafi.Base (ConstructionResearchData) with exactly these unlocks; the string ResearchCpPacking appears in Philip's live bridge researched list. The tree calls it a starting tech — it may already be complete at t0, in which case this order is skipped by its verify. (The old candidate ResearchCp1Production is a goal id, not a research node — see the plan-level assumption.)
   - verify (current state): **FALSE** — [FALSE] researchedCount = 0
 - **p1-research-queue-first15** — WOULD PRESENT (human/agent task — not executed)
-  - manual-step: Queue the first-15 research list (research-order.md) up front in the research UI, in the order the phases below consume it: Construction; Power & Maintenance; Trading Dock; Vehicles & Mining; Beacon; Tools; Concrete Production; Basic Diesel; Synthetic Rubber; Copper Refinement; Construction II; Conveyor Belts; Ship Dock Repair; Groundwater Pump; Fuel Station. Two labs keep research ahead of building.
+  - manual-step: Queue the first-15 research list (research-order.md) up front in the research UI, in the order the phases below consume it: Construction (ResearchCpPacking); Maintenance (listed as 'Power & Maintenance' in older guides; ResearchPowerAndMaintenance); Trading Dock (ResearchTradeDock); Vehicles & Mining (ResearchVehicleAndMining); Beacon; Tools; Advanced concrete (the wiki's 'Concrete Production'; ResearchConcreteAdvanced); Basic Diesel; Synthetic Rubber (ResearchRubberProduction); Copper Refinement; Construction II (ResearchCp2Packing); Conveyor Belts; Ship Dock Repair; Groundwater Pump; Fuel Station. All ids sourced 2026-11-06 (plan v1.3.0). Two labs keep research ahead of building.
 - **p1-build-starter-cluster** — WOULD PRESENT (human/agent task — not executed)
-  - place-blueprint `starter-cluster/scrap-smelter-1furnace-2caster-plus-coal-maker` district=starter-cluster asset_status=not-yet-authored
-  - note: Degrades to a manual build from layout-policy.md's temporary list: first scrap smelter (1 blast furnace + 2 casters on scrap), wood-burning coal maker, diesel generator placed on the OUTPUT side of fuel storage, two research labs. Starter cluster is disposable — build cheap, near the comms station/docks, never anchor a permanent build here.
+  - place-blueprint `starter-cluster/scrap-smelter-1furnace-2caster-plus-coal-maker` district=starter-cluster asset_status=authored
+  - note: Degrades to a manual build from layout-policy.md's temporary list: first scrap smelter (1 blast furnace + 2 casters on scrap), wood-burning coal maker, diesel generator placed on the OUTPUT side of fuel storage, two research labs. Starter cluster is disposable — build cheap, near the comms station/docks, never anchor a permanent build here. Placement route (v1.2.2): the smelter core (pack slug iron-v1) goes through the companion /place flow — human confirm, QoSBuilder job; the coal maker, generator and labs are single-building manual placements (no pack asset contains them — plans-blueprint-status.md ref #1).
 - **p1-tree-clearing-and-dumping** — WOULD PRESENT (human/agent task — not executed)
   - manual-step: Designate tree clearing around the starter cluster, and set controlled ocean waste dumping on the 'flat' setting in a zone AWAY from the ship's docking spot (dumping extends coastline into future building land; keep the south/east coastline stretch reserved for the future big harbour — do not build or dump on it).
 - **p1-resume-time** — WOULD PREPARE (command, §12 prepare step — not sent)
@@ -226,7 +226,7 @@ For active phase `phase-1-scrap-starter` [ACTIVE], in plan order:
 
 ## Summary
 
-- Predicates evaluated (globals invariants/checks plus phase entry/exit gates and phase checks; composites count once): TRUE 15, FALSE 41, UNEVALUABLE 9 (leaf evidence inside composites is in the per-phase tables via the combined evidence strings).
+- Predicates evaluated (globals invariants/checks plus phase entry/exit gates and phase checks; composites count once): TRUE 15, FALSE 42, UNEVALUABLE 8 (leaf evidence inside composites is in the per-phase tables via the combined evidence strings).
 - Plan status: loop position: phase 2 of 8 — phase-1-scrap-starter [ACTIVE].
 - Interpretation notes: (1) `for:` durations — instantaneous FALSE stays FALSE; instantaneous TRUE becomes UNEVALUABLE because one snapshot cannot prove the predicate held for the whole duration (§4.3). (2) A phase counts COMPLETE purely when its exit gate is TRUE (§7/§9 re-derivation from state); human-confirm manual orders inside a gate-complete phase are not re-litigated by the evaluator. (3) Unknown / out-of-vocabulary metrics evaluate UNEVALUABLE with a closed-vocabulary note, never a crash and never a guess.
 

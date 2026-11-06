@@ -2,7 +2,7 @@
 
 > **DRY RUN — nothing was executed.** This report is a read-only evaluation of a plan file against local state captures. No command was prepared, confirmed, applied or sent anywhere; no game was contacted. Orders below are what a supervised executor *would* prepare next.
 
-# Plan dry-run: fresh-start v1.2.2
+# Plan dry-run: fresh-start v1.3.0
 
 - Title: Fresh start — New Haven (normal, Update 4) to self-sufficiency + first rail
 - Map/difficulty (plan): {'name': 'New Haven', 'difficulty': 'normal'} — executor map/difficulty/version match is a live check (§3.1) and cannot be settled from captures; not asserted here.
@@ -10,7 +10,7 @@
 - Requires bridge: >=0.5.0
 - State source: `plans/fixtures/growth/month-12` capture files — game-info date **1-12-15**, tick **993600**, gameId `fixture-growth-0001`, paused=True, speed=1
 - **Sequence mode (§4.3.1):** 12 snapshots, 1-1-18 .. 1-12-15, one gameId `fixture-growth-0001`. `for:` durations evaluate over this history; all other predicates read the latest snapshot. Per-prefix phase history is tabulated below.
-- Population 132, housing 224 (free 92, homeless 0), monthsOfFood 4, starving False; researchedCount 9, current research ResearchCp2
+- Population 132, housing 224 (free 92, homeless 0), monthsOfFood 4, starving False; researchedCount 9, current research ResearchCp2Packing
 
 ## State-source mapping used by this evaluator
 
@@ -34,7 +34,7 @@
 ## Active-phase determination (§9 play-loop rules)
 
 - `phase-0-scout-bootstrap` — **COMPLETE** — exit gate TRUE ([TRUE] population = 132 (bridge-status.json); [TRUE] freeHousingCapacity = 92 (bridge-status.json))
-- `phase-1-scrap-starter` — **COMPLETE** — exit gate TRUE ([TRUE] Product_Iron.quantity = 534; [TRUE] hasActiveLab = True; [TRUE] [TRUE] research.current = ResearchCp2; [FALSE] len(queue) = 0 [])
+- `phase-1-scrap-starter` — **COMPLETE** — exit gate TRUE ([TRUE] Product_Iron.quantity = 534; [TRUE] hasActiveLab = True; [TRUE] [TRUE] research.current = ResearchCp2Packing; [FALSE] len(queue) = 0 [])
 - `phase-2-assembly-power-maintenance` — **COMPLETE** — exit gate TRUE ([TRUE] ResearchPowerAndMaintenance in researched list = True; [TRUE] byProto[MaintenanceDepotT1] = 1 (absent proto counts 0); [TRUE] inner predicate TRUE at every snapshot in the trailing 1-month window (anchor 1-11-15, 2 snapshot(s), span 1.00 months) [for: {'months': 1}]; [TRUE] Product_MechanicalParts.quantity = 23)
 - `phase-3-mining-vehicles` — **COMPLETE** — exit gate TRUE ([TRUE] ResearchVehicleAndMining in researched list = True; [TRUE] Product_Coal.quantity = 604; [TRUE] [TRUE] [TRUE] Product_IronOre produced[lastMonth] = 155; [TRUE] Product_IronOre consumed[lastMonth] = 126; [TRUE] Product_IronOre window=lastMonth: produced 155 - consumed 126 = net 29; [TRUE] [TRUE] [TRUE] Product_Iron produced[lastMonth] = 130; [TRUE] Product_Iron consumed[lastMonth] = 72; [TRUE] Product_Iron window=lastMonth: produced 130 - consumed 72 = net 58)
 - `phase-4-concrete-diesel-rubber` — **ACTIVE** — first non-complete phase; entry gate TRUE, exit gate FALSE
@@ -52,8 +52,8 @@ Each row re-derives phase statuses using only the history up to that snapshot �
 |---|---|---|---|---|---|---|---|---|
 | 1-1-18 | COMPLETE | ACTIVE | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED |
 | 1-2-15 | COMPLETE | ACTIVE | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED |
-| 1-3-15 | COMPLETE | COMPLETE | HELD (U) | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED |
-| 1-4-15 | COMPLETE | COMPLETE | HELD (U) | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED |
+| 1-3-15 | COMPLETE | COMPLETE | ACTIVE | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED |
+| 1-4-15 | COMPLETE | COMPLETE | ACTIVE | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED |
 | 1-5-15 | COMPLETE | COMPLETE | COMPLETE | ACTIVE | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED |
 | 1-6-15 | COMPLETE | COMPLETE | COMPLETE | ACTIVE | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED |
 | 1-7-15 | COMPLETE | COMPLETE | COMPLETE | ACTIVE | NOT REACHED | NOT REACHED | NOT REACHED | NOT REACHED |
@@ -92,7 +92,7 @@ Intent: Consume the comms-station scrap pile in a DISPOSABLE starter cluster: sc
 **Exit gate: TRUE**
 - **TRUE** — `product.quantity(product=Product_Iron) >= 100` — Product_Iron.quantity = 534
 - **TRUE** — `research.has_active_lab() == True` — hasActiveLab = True
-- **TRUE** — `any(research.current() != 'none'; research.queue_length() > 0)` — [TRUE] research.current = ResearchCp2; [FALSE] len(queue) = 0 []
+- **TRUE** — `any(research.current() != 'none'; research.queue_length() > 0)` — [TRUE] research.current = ResearchCp2Packing; [FALSE] len(queue) = 0 []
 
 Checks (evaluated against current state):
 - `p1-scrap-runway` (warning, action=pause-and-report): **FALSE** — not firing — Product_IronScrap.quantity = 730
@@ -104,8 +104,8 @@ Fallbacks: {"on_gate_stall": "pause-and-report", "stall_after": {"months": 2}, "
 
 Intent: Construction researched → ~4 manual assemblies near the smelter (construction parts priority 1, then mechanical parts, then electronics), maintenance depot online, one farm near the settlement. This is the power+maintenance stability phase: maintenance must never stall from here on.
 
-**Entry gate: UNEVALUABLE**
-- **UNEVALUABLE** — `research.completed(node=<placeholder Research<Construction>>) == True (implicit)` — node is a §4.5 placeholder (Research<Construction>) — manual-only, never auto-evaluated
+**Entry gate: TRUE**
+- **TRUE** — `research.completed(node=ResearchCpPacking) == True (implicit)` — ResearchCpPacking in researched list = True
 - **TRUE** — `product.quantity(product=Product_Iron) >= 100` — Product_Iron.quantity = 534
 
 **Exit gate: TRUE**
@@ -193,7 +193,7 @@ Intent: Conveyor Belts kill the truck chaos: electric assemblies, belt-fed lines
 
 **Exit gate: FALSE**
 - **FALSE** — `research.completed(node=ResearchConveyorBelts) == True (implicit)` — ResearchConveyorBelts in researched list = False
-- **FALSE** — `research.completed(node=ResearchShipDockRepair) == True (implicit)` — ResearchShipDockRepair in researched list = False
+- **FALSE** — `research.completed(node=ResearchRepairDock) == True (implicit)` — ResearchRepairDock in researched list = False
 - **FALSE** — `research.completed(node=ResearchFuelStation) == True (implicit)` — ResearchFuelStation in researched list = False
 - **UNEVALUABLE** — `all(any(product.produced(product=Product_ConstructionParts2, window=lastMonth) > 0; product.consumed(product=Product_ConstructionParts2, window=lastMonth) > 0); product.net_flow(product=Product_ConstructionParts2, window=lastMonth) >= 0)` — [UNEVALUABLE] [UNEVALUABLE] Product_ConstructionParts2 not in stats.json products (selector matched zero rows); [UNEVALUABLE] Product_ConstructionParts2 not in stats.json products (selector matched zero rows); [UNEVALUABLE] Product_ConstructionParts2 not in stats.json products (selector matched zero rows)
 - **TRUE** — `census.transports_fully_connected_ratio() >= 0.95` — fullyConnected 11/11 = 1.0000
@@ -228,32 +228,34 @@ Fallbacks: {"on_gate_stall": "skip-phase", "stall_after": {"months": 3}, "on_che
 
 For active phase `phase-4-concrete-diesel-rubber` [ACTIVE], in plan order:
 
-- **p4-research-concrete-production** — HELD — §4.5 placeholder id in args — manual-only until a human sources the id
-  - command `ResearchStartCmd` args={"nodeId": {"placeholder": "Research<ConcreteProduction>", "display_name": "Concrete Production", "status": "unsourced-id", "candidates": ["ResearchConcreteAdvanced (exists in research_ids.txt but is a LATER 'advanced' node per its name \u2014 do NOT substitute it for this early node)"], "confirm": "Read the node id off the in-game research screen before first use."}}
-  - note: Research order #7. Display name 'Concrete Production' is U4-verified (research-tree.md: wiki Required Research on Crusher, Rotary Kiln, Concrete Mixer) — but no matching id exists in the extracted id list, so this stays a placeholder and the order is manual-only until sourced. Never write 'Basic Concrete' — that name is explicitly superseded.
+- **p4-research-concrete-production** — WOULD PREPARE (command, §12 prepare step — not sent)
+  - command `ResearchStartCmd` args={"nodeId": "ResearchConcreteAdvanced"}
+  - note: Research order #7. Id SOURCED 2026-11-06 (plan v1.3.0): no node displays as 'Concrete Production' in the shipped data; the wiki Required Research trio for this step (Crusher, Rotary Kiln, Concrete Mixer) is the exact unlock list of the node registered as Start("Advanced concrete", Ids.Research.ConcreteAdvanced) in Mafi.Base (MiningAndSmeltingResearchData) — shipped display name 'Advanced concrete'. The v1.2.x caution against substituting ResearchConcreteAdvanced was based on its name alone and is superseded by the proto data; the string also appears in Philip's live bridge researched list.
+  - verify (current state): **FALSE** — [FALSE] [FALSE] research.current = ResearchCp2Packing; [FALSE] queue = []; contains ResearchConcreteAdvanced = False
 - **p4-build-limestone-kiln-concrete** — WOULD PRESENT (human/agent task — not executed)
   - place-blueprint `concrete-district/kiln-plus-mixer-first` district=concrete-district asset_status=authored
   - note: Limestone mine + rotary kiln + concrete mixer (starter phase 4), using the phase-0 scout's limestone position. Transitional siting: concrete production will be rebuilt at scale later; do not overbuild it here. Placement route (v1.2.2): the kiln+mixer block (pack slug concrete-v1) goes through the companion /place flow — human confirm, QoSBuilder job; the limestone mine is deposit-sited and placed manually.
 - **p4-research-basic-diesel** — WOULD PREPARE (command, §12 prepare step — not sent)
   - command `ResearchStartCmd` args={"nodeId": "ResearchBasicDiesel"}
   - note: Research order #8. Id exists in research_ids.txt; the exact display form 'Basic Diesel' is single-source in research-tree.md (Charles says 'diesel'; Medium guide corroborates the progression) — flag carried.
-  - verify (current state): **FALSE** — [FALSE] [FALSE] research.current = ResearchCp2; [FALSE] queue = []; contains ResearchBasicDiesel = False
+  - verify (current state): **FALSE** — [FALSE] [FALSE] research.current = ResearchCp2Packing; [FALSE] queue = []; contains ResearchBasicDiesel = False
 - **p4-build-basic-diesel-chain** — WOULD PRESENT (human/agent task — not executed)
   - place-blueprint `oil-district/basic-diesel-3pumps-distiller` district=oil-district asset_status=authored
   - note: At the oil patch (phase-0 scout): 3 oil pumps + basic distiller, wastewater dumped — layout policy explicitly calls this design 'not the most scalable' and temporary. Diesel generators stay on the output side of fuel storage (bottlenecks.md structural rule). Placement route (v1.2.2): the distiller block (pack slug diesel-v1) goes through the companion /place flow — human confirm, QoSBuilder job; the 3 pumps sit on oil-patch tiles and are placed manually (plans-blueprint-status.md ref #8).
 - **p4-diesel-storage-alert** — WOULD PREPARE (command, §12 prepare step — not sent)
   - command `StorageAlertSetEnabledCmd` args={"storageId": {"$entity": {"proto": "StorageFluidT2", "product": "Product_Diesel", "match": "first"}, "flags": ["proto-id-unconfirmed"]}, "isEnabled": true, "isAbove": false}
   - note: Turn on the game's own storage alert for the diesel buffer, firing when the level falls BELOW its threshold (SPEC §12.7: align with native alerts rather than duplicating them). Arg names verified against live/commands.json 2026-11-02 (storageId / isEnabled / isAbove). StorageAlertSetThresholdCmd (wired) may set the level in-session.
-- **p4-research-synthetic-rubber** — HELD — §4.5 placeholder id in args — manual-only until a human sources the id
-  - command `ResearchStartCmd` args={"nodeId": {"placeholder": "Research<SyntheticRubber>", "display_name": "Synthetic Rubber", "status": "unsourced-id", "candidates": ["ResearchRubber", "ResearchRubberProduction"], "confirm": "Two candidate ids exist in research_ids.txt; pick the one the research screen shows for the rubber-maker unlock, then amend the plan."}}
-  - note: Research order #9. 'Cannot be postponed: no rubber → no vehicles/electronics → no maintenance → death spiral' (research-order.md). Display name is single-source (Steam list; Charles says 'rubber'). Placeholder because two candidate ids exist and choosing silently would be inventing.
+- **p4-research-synthetic-rubber** — WOULD PREPARE (command, §12 prepare step — not sent)
+  - command `ResearchStartCmd` args={"nodeId": "ResearchRubberProduction"}
+  - note: Research order #9. 'Cannot be postponed: no rubber, no vehicles/electronics, no maintenance, no death spiral' (research-order.md). Id SOURCED 2026-11-06 (plan v1.3.0): shipped proto registration Start("Synthetic rubber", Ids.Research.RubberProduction) in Mafi.Base (RefineryResearchData; unlocks VacuumDistillationTower + the diesel/coal rubber recipe); of the two old candidates, ResearchRubberProduction is the node and ResearchRubber is not registered as one. The string appears in Philip's live bridge researched list.
+  - verify (current state): **FALSE** — [FALSE] [FALSE] research.current = ResearchCp2Packing; [FALSE] queue = []; contains ResearchRubberProduction = False
 - **p4-build-rubber-maker** — WOULD PRESENT (human/agent task — not executed)
   - place-blueprint `oil-district/rubber-maker` district=oil-district asset_status=authored
   - note: Rubber maker next to the basic diesel chain (starter phase 4). Placement route (v1.2.2): pack slug rubber-v1 — companion /place flow, human confirm, QoSBuilder job.
 
 ## Summary
 
-- Predicates evaluated (globals invariants/checks plus phase entry/exit gates and phase checks; composites count once): TRUE 36, FALSE 26, UNEVALUABLE 3 (leaf evidence inside composites is in the per-phase tables via the combined evidence strings).
+- Predicates evaluated (globals invariants/checks plus phase entry/exit gates and phase checks; composites count once): TRUE 37, FALSE 26, UNEVALUABLE 2 (leaf evidence inside composites is in the per-phase tables via the combined evidence strings).
 - Plan status: loop position: phase 5 of 8 — phase-4-concrete-diesel-rubber [ACTIVE].
 - Interpretation notes: (1) `for:` durations evaluate over the state sequence per §4.3.1 — TRUE only with an anchor snapshot at/before the window start and the inner predicate TRUE at every snapshot in the window; FALSE if it broke anywhere in the window; UNEVALUABLE on insufficient history, never by default. (2) A phase counts COMPLETE purely when its exit gate is TRUE (§7/§9 re-derivation from state); human-confirm manual orders inside a gate-complete phase are not re-litigated by the evaluator. (3) Unknown / out-of-vocabulary metrics evaluate UNEVALUABLE with a closed-vocabulary note, never a crash and never a guess.
 

@@ -1,6 +1,6 @@
 # fresh-start-v1 — Captains of Industry, New Haven, normal difficulty, Update 4.
-# Version history lives in plan.changelog below (current: v1.2.2,
-# 2026-11-05 — Update 4.3 readiness pass for the supervised weekend run).
+# Version history lives in plan.changelog below (current: v1.3.0,
+# 2026-11-06 — research placeholder ids retired from shipped game data).
 #
 # Format: ../GAME-PLAN-FORMAT.md (Game-Plan Format v1). Read it first; this
 # file uses only its closed predicate vocabulary, its order kinds, and its
@@ -19,7 +19,7 @@
 
 plan:
   id: fresh-start
-  version: 1.2.2
+  version: 1.3.0
   title: "Fresh start — New Haven (normal, Update 4) to self-sufficiency + first rail"
   map: {name: "New Haven", difficulty: normal}
   game_version: "0.8.8"            # Update 4.3 — the version Philip will run (his fresh-start call, 2026-11-05); format §3.1: the plan targets the version being run
@@ -27,6 +27,53 @@ plan:
   author: "Claudius (overnight build, 2026-11-02)"
   created: 2026-11-02
   changelog:
+    - version: 1.3.0
+      date: 2026-11-06
+      change: >-
+        Research placeholder ids RETIRED from a primary source: the
+        shipped game's own proto registrations (Mafi.Base.dll,
+        Mafi.Base.Prototypes.Research — decompiled 2026-11-06),
+        cross-checked against the bridge /research capture from
+        Philip's live game (live-check/current/bridge-research.json),
+        whose researched list carries the exact id strings. (1)
+        'Construction' = ResearchCpPacking —
+        ConstructionResearchData registers Start("Construction",
+        Ids.Research.CpPacking) unlocking AssemblyManual + the
+        CpAssembly / MechPartsIronAssembly / ElectronicsAssembly
+        recipes, exactly this plan's unlock list. The old sole
+        candidate ResearchCp1Production is NOT a research node at
+        all: it is a GOAL id (GoalsData: GoalToResearchNode
+        "ResearchCp1Production" targets CpPacking), which is why it
+        sat among the earliest goal strings and in the mixed id dump
+        behind coi/data/research_ids.txt. (2) 'Construction II' =
+        ResearchCp2Packing (same file: Start("Construction II",
+        Ids.Research.Cp2Packing), AssemblyElectrified + Cp2Assembly).
+        (3) 'Synthetic Rubber' = ResearchRubberProduction
+        (RefineryResearchData: Start("Synthetic rubber",
+        Ids.Research.RubberProduction)). (4) 'Concrete Production' =
+        ResearchConcreteAdvanced: no node displays as 'Concrete
+        Production' in the shipped data; the wiki Required Research
+        trio (Crusher, Rotary Kiln, Concrete Mixer) is this node's
+        exact unlock list (MiningAndSmeltingResearchData) and its
+        shipped display name is 'Advanced concrete' — the v1.2.x
+        do-not-substitute caution was name-based and is superseded
+        by the proto data. (5) The ResearchPowerAndMaintenance
+        ambiguity flag is retired: ResearchPowerMaintenance is not
+        a research node in the shipped data (no proto, no Ids
+        field); the node's shipped display name is 'Maintenance'.
+        (6) 'Groundwater Pump' = ResearchUndergroundWater
+        (Start("Groundwater pump", Ids.Research.UndergroundWater)) —
+        the plan's inferred candidate was the right node. (7) A
+        CORRECTED asserted id: the phase-6 ship-dock order named
+        ResearchShipDockRepair, which is again a goal id
+        (GoalToResearchNode "ResearchShipDockRepair" targets
+        Ids.Research.RepairDock); the node is ResearchRepairDock
+        (Start("Ship dock repair", Ids.Research.RepairDock)) and the
+        order would have failed at prepare. Affected orders/gates are now executable ResearchStartCmd /
+        research.completed references instead of §4.5 placeholders;
+        no thresholds, gates (beyond the id references themselves),
+        phase structure or autonomy changed. Fixtures regenerated
+        with the corrected ids (tools/gen_growth_fixtures.py).
     - version: 1.2.2
       date: 2026-11-05
       change: >-
@@ -85,9 +132,9 @@ plan:
     - claim: "Research display names in the starter skill map to game node ids as recorded per-order in the phases below; mappings not marked 'sourced-id' are candidates or placeholders."
       source: "research-order.md + research-tree.md (display-name verification) cross-checked against coi/data/research_ids.txt (extracted game ids)"
       status: mixed-per-order
-    - claim: "The phase-2 entry placeholder Research<Construction> (display name 'Construction') was re-investigated 2026-11-03 (plan v1.2.0) and its id remains UNSOURCED. Identification attempt: research-order.md (#1 'Construction', unlocks Construction Parts I / Mechanical Parts / Electronics I) and research-tree.md ('Construction' [U4-verified], starting tech) give display names only; coi/data/research_ids.txt gives ids only; the planner dataset carries no research data at all; the API/bridge research captures carry ids only — NO project source holds an id-to-display-name mapping for research nodes. Sole candidate: ResearchCp1Production (research_ids.txt line 42; the save-string dump's Goal_ResearchCp1Production sits among the earliest goals, next to Goal_BuildResearchLab / Goal_BuildAssembly). 'Cp1' most plausibly reads 'Construction Parts 1', which fits the unlock list's first item but does NOT prove this node displays as 'Construction' — it could be a distinct production node. Per format §4.5 the placeholder therefore STAYS and the candidate is documented, not substituted. Resolution path: read the id off the in-game research screen (or the companion research page on a v0.6.2+ bridge, whose `researched` list gives real ids) on a fresh save before phase 2 is first entered."
-      source: "research-order.md; research-tree.md; coi/data/research_ids.txt; coi-save-reader/probe/strings_all.txt; daxfb dataset (no research section)"
-      status: unsourced-id-investigated
+    - claim: "The phase-2 entry research node (display name 'Construction') is ResearchCpPacking — RETIRED 2026-11-06 (plan v1.3.0) from the shipped game's proto registrations (Mafi.Base.dll, ConstructionResearchData: Start(\"Construction\", Ids.Research.CpPacking) with this plan's exact unlock list), cross-checked against Philip's live bridge /research capture, whose researched list contains the string ResearchCpPacking. The 2026-11-03 investigation's sole candidate ResearchCp1Production is a GOAL id, not a research node (GoalsData: GoalToResearchNode \"ResearchCp1Production\" targets CpPacking) — the mixed id dump behind coi/data/research_ids.txt contains goal ids, which is why no id-to-name source seemed to exist. Sibling retirements in the same pass: Construction II = ResearchCp2Packing, Synthetic Rubber = ResearchRubberProduction, 'Concrete Production' = ResearchConcreteAdvanced (shipped display 'Advanced concrete')."
+      source: "Mafi.Base.dll decompiled 2026-11-06 (Mafi.Base.Prototypes.Research/ConstructionResearchData.cs, RefineryResearchData.cs, MiningAndSmeltingResearchData.cs; Mafi.Base.Prototypes.Messages/GoalsData.cs); live-check/current/bridge-research.json (researched list)"
+      status: sourced-id-retired
     - claim: "Blueprint placement mechanism (v1.2.2): a place-blueprint order with asset_status: authored and a pack_slug is placed through the companion /place flow — the layout ships inside the companion's embedded library (tools/gen_blueprint_library.py, decode-verified at generation); Philip prepares and confirms in the website; only the confirm writes a single-use, expiring, gameId-pinned QoSBuilder job file; the mod places the layout as ordinary construction sites in one batch; the placement verdict is the companion's before/after census diff, and the order's own completion (human-confirm or verify predicates) is unchanged. Refs with asset_status: not-yet-authored have no library asset and still degrade to manual builds. The pack's strings are NOT in-game tested (library testing_status), so the first placement on the new save happens only under Philip's in-the-moment confirm."
       source: "SPEC Addendum XVII (QoSBuilder job-file contract); coi/data/blueprint-library.json (82 entries; all six fresh-start pack_slugs present: iron-v1, iron-v2, starter-assemblies-v1, concrete-v1, diesel-v1, rubber-v1)"
       status: sourced
@@ -236,14 +283,9 @@ phases:
     orders:
       - id: p1-research-construction
         do: ResearchStartCmd
-        args:
-          nodeId: {placeholder: "Research<Construction>", display_name: "Construction",
-                   status: unsourced-id,
-                   candidates: ["ResearchCp1Production — sole candidate (research_ids.txt line 42; Goal_ResearchCp1Production sits among the earliest goal strings). 'Cp1' plausibly = 'Construction Parts 1', matching this node's first unlock, but NO project source maps research ids to display names (checked research-order.md, research-tree.md, the planner dataset, API/bridge captures), so identity is unproven — do NOT assume it is this node. See the plan-level assumption 're-investigated 2026-11-03' for the full reasoning."],
-                   confirm: "Read the node id off the in-game research screen / companion research page before first use."}
-        note: "Research order #1 (research-order.md): unlocks assemblies, Construction Parts I, Mechanical Parts, Electronics I. Display name 'Construction' is U4-verified (research-tree.md) and the tree calls it a starting tech — it may already be complete at t0, in which case this order is skipped by its verify. No exact id exists in the extracted id list, hence the placeholder: this order is manual-only until the id is sourced."
+        args: {nodeId: ResearchCpPacking}
+        note: "Research order #1 (research-order.md): unlocks assemblies, Construction Parts I, Mechanical Parts, Electronics I. Id SOURCED 2026-11-06 (plan v1.3.0): shipped proto registration Start(\"Construction\", Ids.Research.CpPacking) in Mafi.Base (ConstructionResearchData) with exactly these unlocks; the string ResearchCpPacking appears in Philip's live bridge researched list. The tree calls it a starting tech — it may already be complete at t0, in which case this order is skipped by its verify. (The old candidate ResearchCp1Production is a goal id, not a research node — see the plan-level assumption.)"
         class: research
-        flags: [placeholder-id]
         verify:
           - {metric: research.researched_count, op: ">=", value: 1}
       - id: p1-research-queue-first15
@@ -251,12 +293,17 @@ phases:
         step: >-
           Queue the first-15 research list (research-order.md) up front in
           the research UI, in the order the phases below consume it:
-          Construction; Power & Maintenance; Trading Dock; Vehicles &
-          Mining; Beacon; Tools; Concrete Production; Basic Diesel;
-          Synthetic Rubber; Copper Refinement; Construction II; Conveyor
-          Belts; Ship Dock Repair; Groundwater Pump; Fuel Station.
-          Two labs keep research ahead of building.
-        why: "The per-node ResearchQueueDequeueCmd orders live in their consuming phases (so gates stay honest); this step is the starter skill's queue-up-front instruction, done by the human because several node ids are placeholders/candidates that must be eyeballed against the research screen while queueing."
+          Construction (ResearchCpPacking); Maintenance (listed as
+          'Power & Maintenance' in older guides; ResearchPowerAndMaintenance);
+          Trading Dock (ResearchTradeDock); Vehicles & Mining
+          (ResearchVehicleAndMining); Beacon; Tools; Advanced concrete
+          (the wiki's 'Concrete Production'; ResearchConcreteAdvanced);
+          Basic Diesel; Synthetic Rubber (ResearchRubberProduction);
+          Copper Refinement; Construction II (ResearchCp2Packing);
+          Conveyor Belts; Ship Dock Repair; Groundwater Pump; Fuel Station.
+          All ids sourced 2026-11-06 (plan v1.3.0). Two labs keep research
+          ahead of building.
+        why: "The per-node ResearchQueueDequeueCmd orders live in their consuming phases (so gates stay honest); this step is the starter skill's queue-up-front instruction. It stays a human step (bulk queueing in the UI is one pass), but since plan v1.3.0 every id in the list is sourced — the eyeball-against-the-screen rationale is retired."
         class: manual
         completion: human-confirm
       - id: p1-build-starter-cluster
@@ -331,18 +378,14 @@ phases:
     skippable: false
     entry_gate:
       - metric: research.completed
-        node: {placeholder: "Research<Construction>", display_name: "Construction",
-               status: unsourced-id,
-               candidates: ["ResearchCp1Production — sole candidate, identity unproven (see p1-research-construction and the plan-level assumption); NOT substituted in v1.2.0"],
-               confirm: "Same placeholder as p1-research-construction; resolves when that order's id is sourced."}
+        node: ResearchCpPacking
       - {metric: product.quantity, product: Product_Iron, op: ">=", value: 100}
     orders:
       - id: p2-research-power-and-maintenance
         do: ResearchStartCmd
         args: {nodeId: ResearchPowerAndMaintenance}
-        note: "Research order #2. Display name 'Power & Maintenance' is U4-verified (research-tree.md, wiki Required Research on Diesel Generator + Maintenance Depot). ID ambiguity flagged: research_ids.txt contains BOTH ResearchPowerAndMaintenance and ResearchPowerMaintenance — confirm on the research screen which is the live early node before applying; if it is the other, amend the plan (version bump) rather than guessing."
+        note: "Research order #2. Id CONFIRMED 2026-11-06 (plan v1.3.0): shipped proto registration Start(\"Maintenance\", Ids.Research.PowerAndMaintenance) in Mafi.Base (unlocks MaintenanceDepotT0), and ResearchPowerAndMaintenance appears in Philip's live bridge researched list. The flagged ambiguity is retired: ResearchPowerMaintenance is not a research node in the shipped data (no proto registration, no Ids field) — it reached research_ids.txt via the mixed goal/other id dump. Note the node's shipped display name is 'Maintenance'; 'Power & Maintenance' is the older guides' name."
         class: research
-        flags: [single-source, id-ambiguity]
         verify:
           - any:
               - {metric: research.current, op: "==", value: ResearchPowerAndMaintenance}
@@ -570,14 +613,13 @@ phases:
     orders:
       - id: p4-research-concrete-production
         do: ResearchStartCmd
-        args:
-          nodeId: {placeholder: "Research<ConcreteProduction>", display_name: "Concrete Production",
-                   status: unsourced-id,
-                   candidates: ["ResearchConcreteAdvanced (exists in research_ids.txt but is a LATER 'advanced' node per its name — do NOT substitute it for this early node)"],
-                   confirm: "Read the node id off the in-game research screen before first use."}
-        note: "Research order #7. Display name 'Concrete Production' is U4-verified (research-tree.md: wiki Required Research on Crusher, Rotary Kiln, Concrete Mixer) — but no matching id exists in the extracted id list, so this stays a placeholder and the order is manual-only until sourced. Never write 'Basic Concrete' — that name is explicitly superseded."
+        args: {nodeId: ResearchConcreteAdvanced}
+        note: "Research order #7. Id SOURCED 2026-11-06 (plan v1.3.0): no node displays as 'Concrete Production' in the shipped data; the wiki Required Research trio for this step (Crusher, Rotary Kiln, Concrete Mixer) is the exact unlock list of the node registered as Start(\"Advanced concrete\", Ids.Research.ConcreteAdvanced) in Mafi.Base (MiningAndSmeltingResearchData) — shipped display name 'Advanced concrete'. The v1.2.x caution against substituting ResearchConcreteAdvanced was based on its name alone and is superseded by the proto data; the string also appears in Philip's live bridge researched list."
         class: research
-        flags: [placeholder-id]
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchConcreteAdvanced}
+              - {metric: research.queue_contains, node: ResearchConcreteAdvanced, op: "==", value: true}
       - id: p4-build-limestone-kiln-concrete
         do: place-blueprint
         blueprint_ref: "concrete-district/kiln-plus-mixer-first"
@@ -617,14 +659,13 @@ phases:
         flags: [args-recheck-at-prepare]
       - id: p4-research-synthetic-rubber
         do: ResearchStartCmd
-        args:
-          nodeId: {placeholder: "Research<SyntheticRubber>", display_name: "Synthetic Rubber",
-                   status: unsourced-id,
-                   candidates: ["ResearchRubber", "ResearchRubberProduction"],
-                   confirm: "Two candidate ids exist in research_ids.txt; pick the one the research screen shows for the rubber-maker unlock, then amend the plan."}
-        note: "Research order #9. 'Cannot be postponed: no rubber → no vehicles/electronics → no maintenance → death spiral' (research-order.md). Display name is single-source (Steam list; Charles says 'rubber'). Placeholder because two candidate ids exist and choosing silently would be inventing."
+        args: {nodeId: ResearchRubberProduction}
+        note: "Research order #9. 'Cannot be postponed: no rubber, no vehicles/electronics, no maintenance, no death spiral' (research-order.md). Id SOURCED 2026-11-06 (plan v1.3.0): shipped proto registration Start(\"Synthetic rubber\", Ids.Research.RubberProduction) in Mafi.Base (RefineryResearchData; unlocks VacuumDistillationTower + the diesel/coal rubber recipe); of the two old candidates, ResearchRubberProduction is the node and ResearchRubber is not registered as one. The string appears in Philip's live bridge researched list."
         class: research
-        flags: [placeholder-id, single-source]
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchRubberProduction}
+              - {metric: research.queue_contains, node: ResearchRubberProduction, op: "==", value: true}
       - id: p4-build-rubber-maker
         do: place-blueprint
         blueprint_ref: "oil-district/rubber-maker"
@@ -708,14 +749,13 @@ phases:
         completion: human-confirm
       - id: p5-research-construction-2
         do: ResearchStartCmd
-        args:
-          nodeId: {placeholder: "Research<ConstructionII>", display_name: "Construction II",
-                   status: inferred-mapping,
-                   candidates: ["ResearchCp2 (Cp2 = Construction Parts II; the mapping from the 'Construction II' display name to this id is INFERRED, not sourced)"],
-                   confirm: "Confirm on the research screen that the candidate node unlocks electric assemblies / Construction Parts II before applying."}
-        note: "Research order #11: electric assemblies (2x manual speed) + yellow construction parts; gateway to automation. Display name is single-source (research-tree.md: Steam list + Medium guide; Charles never says it)."
+        args: {nodeId: ResearchCp2Packing}
+        note: "Research order #11: electric assemblies (2x manual speed) + yellow construction parts; gateway to automation. Id SOURCED 2026-11-06 (plan v1.3.0): shipped proto registration Start(\"Construction II\", Ids.Research.Cp2Packing) in Mafi.Base (ConstructionResearchData; unlocks AssemblyElectrified + Cp2Assembly recipe) — the Cp2 = Construction Parts II reading was right, but the full node id is ResearchCp2Packing, confirmed in Philip's live bridge researched list."
         class: research
-        flags: [placeholder-id, single-source]
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchCp2Packing}
+              - {metric: research.queue_contains, node: ResearchCp2Packing, op: "==", value: true}
       - id: p5-build-permanent-assembly-area
         do: place-blueprint
         blueprint_ref: "assembly-district/permanent-conveyor-ready-v1"
@@ -815,14 +855,13 @@ phases:
         completion: human-confirm
       - id: p6-research-ship-dock-repair
         do: ResearchStartCmd
-        args: {nodeId: ResearchShipDockRepair}
-        note: "Research order #13 (U4-verified). A ResearchRepairDock id also exists (likely the dock building repair line) — flagged, not conflated."
+        args: {nodeId: ResearchRepairDock}
+        note: "Research order #13. Id CORRECTED 2026-11-06 (plan v1.3.0): this order previously named ResearchShipDockRepair, which is a GOAL id (GoalsData: GoalToResearchNode \"ResearchShipDockRepair\" targets Ids.Research.RepairDock) and would have failed at prepare. The node is ResearchRepairDock — shipped registration Start(\"Ship dock repair\", Ids.Research.RepairDock) in Mafi.Base (ConstructionResearchData; unlocks the Shipyard2 layout entity), confirmed in Philip's live bridge researched list. The old note's conflation warning had the relationship backwards and is retired."
         class: research
-        flags: [id-ambiguity]
         verify:
           - any:
-              - {metric: research.current, op: "==", value: ResearchShipDockRepair}
-              - {metric: research.queue_contains, node: ResearchShipDockRepair, op: "==", value: true}
+              - {metric: research.current, op: "==", value: ResearchRepairDock}
+              - {metric: research.queue_contains, node: ResearchRepairDock, op: "==", value: true}
       - id: p6-repair-ship-and-explore
         do: manual-step
         step: >-
@@ -835,14 +874,13 @@ phases:
         completion: human-confirm
       - id: p6-research-groundwater-pump
         do: ResearchStartCmd
-        args:
-          nodeId: {placeholder: "Research<GroundwaterPump>", display_name: "Groundwater Pump",
-                   status: inferred-mapping,
-                   candidates: ["ResearchUndergroundWater (name-adjacent id in research_ids.txt; mapping inferred, not sourced)"],
-                   confirm: "Confirm on the research screen that the candidate unlocks the groundwater pump building."}
-        note: "Research order #14 (display name U4-verified; id mapping inferred). Scalable water replaces rainwater collectors."
+        args: {nodeId: ResearchUndergroundWater}
+        note: "Research order #14. Id SOURCED 2026-11-06 (plan v1.3.0): shipped proto registration Start(\"Groundwater pump\", Ids.Research.UndergroundWater) in Mafi.Base — the plan's inferred candidate was the right node; the string appears in Philip's live bridge researched list. Scalable water replaces rainwater collectors."
         class: research
-        flags: [placeholder-id]
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchUndergroundWater}
+              - {metric: research.queue_contains, node: ResearchUndergroundWater, op: "==", value: true}
       - id: p6-research-fuel-station
         do: ResearchStartCmd
         args: {nodeId: ResearchFuelStation}
@@ -887,7 +925,7 @@ phases:
         action: crisis-protocol
     exit_gate:
       - {metric: research.completed, node: ResearchConveyorBelts}
-      - {metric: research.completed, node: ResearchShipDockRepair}
+      - {metric: research.completed, node: ResearchRepairDock}
       - {metric: research.completed, node: ResearchFuelStation}
       - all:
           - any:
