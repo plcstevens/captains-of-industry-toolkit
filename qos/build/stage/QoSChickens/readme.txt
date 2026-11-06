@@ -1,7 +1,18 @@
-QoS Chickens v0.1.0 — animal farm distribution for the QoS suite.
+QoS Chickens v0.1.2 — animal farm distribution for the QoS suite.
 Author: Lewis Cameron. For Captain of Industry v0.8.8 (Update 4.3).
 Requires: QoSCore >= 0.1.0 (install it first, or use the combined
 QoS suite pack, which contains both folders).
+
+VERSION 0.1.2 — SAVE FIX (read this if you had 0.1.1)
+Version 0.1.1 of this mod PREVENTED THE GAME FROM SAVING:
+saving failed with "Failed to create generic serializer for
+'{cls}'". The cause: the mod's daily service subscribes to the
+game's calendar, and that subscription is itself written into
+save files — 0.1.1's service class could not be written. Your
+game and your existing saves were never harmed (the save fails
+before anything is written). 0.1.2 fixes it with the game's own
+sanctioned serializer pattern. If 0.1.1 is installed, REPLACE
+its folder with this one — do not keep both.
 
 WHAT IT DOES
 Once per in-game day (at day end, after that day's births and
@@ -66,8 +77,22 @@ DEFAULTS (change them in Settings -> QoS Chickens)
   log_moves                   true    one log line per scheduled
                                       move, prefixed QoS.Chickens:
 
+ACTIVITY RECORD
+Every move this mod schedules is recorded to the QoS activity feed
+(%APPDATA%\Captain of Industry\QoS\events-v1.jsonl) by QoSCore,
+and shows on the CoI Companion website's Log page. Controlled by
+QoSCore's activity_log_enabled setting (default on).
+
 REMOVAL SAFETY
-The mod registers no prototypes, recipes or entities and stores
-nothing in your save beyond its own settings values (inert once
-the mod is gone). Delete the QoSChickens folder to remove it;
-animal counts in your save are untouched vanilla state.
+The mod registers no prototypes, recipes or entities. One
+honest exception since 0.1.2: the balancer's calendar
+subscription is serialized into saves written while the mod is
+installed (that is how the game's saveable calendar events
+work), so the manifest declares can_remove_from_saved_game =
+false — if a save made with this mod installed is loaded
+without it, the game will refuse with a clear message instead
+of risking a damaged save. To remove the mod entirely, delete
+its folder while playing a save that predates installing it
+(or just leave the folder in place: it ships disabled and does
+nothing until enabled). Animal counts in your save are
+untouched vanilla state either way.

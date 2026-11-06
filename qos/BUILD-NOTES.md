@@ -939,3 +939,320 @@ backfill idempotency, import counts/dedupe, ISO-8601 parsing) and
 - QoSCoreService's ICalendar injection (see deviation 2).
 - The companion's Log page against a real feed (scratch feed
   verified; real one awaits the mods running).
+
+# QoS build notes — round 7 (2026-11-05): THE SAVE-SERIALIZER INCIDENT — suite 0.5.1 (Chickens / VehicleRecovery / PriorityActuator 0.1.2)
+
+## Symptom (live, Philip's screenshot, 2026-11-05 ~19:32)
+
+Saving ANY game with suite 0.5.0 installed failed:
+
+    Failed to save the game '...Prosperous Border\26-11-05_16-43-autosave-paused.save':
+    Failed to create generic serializer for 'ChickenBalancer'.
+    Mafi.Serialization.BlobWriter.WriteGeneric -> DynamicDispatchClassSerializer
+    -> Mafi.EventBase`1+CallbackSaveData[TAction].Serialize -> Lyst`1.SerializeData
+
+The game itself was unharmed (still paused at the same tick); only
+saving was broken. Side effect worth noting: the incident PROVES the
+suite loads in-game and QoSCore dependency resolution works —
+ChickenBalancer was constructed and subscribed, which was the
+long-open live-check item.
+
+## Root cause (decompiled from the 0.8.8 assemblies; evidence in bridge MODDING-NOTES round 11)
+
+1. `ICalendar`'s events are SAVED events (`Mafi.EventBase<Action>`).
+   `Add(owner, callback)` stores `CallbackSaveData { Owner, DeclaringType,
+   MethodName }` in `m_callbacksSaveData`, and `EventBase.SerializeData`
+   writes that list into every save.
+2. `CallbackSaveData.Serialize` calls `writer.WriteGeneric(value.Owner)`:
+   the callback TARGET OBJECT is generic-serialized by runtime type.
+3. The eligibility rule (BlobWriter / GenericSerializersFactory /
+   SerializerGenerator, quoted): a concrete class gets a serializer
+   only via `DirectCallSerializer<T>`, whose constructor requires
+   public static methods found by
+   `t.GetMethod("Serialize", BindingFlags 24 /* Public|Static */)`
+   (and the matching `Deserialize`). No pair -> the factory returns
+   null -> "Failed to create generic serializer for '<Class>'".
+4. Shipped subscribers (e.g. `Mafi.Core.Simulation.StatsManager`,
+   which subscribes to the SAME `NewDayEnd` with the IDENTICAL call
+   shape `calendar.NewDayEnd.Add(this, new Action(onNewDay))`)
+   carry the pair because the game's serializer source generator
+   emitted it for their `[GenerateSerializer]` classes. Our three
+   services had neither the pair nor any marking — the subscription
+   call shape was never the problem; the missing serializer was.
+5. `ICalendar` exposes NO non-saveable event surface (all seven
+   members are saveable `IEvent`s), so "subscribe somewhere
+   unsaved" does not exist for calendar cadence. The game's
+   actually-unsaved callback surface is `IGameLoopEvents`
+   (GameLoopEvents' registration lists are [DoNotSave]) — but it
+   is a renderer/new-game lifecycle surface, not a daily hook.
+
+## The fix (the game's own sanctioned pattern)
+
+Each of the three services now carries, mirroring the generator's
+output shape for StatsManager:
+
+- `[ManuallyWrittenSerialization]` on the class — the game's marker
+  for hand-written serializer pairs. The generator's validation pass
+  (generateSerializationSpecs) SKIPS marked types and THROWS for any
+  type that has Serialize/Deserialize methods without
+  `[GenerateSerializer]` or this mark, so the mark is required, not
+  decorative.
+- `public static void Serialize(T value, BlobWriter writer)` /
+  `public static T Deserialize(BlobReader reader)` built on
+  TryStartClassSerialization / TryStartClassDeserialization +
+  EnqueueDataSerialization / EnqueueDataDeserialization.
+- `SerializeData` writes ONLY the calendar reference
+  (`writer.WriteGeneric(m_calendar)` — a global-dependency ref,
+  exactly what shipped generated code writes for such members).
+- `DeserializeData` restores the calendar (`SetField` +
+  `ReadGenericAs<ICalendar>()`), re-resolves every other dependency
+  from the game's DependencyResolver at load-finalize
+  (`RegisterResolvedMember` — resolution failure there is a
+  CorruptedSaveException, and all registered types are ordinary
+  global deps / the mod instance, resolvable by construction), and
+  re-initialises session-only state empty (VehicleRecovery marks +
+  pass index; PriorityActuator observations + pass index — the
+  documented "resets on reload" semantics; load materialises the
+  instance uninitialised, so the reset MUST live in DeserializeData).
+- Field restructure: services now hold the MOD instance (`m_mod`)
+  instead of a bare `ModJsonConfig` (`m_config`), because
+  ModJsonConfig is not a resolvable dependency while the mod
+  instance is (it is already constructor-injected today). Config
+  access is `m_mod.JsonConfig.*` — still re-read on every pass,
+  behaviour identical.
+
+Load-identity note: `DependencyResolver.DeserializeInto` +
+BlobReader's object map guarantee the callback owner, the resolver
+section instance and any other reference are ONE object; the event's
+lazy `TryBindCallback` rebinds `Delegate.CreateDelegate(type, owner,
+method)` against that instance, whose fields DeserializeData +
+FinalizeLoading restore before any day-end can fire.
+
+Version/manifest changes: the three features 0.1.1 -> 0.1.2 (Mod
+Version consts in step); QoSCore stays 0.2.0 and QoSWorldMap stays
+0.1.1 (untouched, audit-clear); suite pack SUITE_VER 0.5.0 -> 0.5.1.
+The three feature manifests now set `can_remove_from_saved_game:
+false`: saves WRITTEN with the fixed build contain the service
+footprint (subscription + resolver entry), so removal must be
+blocked by the game with a clear message rather than surfacing as
+an unloadable save. Saves written before the suite existed contain
+nothing of it and are unaffected. Per-mod readmes + SUITE-README
+rewritten accordingly (README carries a top banner: versions
+before this fix can prevent saving — remove/disable them).
+
+## Audit of the remaining surface (same exposure?)
+
+- QoSCore (QoSCoreService, SuiteRegistry, QoSEventLog): CLEAR.
+  No event subscriptions anywhere (grep). QoSCoreService holds NO
+  fields — its ICalendar is used transiently in the constructor to
+  wire a STATIC delegate on QoSEventLog; statics are never
+  serialized, and nothing saved references the service. Neither
+  class has a serializer pair, so BlobWriter.CanSerialize excludes
+  them from the resolver's saved-instances section
+  (DependencyResolver.serializeData filters on CanSerialize).
+  SuiteRegistry's List<string> is runtime-only for the same reason.
+- QoSWorldMap: CLEAR. Its only registration is
+  `IGameLoopEvents.RegisterRendererInitState` — in the shipped
+  GameLoopEvents class every registration list is
+  [DoNotSave]/[DoNotSaveCreateNewOnLoad], i.e. never written to a
+  save; registration re-happens per session from Mod.Initialize.
+  Controller/window are Unity-side runtime objects, referenced by
+  nothing saved.
+- CoiBridge (route classes, mod Initialize): CLEAR. Zero event
+  subscriptions of any kind (grep over bridge sources). Routes are
+  discovered at runtime by WebApiServer.ScanObjectForRoutes and
+  hold no state; no serializer pair -> excluded from saves by the
+  same CanSerialize filter; the bridge writes nothing into saved
+  structures.
+
+## Artefacts
+
+- dist/QoS-suite-0.5.1.zip — 126,268 B — sha256 a2ed9232523e401bc7d3d322c40c1fc489339489967f517aedd2bcae5cc52626
+- dist/QoSChickens-mod-0.1.2.zip — 23,926 B — sha256 3efff494f714380fa1d45d334fba343c2a07917b2c2b0fec582653be551f5697
+- dist/QoSVehicleRecovery-mod-0.1.2.zip — 26,325 B — sha256 81f46b5586698d4a2c98d3c41b1f6c84eed73a2abd6839bacf8565625807ccfc
+- dist/QoSPriorityActuator-mod-0.1.2.zip — 27,158 B — sha256 fde6e095668045d7e630397b3a2314f6e7b0d8c6f068368ea4877a9a874d7ffa
+- All five projects build 0 warnings / 0 errors. All prior packs
+  (suite <= 0.5.0, per-mod <= 0.1.1, Core 0.2.0 zip, WorldMap
+  0.1.1 zip) sha256-verified byte-untouched after the rebuild.
+- Compiled-DLL check (ilspycmd on the built assemblies): all three
+  services show [ManuallyWrittenSerialization] + the exact public
+  static Serialize/Deserialize pair.
+
+## Verification status
+
+Code-level ONLY (the coordinator cannot run the game): pattern
+equivalence with the shipped StatsManager generated serializer +
+eligibility by the decompiled rules + compiled-assembly inspection.
+FINAL PROOF = Philip installing suite 0.5.1 and saving successfully,
+then loading that save and confirming the daily passes still arm.
+Residual risks, named: (1) RegisterResolvedMember resolving the
+concrete mod type at load-finalize relies on the mod instance being
+registered in the game resolver — strongly evidenced (the same
+resolver constructor-injects it into these services today), not
+load-tested; a failure would surface as a CorruptedSaveException on
+LOAD, so the first live check should be save -> reload, not just
+save. (2) The hand-written pair was validated against the
+generator's shape, not against the game's runtime serializer-spec
+pass over mod assemblies — if that pass dislikes anything, it will
+say so at game/mod load, before any save is attempted.
+
+# QoS build notes — round 8 (2026-11-05 evening): QoSBuilder 0.1.0 — companion blueprint placement via confirmed job files
+
+Philip approved the posture step 2026-11-05: the suite gains its
+first entity-CREATING mod. Recon round 10 (MODDING-NOTES) proved
+the web /command channel can never carry BuildTransportCmd or
+BatchCreateStaticEntitiesCmd, so placement runs companion-side
+confirmation -> job file -> in-game mod, exactly the §12
+prepare -> confirm -> audit discipline with a file as the apply
+step. Built standalone (own zip, own build script); suite-pack
+integration waits for live verification, same as WorldMap did.
+
+## Probe outcome (MODDING-NOTES round 12 — the string route wins)
+
+The approved design's open question was whether a mod can reach
+the game's blueprint deserialization. Verdict: YES, through
+fully public API — no reflection, no internals:
+
+- `BlueprintsLibrary` is PUBLIC and `[GlobalDependency]`:
+  inject it, call the instance
+  `TryParseFromString(code, out error, out IBlueprintItem)` — a
+  pure parse on the library's own serialization context; the
+  player's library is untouched.
+- `IBlueprint.Items` is the public
+  `ImmutableArray<EntityConfigData>` the batch command's ctor
+  takes; `EntityConfigData` has public setters (Transform /
+  Trajectory / Pillars / OriginalEntityId) + `CreateCopy()`;
+  the skip rule is public
+  (`BlueprintRotationUtils.ShouldSkipForPlacement`); the
+  transform math (TileTransform, RotatedAroundZ,
+  TransportTrajectory.TryCreateFromPivots) is public.
+- gameId: constructor-inject `IGameIdProvider` (the surface the
+  vanilla game-info handler itself uses) — `GameId.ToString()`
+  is byte-identical to the API's gameId.
+- The internal `Blueprint` / `DeserializeForBlueprints` path is
+  NOT mod-reachable (InternalsVisibleTo covers only Mafi's own
+  assemblies + tests) — and is not needed.
+
+The items[] fallback (per-item CreateStaticEntityCmd /
+BuildTransportCmd specs) was therefore NOT built for v1; it
+remains the documented fallback in MODDING-NOTES round 12.
+
+## What was built
+
+**QoSBuilder 0.1.0** (`qos/QoSBuilder/`; BuilderService +
+BuilderJson + IMod shell; manifest depends on QoSCore >= 0.2.0;
+can_remove_from_saved_game: false — the round-7 lesson applied
+from birth: the service subscribes to ICalendar.NewDayEnd and
+carries the [ManuallyWrittenSerialization] pair mirroring the
+0.1.2 fix exactly, calendar field only).
+
+- Watches `%APPDATA%\Captain of Industry\QoS\jobs\` (sibling of
+  the QoS events feed). Passes run at day end, ONLY when the
+  `enabled` config is on (ships false — while off the folder is
+  not even scanned).
+- Validation pipeline, in order, each refusal consumed + logged
+  with zero partial action: unreadable -> malformed (incl.
+  missing/mistyped fields, jobId shape, anchor sanity) ->
+  duplicate (jobId already in processed.txt: filed, no event) ->
+  unsupported-schema -> bad-hash -> expired -> wrong-game
+  (IGameIdProvider) -> unsupported-rotation ->
+  reflection-unsupported -> blueprint-unparseable (the game's
+  own parser error text rides in the event) -> not-a-blueprint
+  -> over-item-cap (min of job cap and config
+  max_items_per_job, default 500) -> placement build
+  (track-rotation-unsupported / item-transform-failed) ->
+  nothing-to-place.
+- Placement mirrors the game's StaticEntityMassPlacer: copy
+  each item, clear OriginalEntityId, skip
+  ShouldSkipForPlacement, rotate about the anchor (anchor added
+  AFTER rotation — blueprint coords are origin-relative), rebuild
+  trajectories from rotated pivots via TryCreateFromPivots with
+  the game's blueprint-mode flags, offset pillars. ONE
+  BatchCreateStaticEntitiesCmd(DeferToProto,
+  allowValidationSuppression: false, applyConfiguration from the
+  job) via IInputScheduler.
+- Claim BEFORE schedule: file renamed .claimed, jobId appended
+  to processed.txt, JobClaimed event — then schedule; success
+  renames .done and records JobScheduled (item counts, skipped
+  counts, surfaces/decals ignored counts, anchor, rotation,
+  protosThatFailedToLoad when present); schedule exception
+  renames .failed + JobScheduleFailed.
+- Rotation support: quarter turns for buildings + transports;
+  train-track items only at rotation 0 (v1 refusal, honest);
+  mirrored jobs refused.
+- Surfaces/decals are NOT placed in v1 (the batch command does
+  not carry them) — counted in the JobScheduled event.
+
+**Companion (Rust)** — new /place flow (serve.rs):
+- Library: `tools/gen_blueprint_library.py` embeds the pack as
+  `coi/data/blueprint-library.json` (82 entries, 167,149 B;
+  strings decode-verified with the pack codec at generation;
+  per-slug metadata from the pack's own JSON sidecars — the
+  manifest's entity counts were found stale and are not used;
+  includes the pack's honest NOT-in-game-tested status line).
+- GET /place: library table (name, module/layer, item count +
+  kind breakdown, research gate) with a per-row prepare form
+  (anchor x/y/z, rotation select); shows the resolved jobs dir
+  and live gameId, or the unreachable warning.
+- POST /place/prepare: CSRF; refuses when the game is
+  unreachable or gameId is not a string (502, nothing prepared).
+  Builds the job (guid jobId, created/expires ISO-8601 UTC with
+  a 30-minute TTL, gameId pinned, companionUser = session user,
+  applyConfiguration true, limits.maxItems 500), computes the
+  canonical payload + sha256, and renders the §12 confirm page
+  (summary, target game, expiry, sha256, the exact job JSON).
+- POST /place/confirm: 120 s single-use token, exactly like
+  §12. Writes `<jobs_dir>/<jobId>.json` (create_dir_all,
+  tmp-then-rename) — THE ONLY WRITE PATH — then audit_add +
+  activity_add (source companion, category placement, outcome
+  job-written / write-failed, payload = the exact job JSON).
+- jobs_dir: coi.toml `[builder] jobs_dir` (search order mirrors
+  [productivity]: $COI_CONFIG, ./coi.toml, next to the DB);
+  default `%APPDATA%\Captain of Industry\QoS\jobs` — on Philip's
+  PC that is the mod's exact folder with zero configuration.
+
+**Canonical-hash interop** — the contract's sharp edge, pinned
+three ways: BuilderJson.cs builds the canonical payload from
+the PARSED job (unknown fields ignored, integer truncation
+canonical: 90.0 hashes as 90 — a reformatting JSON writer can
+never invalidate a genuine job); serve.rs builds it from the
+typed fields; a unit test (`job_canonical_vector`) asserts both
+the canonical string and sha256 against a vector computed by an
+independent Python implementation, and
+`tools/check_place_page.sh` re-verifies a REAL written job file
+with that same Python implementation.
+
+## Artefacts
+
+- dist/QoSBuilder-mod-0.1.0.zip — 35,184 B — sha256
+  1e5aa745b4029540874cb8f5b919d52a3382c6a4677e31d03eb7a40d7ace3965
+  (QoSBuilder.dll 28,160 B + manifest/config/readme; no QoSCore
+  DLL inside — the build script guards it)
+- dist/coi.exe — 6,062,808 B — sha256
+  f7676419573793e1bdf70ef7877d73aba6d048bcb520026f5d2ce35eb9a67d27
+  (Windows x86-64 release; was 5,886,159 B — the delta is the
+  embedded library + the Place flow)
+- Build: QoSBuilder C# 0 warnings / 0 errors (standalone
+  `qos/build/build-builder.sh` — suite build.sh and all 0.5.1
+  packs untouched); Rust 17/17 tests (15 prior + canonical
+  vector + ISO format); tools/check_place_page.sh PASS (stub
+  game: prepare pins gameId 5583213724730880438, confirm writes
+  one file whose sha verifies independently, token replay
+  refused, /log shows PlaceBlueprintJob, game-down prepare =
+  502 with nothing written).
+
+## Verification status
+
+Code + stub level ONLY. Unverified until Philip runs it live:
+(1) DI resolution of BlueprintsLibrary + IGameIdProvider in
+BuilderService's constructor (both are the game's own
+[GlobalDependency]-registered surfaces — compile-verified,
+resolution itself is runtime); (2) the first real job end to
+end (day-end pass -> batch processed -> sites appear);
+(3) the census-diff verdict practice on the companion side;
+(4) save + reload with QoSBuilder's serializer pair — the same
+proof class suite 0.5.1 still owes. Install order when he is
+ready: QoSBuilder zip alongside the suite, enable it in the
+save's mod list, leave `enabled` OFF until the first supervised
+placement, then confirm one small blueprint (concrete-v1, 39
+items) in a sandbox and watch the Log page + census.

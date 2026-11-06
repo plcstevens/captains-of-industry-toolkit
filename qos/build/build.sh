@@ -63,7 +63,7 @@ CHICK_VER="$(ver "$HERE/../QoSChickens/manifest.json")"
 REC_VER="$(ver "$HERE/../QoSVehicleRecovery/manifest.json")"
 ACT_VER="$(ver "$HERE/../QoSPriorityActuator/manifest.json")"
 WM_VER="$(ver "$HERE/../QoSWorldMap/manifest.json")"
-SUITE_VER="0.5.0"
+SUITE_VER="0.5.1"
 echo "QoSCore $CORE_VER / QoSChickens $CHICK_VER / QoSVehicleRecovery $REC_VER / QoSPriorityActuator $ACT_VER / QoSWorldMap $WM_VER / suite $SUITE_VER"
 
 # One project per subfolder: two csprojs in one folder share a

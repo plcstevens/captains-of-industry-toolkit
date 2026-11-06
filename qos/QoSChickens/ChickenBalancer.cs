@@ -7,6 +7,7 @@ using Mafi.Core.Input;
 using Mafi.Core.Mods;
 using Mafi.Core.Products;
 using Mafi.Core.Simulation;
+using Mafi.Serialization;
 using QoSCore;
 
 namespace QoSChickens;
@@ -44,17 +45,83 @@ namespace QoSChickens;
 /// ModJsonConfig on every pass, so settings changes apply from
 /// the next day with no restart.
 /// </summary>
+// [ManuallyWrittenSerialization] + the hand-written Serialize /
+// Deserialize pair below are REQUIRED for save safety — see the
+// serialization block comment after the fields. Do not remove.
+[ManuallyWrittenSerialization]
 [GlobalDependency(RegistrationMode.AsEverything)]
 public sealed class ChickenBalancer : IDisposable {
 
-	private readonly ModJsonConfig m_config;
+	private readonly QoSChickensMod m_mod;
 	private readonly IEntitiesManager m_entities;
 	private readonly IInputScheduler m_scheduler;
 	private readonly ICalendar m_calendar;
 
+	// ---- Save/load serialization (hand-written, game-sanctioned) ----
+	//
+	// WHY THIS EXISTS: the calendar's NewDayEnd event is a SAVED event
+	// (Mafi.EventBase). Subscribing with Add(this, ...) stores a
+	// CallbackSaveData whose Serialize() generic-writes THE OWNER —
+	// this instance — into every save file. A concrete class is
+	// generic-serializer-eligible only if it exposes public static
+	// Serialize(T, BlobWriter) / Deserialize(BlobReader) methods:
+	// SerializerGenerator.TryGetSerializeMethod probes for exactly
+	// those (Public|Static), and BlobWriter's DirectCallSerializer
+	// invokes them. Shipped subscribers (e.g. StatsManager) have the
+	// pair because the game's serializer generator emitted it for
+	// their [GenerateSerializer] classes. Without the pair, saving
+	// throws "Failed to create generic serializer for
+	// 'ChickenBalancer'" and THE GAME CANNOT SAVE AT ALL — that was
+	// the suite 0.5.0 bug (fixed in 0.1.2). The
+	// [ManuallyWrittenSerialization] attribute on the class is the
+	// game's own marker for hand-written pairs: the generator's
+	// validation pass skips marked types, and REQUIRES the mark on
+	// any type carrying the methods without [GenerateSerializer].
+	//
+	// The pair mirrors the generator's output shape (StatsManager):
+	// the only persistent state written is the calendar reference —
+	// a global dependency written as a generic ref, exactly as
+	// shipped code does. Every other dependency is re-resolved from
+	// the game's DependencyResolver at load-finalize via
+	// RegisterResolvedMember and is never serialized. This service
+	// holds no other state (config is re-read from the mod instance
+	// on every pass), so nothing else needs restoring. On load the
+	// instance is materialised uninitialised (no constructor runs);
+	// DeserializeData below restores exactly the fields above.
+	private static readonly Action<object, BlobWriter> s_serializeDataDelayedAction =
+		(obj, writer) => ((ChickenBalancer)obj).SerializeData(writer);
+
+	private static readonly Action<object, BlobReader> s_deserializeDataDelayedAction =
+		(obj, reader) => ((ChickenBalancer)obj).DeserializeData(reader);
+
+	public static void Serialize(ChickenBalancer value, BlobWriter writer) {
+		if (writer.TryStartClassSerialization(value)) {
+			writer.EnqueueDataSerialization(value, s_serializeDataDelayedAction);
+		}
+	}
+
+	public static ChickenBalancer Deserialize(BlobReader reader) {
+		ChickenBalancer result;
+		if (reader.TryStartClassDeserialization<ChickenBalancer>(out result)) {
+			reader.EnqueueDataDeserialization(result, s_deserializeDataDelayedAction);
+		}
+		return result;
+	}
+
+	private void SerializeData(BlobWriter writer) {
+		writer.WriteGeneric(m_calendar);
+	}
+
+	private void DeserializeData(BlobReader reader) {
+		reader.SetField(this, "m_calendar", reader.ReadGenericAs<ICalendar>());
+		reader.RegisterResolvedMember(this, "m_mod", typeof(QoSChickensMod), isField: true);
+		reader.RegisterResolvedMember(this, "m_entities", typeof(IEntitiesManager), isField: true);
+		reader.RegisterResolvedMember(this, "m_scheduler", typeof(IInputScheduler), isField: true);
+	}
+
 	public ChickenBalancer(QoSChickensMod mod, IEntitiesManager entities,
 			IInputScheduler scheduler, ICalendar calendar) {
-		m_config = mod.JsonConfig;
+		m_mod = mod;
 		m_entities = entities;
 		m_scheduler = scheduler;
 		m_calendar = calendar;
@@ -76,11 +143,11 @@ public sealed class ChickenBalancer : IDisposable {
 	}
 
 	private void RunPass() {
-		if (!m_config.GetBool("enabled", false)) {
+		if (!m_mod.JsonConfig.GetBool("enabled", false)) {
 			QoSLog.Debug("Chickens", "pass skipped: 'enabled' is false");
 			return;
 		}
-		string mode = (m_config.GetString("mode", "equalise") ?? "equalise").Trim().ToLowerInvariant();
+		string mode = (m_mod.JsonConfig.GetString("mode", "equalise") ?? "equalise").Trim().ToLowerInvariant();
 		if (mode == "off") {
 			QoSLog.Debug("Chickens", "pass skipped: mode is off");
 			return;
@@ -90,13 +157,13 @@ public sealed class ChickenBalancer : IDisposable {
 				"' — doing nothing (valid modes: equalise, fill_first, off)");
 			return;
 		}
-		int budget = Math.Max(0, m_config.GetInt("max_animals_moved_per_day", 50));
+		int budget = Math.Max(0, m_mod.JsonConfig.GetInt("max_animals_moved_per_day", 50));
 		if (budget <= 0) {
 			QoSLog.Debug("Chickens", "pass skipped: daily move cap is 0");
 			return;
 		}
-		int floor = Math.Max(0, m_config.GetInt("breeding_nucleus_floor", 10));
-		bool logMoves = m_config.GetBool("log_moves", true);
+		int floor = Math.Max(0, m_mod.JsonConfig.GetInt("breeding_nucleus_floor", 10));
+		bool logMoves = m_mod.JsonConfig.GetBool("log_moves", true);
 
 		// Group all animal farms by species (Prototype.Animal), in
 		// enumeration order — the same order the game materialises
@@ -194,7 +261,7 @@ public sealed class ChickenBalancer : IDisposable {
 		if (!TryGetEligible(farms, out eligible)) {
 			return 0;
 		}
-		string raw = m_config.GetString("fill_first_farm_ids", "") ?? "";
+		string raw = m_mod.JsonConfig.GetString("fill_first_farm_ids", "") ?? "";
 		var targets = new List<AnimalFarm>();
 		foreach (string part in raw.Split(',')) {
 			int id;

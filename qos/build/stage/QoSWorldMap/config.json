@@ -1,0 +1,1 @@
+{"navigate_opens_map":{"default":true,"description":"Row click opens the world map centred on the location before opening its inspector. Turn off if the fullscreen map window stacks badly against the inspector on your setup (live-check seam 3) — clicks then open the inspector only."}}

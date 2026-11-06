@@ -20,13 +20,18 @@ namespace QoSVehicleRecovery;
 /// logging + the suite registry; the QoSCore.dll reference is
 /// provided by the QoSCore mod folder at runtime and is NOT copied
 /// into this mod's folder. Registers NO prototypes — pure
-/// behaviour over shipped game systems, so removing the folder
-/// removes the mod from any save.
+/// behaviour over shipped game systems and registers no
+/// content. NOTE (0.1.2): the service's calendar subscription
+/// IS serialized into saves written while the mod is installed
+/// (the sanctioned serializer pair on VehicleRecoveryService),
+/// so the manifest sets can_remove_from_saved_game=false — the
+/// game blocks removing the mod from such a save rather than
+/// letting the save become unloadable.
 /// </summary>
 public sealed class QoSVehicleRecoveryMod : IMod {
 
 	/// <summary>Mod version. Keep in step with manifest.json (manifest is the truth).</summary>
-	public const string Version = "0.1.1";
+	public const string Version = "0.1.2";
 
 	public QoSVehicleRecoveryMod(ModManifest manifest) {
 		Manifest = manifest;

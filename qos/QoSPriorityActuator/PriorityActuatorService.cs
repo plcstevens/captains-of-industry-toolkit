@@ -8,6 +8,7 @@ using Mafi.Core.Factory.Machines;
 using Mafi.Core.Input;
 using Mafi.Core.Mods;
 using Mafi.Core.Simulation;
+using Mafi.Serialization;
 using QoSCore;
 
 namespace QoSPriorityActuator;
@@ -80,6 +81,10 @@ namespace QoSPriorityActuator;
 /// from the mod's ModJsonConfig on every pass, so settings
 /// changes apply from the next day with no restart.
 /// </summary>
+// [ManuallyWrittenSerialization] + the hand-written Serialize /
+// Deserialize pair below are REQUIRED for save safety — see the
+// serialization block comment after the fields. Do not remove.
+[ManuallyWrittenSerialization]
 [GlobalDependency(RegistrationMode.AsEverything)]
 public sealed class PriorityActuatorService : IDisposable {
 
@@ -99,16 +104,83 @@ public sealed class PriorityActuatorService : IDisposable {
 		public int LastNudgePass = int.MinValue / 2;
 	}
 
-	private readonly ModJsonConfig m_config;
+	private readonly QoSPriorityActuatorMod m_mod;
 	private readonly IEntitiesManager m_entities;
 	private readonly IInputScheduler m_scheduler;
 	private readonly ICalendar m_calendar;
 	private readonly Dictionary<int, Observation> m_observations = new Dictionary<int, Observation>();
 	private int m_passIndex;
 
+	// ---- Save/load serialization (hand-written, game-sanctioned) ----
+	//
+	// WHY THIS EXISTS: the calendar's NewDayEnd event is a SAVED event
+	// (Mafi.EventBase). Subscribing with Add(this, ...) stores a
+	// CallbackSaveData whose Serialize() generic-writes THE OWNER —
+	// this instance — into every save file. A concrete class is
+	// generic-serializer-eligible only if it exposes public static
+	// Serialize(T, BlobWriter) / Deserialize(BlobReader) methods:
+	// SerializerGenerator.TryGetSerializeMethod probes for exactly
+	// those (Public|Static), and BlobWriter's DirectCallSerializer
+	// invokes them. Shipped subscribers (e.g. StatsManager) have the
+	// pair because the game's serializer generator emitted it for
+	// their [GenerateSerializer] classes. Without the pair, saving
+	// throws "Failed to create generic serializer for
+	// 'PriorityActuatorService'" and THE GAME CANNOT SAVE AT ALL —
+	// that was the suite 0.5.0 bug (fixed in 0.1.2). The
+	// [ManuallyWrittenSerialization] attribute on the class is the
+	// game's own marker for hand-written pairs: the generator's
+	// validation pass skips marked types, and REQUIRES the mark on
+	// any type carrying the methods without [GenerateSerializer].
+	//
+	// The pair mirrors the generator's output shape (StatsManager):
+	// the only persistent state written is the calendar reference —
+	// a global dependency written as a generic ref, exactly as
+	// shipped code does. Every other dependency is re-resolved from
+	// the game's DependencyResolver at load-finalize via
+	// RegisterResolvedMember and is never serialized. The
+	// observations and the pass index are SESSION-ONLY state (see
+	// the Observation doc above: safety never depends on them; a
+	// reload restarts the counting), so they are deliberately not
+	// written; DeserializeData re-initialises them empty — on load
+	// the instance is materialised uninitialised (no constructor,
+	// no field initialisers run), so the reset must happen there.
+	private static readonly Action<object, BlobWriter> s_serializeDataDelayedAction =
+		(obj, writer) => ((PriorityActuatorService)obj).SerializeData(writer);
+
+	private static readonly Action<object, BlobReader> s_deserializeDataDelayedAction =
+		(obj, reader) => ((PriorityActuatorService)obj).DeserializeData(reader);
+
+	public static void Serialize(PriorityActuatorService value, BlobWriter writer) {
+		if (writer.TryStartClassSerialization(value)) {
+			writer.EnqueueDataSerialization(value, s_serializeDataDelayedAction);
+		}
+	}
+
+	public static PriorityActuatorService Deserialize(BlobReader reader) {
+		PriorityActuatorService result;
+		if (reader.TryStartClassDeserialization<PriorityActuatorService>(out result)) {
+			reader.EnqueueDataDeserialization(result, s_deserializeDataDelayedAction);
+		}
+		return result;
+	}
+
+	private void SerializeData(BlobWriter writer) {
+		writer.WriteGeneric(m_calendar);
+	}
+
+	private void DeserializeData(BlobReader reader) {
+		reader.SetField(this, "m_calendar", reader.ReadGenericAs<ICalendar>());
+		reader.RegisterResolvedMember(this, "m_mod", typeof(QoSPriorityActuatorMod), isField: true);
+		reader.RegisterResolvedMember(this, "m_entities", typeof(IEntitiesManager), isField: true);
+		reader.RegisterResolvedMember(this, "m_scheduler", typeof(IInputScheduler), isField: true);
+		// Session-only state, intentionally not saved: start empty.
+		reader.SetField(this, "m_observations", new Dictionary<int, Observation>());
+		reader.SetField(this, "m_passIndex", 0);
+	}
+
 	public PriorityActuatorService(QoSPriorityActuatorMod mod, IEntitiesManager entities,
 			IInputScheduler scheduler, ICalendar calendar) {
-		m_config = mod.JsonConfig;
+		m_mod = mod;
 		m_entities = entities;
 		m_scheduler = scheduler;
 		m_calendar = calendar;
@@ -130,17 +202,17 @@ public sealed class PriorityActuatorService : IDisposable {
 	}
 
 	private void RunPass() {
-		if (!m_config.GetBool("enabled", false)) {
+		if (!m_mod.JsonConfig.GetBool("enabled", false)) {
 			QoSLog.Debug("PriorityActuator", "pass skipped: 'enabled' is false");
 			return;
 		}
-		bool nudgeStarved = m_config.GetBool("nudge_starved", true);
-		bool restoreWhenWorking = m_config.GetBool("restore_when_working", true);
-		int persistenceDays = Math.Max(1, m_config.GetInt("persistence_days", 3));
-		int maxNudge = Math.Max(0, m_config.GetInt("max_nudge_steps", 2));
-		int cooldownDays = Math.Max(0, m_config.GetInt("cooldown_days", 2));
-		int dailyCap = Math.Max(0, m_config.GetInt("max_actions_per_day", 10));
-		bool logActions = m_config.GetBool("log_actions", true);
+		bool nudgeStarved = m_mod.JsonConfig.GetBool("nudge_starved", true);
+		bool restoreWhenWorking = m_mod.JsonConfig.GetBool("restore_when_working", true);
+		int persistenceDays = Math.Max(1, m_mod.JsonConfig.GetInt("persistence_days", 3));
+		int maxNudge = Math.Max(0, m_mod.JsonConfig.GetInt("max_nudge_steps", 2));
+		int cooldownDays = Math.Max(0, m_mod.JsonConfig.GetInt("cooldown_days", 2));
+		int dailyCap = Math.Max(0, m_mod.JsonConfig.GetInt("max_actions_per_day", 10));
+		bool logActions = m_mod.JsonConfig.GetBool("log_actions", true);
 
 		m_passIndex++;
 		int actions = 0;

@@ -1,8 +1,19 @@
-QoS Priority Actuator v0.1.1 — bounded priority nudges for
+QoS Priority Actuator v0.1.2 — bounded priority nudges for
 starved machines, for the QoS suite. Author: Lewis Cameron.
 For Captain of Industry v0.8.8 (Update 4.3).
 Requires: QoSCore >= 0.1.0 (install it first, or use the
 combined QoS suite pack, which contains both folders).
+
+VERSION 0.1.2 — SAVE FIX (read this if you had 0.1.1)
+Version 0.1.1 of this mod PREVENTED THE GAME FROM SAVING:
+saving failed with "Failed to create generic serializer for
+'{cls}'". The cause: the mod's daily service subscribes to the
+game's calendar, and that subscription is itself written into
+save files — 0.1.1's service class could not be written. Your
+game and your existing saves were never harmed (the save fails
+before anything is written). 0.1.2 fixes it with the game's own
+sanctioned serializer pattern. If 0.1.1 is installed, REPLACE
+its folder with this one — do not keep both.
 
 WHAT IT DOES
 Once per in-game day (at day end), the mod reads every
@@ -114,15 +125,22 @@ and shows on the CoI Companion website's Log page. Controlled by
 QoSCore's activity_log_enabled setting (default on).
 
 REMOVAL SAFETY
-The mod registers no prototypes, recipes or entities and
-stores nothing in your save beyond its own settings values
-(inert once the mod is gone) and the priority values it
-changed through the game's own command — those are ordinary
-machine settings afterwards, visible and editable in each
-machine's inspector, and any machine still inside the band
-simply keeps the value it had. Its observation bookkeeping
-is session memory only. Delete the QoSPriorityActuator
-folder to remove it.
+The mod registers no prototypes, recipes or entities. It does
+leave the priority values it changed through the game's own
+command — those are ordinary machine settings afterwards,
+visible and editable in each machine's inspector, and any
+machine still inside the band simply keeps the value it had.
+One honest exception since 0.1.2: the service's calendar
+subscription is serialized into saves written while the mod is
+installed (that is how the game's saveable calendar events
+work), so the manifest declares can_remove_from_saved_game =
+false — if a save made with this mod installed is loaded
+without it, the game will refuse with a clear message instead
+of risking a damaged save. To remove the mod entirely, delete
+its folder while playing a save that predates installing it
+(or just leave the folder in place: it ships disabled and does
+nothing until enabled). Its observation bookkeeping is session
+memory only.
 
 FIRST LIVE CHECKS (unverified until first install)
 - The "actuator armed" line appears in the log at load, and
