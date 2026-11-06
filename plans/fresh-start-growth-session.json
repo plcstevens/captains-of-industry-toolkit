@@ -328,7 +328,7 @@
   "plan": {
     "file": "plans/fresh-start-v1.json",
     "id": "fresh-start",
-    "version": "1.2.0"
+    "version": "1.2.2"
   },
   "runner": "coi play — prepare-only, no apply path",
   "schema": "coi-play-session/1",
@@ -336,7 +336,7 @@
     "dir": "plans/fixtures/growth",
     "kind": "state-seq"
   },
-  "startedAtUnix": 1793800277,
+  "startedAtUnix": 1793905567,
   "steps": [
     {
       "events": [

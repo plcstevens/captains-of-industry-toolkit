@@ -1,4 +1,6 @@
 # fresh-start-v1 — Captains of Industry, New Haven, normal difficulty, Update 4.
+# Version history lives in plan.changelog below (current: v1.2.2,
+# 2026-11-05 — Update 4.3 readiness pass for the supervised weekend run).
 #
 # Format: ../GAME-PLAN-FORMAT.md (Game-Plan Format v1). Read it first; this
 # file uses only its closed predicate vocabulary, its order kinds, and its
@@ -17,16 +19,48 @@
 
 plan:
   id: fresh-start
-  version: 1.2.1
+  version: 1.2.2
   title: "Fresh start — New Haven (normal, Update 4) to self-sufficiency + first rail"
   map: {name: "New Haven", difficulty: normal}
-  game_version: "0.8.8"            # Update 4.3, per SPEC baseline
+  game_version: "0.8.8"            # Update 4.3 — the version Philip will run (his fresh-start call, 2026-11-05); format §3.1: the plan targets the version being run
   dlc: [trains-expansion]          # owned (starter skill); only phase 7 needs it
   author: "Claudius (overnight build, 2026-11-02)"
   created: 2026-11-02
+  changelog:
+    - version: 1.2.2
+      date: 2026-11-05
+      change: >-
+        Update 4.3 readiness pass for the supervised weekend run. (1)
+        Version reconciliation: game_version confirmed as 0.8.8 — the
+        plan targets the version Philip will run (format §3.1). The
+        0.8.7d figure in the sibling continuation plan is that save's
+        provenance (the relocation plan's Expanding save), not this
+        plan's target, and never applied here. (2) requires refreshed
+        to the current substrate: companion catalogue 15 verified / 224
+        wired / 1 excluded (was 13 / 226 / 1) and the /place flow
+        available; bridge floor unchanged (see requires note). (3)
+        Placement mechanism named: authored place-blueprint orders now
+        record the QoSBuilder job route (companion /place flow, SPEC
+        Addendum XVII) in their notes; order kind, completion semantics
+        and autonomy are unchanged. (4) 4.3 substance check: NO phase,
+        gate, order or threshold changes. Mixed-materials support
+        changes storage/cargo buffer semantics, but this plan's gates
+        read aggregate product stats, no gate uses a storage.* metric,
+        and its storage orders target dedicated single-product buffers
+        by starter doctrine; info overlays, radiation-shielded trains
+        and train stats are UI / late-game surfaces no phase
+        references; 0.8.8 changed no recipe ratios (patch watch
+        2026-11-02), so dataset-derived sizing stands. Patch bump per
+        §3.1: notes/metadata only.
+    - version: 1.2.1
+      date: 2026-11-04
+      change: "Blueprint asset linkage: pack_slug / pack_slug_overlay fields set on authored refs (plans-blueprint-status.md). Asset fields only; no gate/order changes."
+    - version: 1.2.0
+      date: 2026-11-03
+      change: "Research<Construction> placeholder re-investigated and kept per §4.5 (see the plan-level assumption); §4.3.1 duration semantics adopted. Earlier history: NIGHT-LOG.md."
   requires:
-    companion: ">= website build with generic command flow (13 verified / 226 wired / 1 excluded)"
-    bridge: ">=0.5.0"              # no phase in this plan reads v0.6 routes
+    companion: ">= website build with generic command flow + /place flow (15 verified / 224 wired / 1 excluded; QoSBuilder 0.1.0 executes placement jobs)"
+    bridge: ">=0.5.0"              # floor unchanged: research.completed works from executor-observed completions at this floor; bridge >=0.6.2 (the weekend stack runs 0.6.4) makes it directly evaluable from the researched list (format G1 resolved)
   end_state: >-
     Phase 7 exit gate met: a first train network and line exist, the
     settlement is food-secure, and every permanent district from the
@@ -54,6 +88,12 @@ plan:
     - claim: "The phase-2 entry placeholder Research<Construction> (display name 'Construction') was re-investigated 2026-11-03 (plan v1.2.0) and its id remains UNSOURCED. Identification attempt: research-order.md (#1 'Construction', unlocks Construction Parts I / Mechanical Parts / Electronics I) and research-tree.md ('Construction' [U4-verified], starting tech) give display names only; coi/data/research_ids.txt gives ids only; the planner dataset carries no research data at all; the API/bridge research captures carry ids only — NO project source holds an id-to-display-name mapping for research nodes. Sole candidate: ResearchCp1Production (research_ids.txt line 42; the save-string dump's Goal_ResearchCp1Production sits among the earliest goals, next to Goal_BuildResearchLab / Goal_BuildAssembly). 'Cp1' most plausibly reads 'Construction Parts 1', which fits the unlock list's first item but does NOT prove this node displays as 'Construction' — it could be a distinct production node. Per format §4.5 the placeholder therefore STAYS and the candidate is documented, not substituted. Resolution path: read the id off the in-game research screen (or the companion research page on a v0.6.2+ bridge, whose `researched` list gives real ids) on a fresh save before phase 2 is first entered."
       source: "research-order.md; research-tree.md; coi/data/research_ids.txt; coi-save-reader/probe/strings_all.txt; daxfb dataset (no research section)"
       status: unsourced-id-investigated
+    - claim: "Blueprint placement mechanism (v1.2.2): a place-blueprint order with asset_status: authored and a pack_slug is placed through the companion /place flow — the layout ships inside the companion's embedded library (tools/gen_blueprint_library.py, decode-verified at generation); Philip prepares and confirms in the website; only the confirm writes a single-use, expiring, gameId-pinned QoSBuilder job file; the mod places the layout as ordinary construction sites in one batch; the placement verdict is the companion's before/after census diff, and the order's own completion (human-confirm or verify predicates) is unchanged. Refs with asset_status: not-yet-authored have no library asset and still degrade to manual builds. The pack's strings are NOT in-game tested (library testing_status), so the first placement on the new save happens only under Philip's in-the-moment confirm."
+      source: "SPEC Addendum XVII (QoSBuilder job-file contract); coi/data/blueprint-library.json (82 entries; all six fresh-start pack_slugs present: iron-v1, iron-v2, starter-assemblies-v1, concrete-v1, diesel-v1, rubber-v1)"
+      status: sourced
+    - claim: "Update 4.3 (0.8.8) mechanics deltas relevant to this plan: mixed-materials support (storages/cargo buffers may hold mixed contents — the bridge storages route already reports mixed contents), info overlays, radiation-shielded trains, train stats, and the in-game web API. No recipe ratio changed. None of these alters an early-game phase, gate or order in this plan (full reasoning in the v1.2.2 changelog entry)."
+      source: "0.8.8 changelog via patch watch 2026-11-02 (coigame.com/Changelog); SPEC §3 storages route note"
+      status: sourced
 
 globals:
   autonomy:
@@ -66,7 +106,7 @@ globals:
     trade-contracts-loans: confirm
     vehicles-logistics: confirm
     trains: manual-only
-    construction: manual-only      # format G3: placement semantics untested
+    construction: manual-only      # posture unchanged in v1.2.2: authored blueprints are placed via the /place flow under human confirm (QoSBuilder job route — see the placement-mechanism assumption); direct CreateStaticEntityCmd placement was verified live 2026-11-05 (Protocol A-R) but is not this plan's mechanism
     deconstruction: banned         # replacement live before demolition; demolition is a human decision
     manual: manual-only
   banned_commands: [GameConsoleCmd]
@@ -225,7 +265,7 @@ phases:
         asset_status: authored
         pack_slug: iron-v1
         district: starter-cluster
-        note: "Degrades to a manual build from layout-policy.md's temporary list: first scrap smelter (1 blast furnace + 2 casters on scrap), wood-burning coal maker, diesel generator placed on the OUTPUT side of fuel storage, two research labs. Starter cluster is disposable — build cheap, near the comms station/docks, never anchor a permanent build here."
+        note: "Degrades to a manual build from layout-policy.md's temporary list: first scrap smelter (1 blast furnace + 2 casters on scrap), wood-burning coal maker, diesel generator placed on the OUTPUT side of fuel storage, two research labs. Starter cluster is disposable — build cheap, near the comms station/docks, never anchor a permanent build here. Placement route (v1.2.2): the smelter core (pack slug iron-v1) goes through the companion /place flow — human confirm, QoSBuilder job; the coal maker, generator and labs are single-building manual placements (no pack asset contains them — plans-blueprint-status.md ref #1)."
         class: construction
         completion: human-confirm
       - id: p1-tree-clearing-and-dumping
@@ -313,7 +353,7 @@ phases:
         asset_status: authored
         pack_slug: starter-assemblies-v1
         district: starter-cluster
-        note: "Manual build until authored: ~4 manual assemblies near the smelter. Recipe priority: construction parts FIRST (the eternal early bottleneck), then mechanical parts, then electronics (starter phase 2)."
+        note: "Manual build until authored: ~4 manual assemblies near the smelter. Recipe priority: construction parts FIRST (the eternal early bottleneck), then mechanical parts, then electronics (starter phase 2). Placement route (v1.2.2): authored as pack slug starter-assemblies-v1 — companion /place flow, human confirm, QoSBuilder job."
         class: construction
         completion: human-confirm
       - id: p2-enable-construction-parts-recipe
@@ -449,7 +489,7 @@ phases:
         pack_slug: iron-v1
         pack_slug_overlay: iron-v2
         district: smelting-district
-        note: "Iron mine + ore-based smelter. The ore smelter ANCHORS the permanent smelting district — place thoughtfully in the reserved inland area, not in the starter cluster (layout policy). This is the phase's one permanent siting decision."
+        note: "Iron mine + ore-based smelter. The ore smelter ANCHORS the permanent smelting district — place thoughtfully in the reserved inland area, not in the starter cluster (layout policy). This is the phase's one permanent siting decision. Placement route (v1.2.2): the smelter anchor (pack slugs iron-v1 + overlay iron-v2) goes through the companion /place flow — human confirm, QoSBuilder job; the iron mine itself is deposit-sited and placed manually (plans-blueprint-status.md ref #6)."
         class: construction
         completion: human-confirm
       - id: p3-grow-truck-fleet
@@ -544,7 +584,7 @@ phases:
         asset_status: authored
         pack_slug: concrete-v1
         district: concrete-district
-        note: "Limestone mine + rotary kiln + concrete mixer (starter phase 4), using the phase-0 scout's limestone position. Transitional siting: concrete production will be rebuilt at scale later; do not overbuild it here."
+        note: "Limestone mine + rotary kiln + concrete mixer (starter phase 4), using the phase-0 scout's limestone position. Transitional siting: concrete production will be rebuilt at scale later; do not overbuild it here. Placement route (v1.2.2): the kiln+mixer block (pack slug concrete-v1) goes through the companion /place flow — human confirm, QoSBuilder job; the limestone mine is deposit-sited and placed manually."
         class: construction
         completion: human-confirm
       - id: p4-research-basic-diesel
@@ -563,7 +603,7 @@ phases:
         asset_status: authored
         pack_slug: diesel-v1
         district: oil-district
-        note: "At the oil patch (phase-0 scout): 3 oil pumps + basic distiller, wastewater dumped — layout policy explicitly calls this design 'not the most scalable' and temporary. Diesel generators stay on the output side of fuel storage (bottlenecks.md structural rule)."
+        note: "At the oil patch (phase-0 scout): 3 oil pumps + basic distiller, wastewater dumped — layout policy explicitly calls this design 'not the most scalable' and temporary. Diesel generators stay on the output side of fuel storage (bottlenecks.md structural rule). Placement route (v1.2.2): the distiller block (pack slug diesel-v1) goes through the companion /place flow — human confirm, QoSBuilder job; the 3 pumps sit on oil-patch tiles and are placed manually (plans-blueprint-status.md ref #8)."
         class: construction
         completion: human-confirm
       - id: p4-diesel-storage-alert
@@ -591,7 +631,7 @@ phases:
         asset_status: authored
         pack_slug: rubber-v1
         district: oil-district
-        note: "Rubber maker next to the basic diesel chain (starter phase 4)."
+        note: "Rubber maker next to the basic diesel chain (starter phase 4). Placement route (v1.2.2): pack slug rubber-v1 — companion /place flow, human confirm, QoSBuilder job."
         class: construction
         completion: human-confirm
     checks:

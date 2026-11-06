@@ -1,0 +1,207 @@
+{
+  "final": {
+    "blockers": [
+      {
+        "evidence": "Product_Iron.quantity = 42",
+        "predicate": "product.quantity(product=Product_Iron) >= 100",
+        "verdict": "FALSE"
+      },
+      {
+        "evidence": "hasActiveLab = True",
+        "predicate": "research.has_active_lab() == True",
+        "verdict": "TRUE"
+      },
+      {
+        "evidence": "[TRUE] research.current = ResearchCp1Production; [TRUE] len(queue) = 1 [\"ResearchPowerAndMaintenance\"]",
+        "predicate": "any(research.current() != 'none'; research.queue_length() > 0)",
+        "verdict": "TRUE"
+      }
+    ],
+    "phase": "phase-1-scrap-starter",
+    "status": "blocked"
+  },
+  "orders": [
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-research-construction",
+      "payload": null,
+      "phase": "phase-1-scrap-starter",
+      "reason": "placeholder research id (unsourced)",
+      "status": "skipped",
+      "step": 0
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-research-queue-first15",
+      "payload": null,
+      "phase": "phase-1-scrap-starter",
+      "reason": "manual-step order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 0
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-build-starter-cluster",
+      "payload": null,
+      "phase": "phase-1-scrap-starter",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 0
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-tree-clearing-and-dumping",
+      "payload": null,
+      "phase": "phase-1-scrap-starter",
+      "reason": "manual-step order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 0
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-resume-time",
+      "payload": {
+        "args": {
+          "newSpeedMultiplier": 1
+        },
+        "type": "GameSpeedChangeCmd"
+      },
+      "phase": "phase-1-scrap-starter",
+      "reason": null,
+      "status": "prepared",
+      "step": 0
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-research-power-maintenance-early-flag",
+      "payload": null,
+      "phase": "phase-1-scrap-starter",
+      "reason": "observe-only order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 0
+    }
+  ],
+  "phaseHistory": [
+    {
+      "completedDate": "1-1-18",
+      "completedStep": 0,
+      "enteredDate": "1-1-18",
+      "enteredStep": 0,
+      "phase": "phase-0-scout-bootstrap"
+    },
+    {
+      "completedDate": null,
+      "completedStep": null,
+      "enteredDate": "1-1-18",
+      "enteredStep": 0,
+      "phase": "phase-1-scrap-starter"
+    },
+    {
+      "completedDate": null,
+      "completedStep": null,
+      "enteredDate": null,
+      "enteredStep": null,
+      "phase": "phase-2-assembly-power-maintenance"
+    },
+    {
+      "completedDate": null,
+      "completedStep": null,
+      "enteredDate": null,
+      "enteredStep": null,
+      "phase": "phase-3-mining-vehicles"
+    },
+    {
+      "completedDate": null,
+      "completedStep": null,
+      "enteredDate": null,
+      "enteredStep": null,
+      "phase": "phase-4-concrete-diesel-rubber"
+    },
+    {
+      "completedDate": null,
+      "completedStep": null,
+      "enteredDate": null,
+      "enteredStep": null,
+      "phase": "phase-5-copper-construction2-food"
+    },
+    {
+      "completedDate": null,
+      "completedStep": null,
+      "enteredDate": null,
+      "enteredStep": null,
+      "phase": "phase-6-automation-expansion"
+    },
+    {
+      "completedDate": null,
+      "completedStep": null,
+      "enteredDate": null,
+      "enteredStep": null,
+      "phase": "phase-7-rail-introduction"
+    }
+  ],
+  "plan": {
+    "file": "plans/fresh-start-v1.json",
+    "id": "fresh-start",
+    "version": "1.2.2"
+  },
+  "runner": "coi play — prepare-only, no apply path",
+  "schema": "coi-play-session/1",
+  "source": {
+    "dir": "/tmp/fs-early-seq",
+    "kind": "state-seq"
+  },
+  "startedAtUnix": 1793905567,
+  "steps": [
+    {
+      "events": [
+        {
+          "phase": "phase-0-scout-bootstrap",
+          "status": "COMPLETE",
+          "type": "phase_entered"
+        },
+        {
+          "evidence": "[TRUE] population = 100 (bridge-status.json); [TRUE] freeHousingCapacity = 60 (bridge-status.json)",
+          "phase": "phase-0-scout-bootstrap",
+          "type": "phase_completed"
+        },
+        {
+          "phase": "phase-1-scrap-starter",
+          "status": "ACTIVE",
+          "type": "phase_entered"
+        },
+        {
+          "orders": [
+            "p1-research-construction",
+            "p1-research-queue-first15",
+            "p1-build-starter-cluster",
+            "p1-tree-clearing-and-dumping",
+            "p1-resume-time",
+            "p1-research-power-maintenance-early-flag"
+          ],
+          "phase": "phase-1-scrap-starter",
+          "type": "orders_recorded"
+        }
+      ],
+      "gameDate": "1-1-18",
+      "loopPhase": "phase-1-scrap-starter",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "ACTIVE",
+        "phase-2-assembly-power-maintenance": "NOT REACHED",
+        "phase-3-mining-vehicles": "NOT REACHED",
+        "phase-4-concrete-diesel-rubber": "NOT REACHED",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "/tmp/fs-early-seq/month-01",
+      "step": 0
+    }
+  ]
+}

@@ -1,11 +1,11 @@
-# CoI play session — fresh-start v1.2.0
+# CoI play session — fresh-start v1.2.2
 
 > **PREPARE-ONLY — nothing was executed.** This transcript is a walk over captured state files by `coi play`, the supervised session runner. The runner has **no apply path**: it opens no sockets, prepares nothing through the §12 flow, and sends nothing to a game. Payloads below are the exact command envelopes a supervised executor *would* prepare; a human reviews them and confirms each one in the companion website.
 
-- Plan: `plans/fresh-start-v1.json` — `fresh-start` v1.2.0
+- Plan: `plans/fresh-start-v1.json` — `fresh-start` v1.2.2
 - Source: state sequence `plans/fixtures/growth` — 12 snapshot(s), 1-1-18 .. 1-12-15
 - Runner: coi play — prepare-only, no apply path
-- Started (unix): 1793800277
+- Started (unix): 1793905567
 
 ## Walk (prefix by prefix, §4.3.1)
 

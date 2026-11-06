@@ -2,7 +2,7 @@
 
 > **DRY RUN — nothing was executed.** This report is a read-only evaluation of a plan file against local state captures. No command was prepared, confirmed, applied or sent anywhere; no game was contacted. Orders below are what a supervised executor *would* prepare next.
 
-# Plan dry-run: fresh-start v1.2.0
+# Plan dry-run: fresh-start v1.2.2
 
 - Title: Fresh start — New Haven (normal, Update 4) to self-sufficiency + first rail
 - Map/difficulty (plan): {"difficulty":"normal","name":"New Haven"} — executor map/difficulty/version match is a live check (§3.1) and cannot be settled from captures; not asserted here.
@@ -232,15 +232,15 @@ For active phase `phase-4-concrete-diesel-rubber` [ACTIVE], in plan order:
   - command `ResearchStartCmd` args={"nodeId":{"candidates":["ResearchConcreteAdvanced (exists in research_ids.txt but is a LATER 'advanced' node per its name — do NOT substitute it for this early node)"],"confirm":"Read the node id off the in-game research screen before first use.","display_name":"Concrete Production","placeholder":"Research<ConcreteProduction>","status":"unsourced-id"}}
   - note: Research order #7. Display name 'Concrete Production' is U4-verified (research-tree.md: wiki Required Research on Crusher, Rotary Kiln, Concrete Mixer) — but no matching id exists in the extracted id list, so this stays a placeholder and the order is manual-only until sourced. Never write 'Basic Concrete' — that name is explicitly superseded.
 - **p4-build-limestone-kiln-concrete** — WOULD PRESENT (human/agent task — not executed)
-  - place-blueprint `concrete-district/kiln-plus-mixer-first` district=concrete-district asset_status=not-yet-authored
-  - note: Limestone mine + rotary kiln + concrete mixer (starter phase 4), using the phase-0 scout's limestone position. Transitional siting: concrete production will be rebuilt at scale later; do not overbuild it here.
+  - place-blueprint `concrete-district/kiln-plus-mixer-first` district=concrete-district asset_status=authored
+  - note: Limestone mine + rotary kiln + concrete mixer (starter phase 4), using the phase-0 scout's limestone position. Transitional siting: concrete production will be rebuilt at scale later; do not overbuild it here. Placement route (v1.2.2): the kiln+mixer block (pack slug concrete-v1) goes through the companion /place flow — human confirm, QoSBuilder job; the limestone mine is deposit-sited and placed manually.
 - **p4-research-basic-diesel** — WOULD PREPARE (command, §12 prepare step — not sent)
   - command `ResearchStartCmd` args={"nodeId":"ResearchBasicDiesel"}
   - note: Research order #8. Id exists in research_ids.txt; the exact display form 'Basic Diesel' is single-source in research-tree.md (Charles says 'diesel'; Medium guide corroborates the progression) — flag carried.
   - verify (current state): **FALSE** — [FALSE] [FALSE] research.current = ResearchCp2; [FALSE] queue = []; contains ResearchBasicDiesel = False
 - **p4-build-basic-diesel-chain** — WOULD PRESENT (human/agent task — not executed)
-  - place-blueprint `oil-district/basic-diesel-3pumps-distiller` district=oil-district asset_status=not-yet-authored
-  - note: At the oil patch (phase-0 scout): 3 oil pumps + basic distiller, wastewater dumped — layout policy explicitly calls this design 'not the most scalable' and temporary. Diesel generators stay on the output side of fuel storage (bottlenecks.md structural rule).
+  - place-blueprint `oil-district/basic-diesel-3pumps-distiller` district=oil-district asset_status=authored
+  - note: At the oil patch (phase-0 scout): 3 oil pumps + basic distiller, wastewater dumped — layout policy explicitly calls this design 'not the most scalable' and temporary. Diesel generators stay on the output side of fuel storage (bottlenecks.md structural rule). Placement route (v1.2.2): the distiller block (pack slug diesel-v1) goes through the companion /place flow — human confirm, QoSBuilder job; the 3 pumps sit on oil-patch tiles and are placed manually (plans-blueprint-status.md ref #8).
 - **p4-diesel-storage-alert** — WOULD PREPARE (command, §12 prepare step — not sent)
   - command `StorageAlertSetEnabledCmd` args={"isAbove":false,"isEnabled":true,"storageId":{"$entity":{"match":"first","product":"Product_Diesel","proto":"StorageFluidT2"},"flags":["proto-id-unconfirmed"]}}
   - note: Turn on the game's own storage alert for the diesel buffer, firing when the level falls BELOW its threshold (SPEC §12.7: align with native alerts rather than duplicating them). Arg names verified against live/commands.json 2026-11-02 (storageId / isEnabled / isAbove). StorageAlertSetThresholdCmd (wired) may set the level in-session.
@@ -248,8 +248,8 @@ For active phase `phase-4-concrete-diesel-rubber` [ACTIVE], in plan order:
   - command `ResearchStartCmd` args={"nodeId":{"candidates":["ResearchRubber","ResearchRubberProduction"],"confirm":"Two candidate ids exist in research_ids.txt; pick the one the research screen shows for the rubber-maker unlock, then amend the plan.","display_name":"Synthetic Rubber","placeholder":"Research<SyntheticRubber>","status":"unsourced-id"}}
   - note: Research order #9. 'Cannot be postponed: no rubber → no vehicles/electronics → no maintenance → death spiral' (research-order.md). Display name is single-source (Steam list; Charles says 'rubber'). Placeholder because two candidate ids exist and choosing silently would be inventing.
 - **p4-build-rubber-maker** — WOULD PRESENT (human/agent task — not executed)
-  - place-blueprint `oil-district/rubber-maker` district=oil-district asset_status=not-yet-authored
-  - note: Rubber maker next to the basic diesel chain (starter phase 4).
+  - place-blueprint `oil-district/rubber-maker` district=oil-district asset_status=authored
+  - note: Rubber maker next to the basic diesel chain (starter phase 4). Placement route (v1.2.2): pack slug rubber-v1 — companion /place flow, human confirm, QoSBuilder job.
 
 ## Summary
 
