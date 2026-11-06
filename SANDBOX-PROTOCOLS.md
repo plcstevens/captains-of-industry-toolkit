@@ -731,6 +731,44 @@ question, and no placement result in R1–R5 changes that.
 *Estimated run time once the sandbox save is loaded and a qualifying
 edict exists: ~5 minutes.*
 
+## ⚖️ VERDICT — SETTLED FROM CODE, LIVE TEST RETIRED (recon round 10, 2026-11-05)
+
+**Do not run B1–B5. The channel question this protocol existed to
+test is answered deterministically by the shipped code**
+(`qol-recon/10-transports-blueprints.md` §Q1):
+
+- `WebCommandRoutes.command` resolves `type` by dictionary lookup in
+  a prebuilt `WebCommandIndex`. A miss is HTTP 400: *"Command type
+  '\<name\>' is unknown or cannot be built from JSON yet."* There is
+  no reflection/activation fallback.
+- The index only contains types with ≥1 constructor that
+  `JsonObjectBuilder.CanBuild` accepts. The builder structurally
+  blocks collection parameters and any non-command reference type.
+- `ToggleEdictEnabledCmd`'s only constructor takes the **live
+  `EdictProto` object** → unbuildable from JSON → absent from the
+  index. **H-B-env is false at the type level, not the key level** —
+  no argument-key spelling (the B3 ladder) could ever have worked.
+  B-U1: NO. B-U2/B-U3: moot (the rejection text above is the
+  deterministic answer). B-U4: untestable via this channel.
+- The same verdict covers `BuildTransportCmd` and
+  `BatchCreateStaticEntitiesCmd` (collection constructor parameters
+  → blocked). Belts, pipes, blueprints and edict toggles are **all**
+  unreachable via `POST /command` in this build.
+
+**The abort guard survives the retirement:** nothing in this verdict
+licenses sending these types anywhere else. Any future live probe of
+the replacement channel (below) still requires a throwaway save and
+`game-info.gameId` ≠ `5583213724730880438` before anything fires.
+
+**Replacement channel:** the QoS builder-mod design note in recon 10
+§Q5 — a suite mod scheduling the shipped commands via
+`IInputScheduler` from single-use, expiring, gameId-pinned job files
+the companion writes only at the §12 confirm step, results reported
+through the QoSEventLog feed. **Proposal only — needs Philip's
+explicit posture decision before anything is built.** The original
+protocol text below is preserved for the record; its steps are
+retired, not deleted.
+
 ## B.0 What is actually being tested
 
 Recon (SPEC Addendum VII; `BridgeRoutesV6.cs` class comment):
@@ -1245,4 +1283,7 @@ audit/activity logged there.
   a sandbox save): delivery + completion of a web-placed site (R3),
   rotation's visible effect (R4), validation legs + refund measurement
   (R5), and the unlisted-command question for BuildTransportCmd /
-  BatchCreateStaticEntitiesCmd (Protocol B).
+  BatchCreateStaticEntitiesCmd (Protocol B) — **that last item is
+  since SETTLED FROM CODE by recon round 10 (2026-11-05): unlisted
+  types can never be built from POST /command; see the Protocol B
+  verdict block and qol-recon/10-transports-blueprints.md.**

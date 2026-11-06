@@ -824,3 +824,100 @@ coding (same discipline as round 3):
 - **Transports are not placed by `CreateStaticEntityCmd`.** Creation is `BuildTransportCmd` {protoId, pivotPositions (non-empty), pillarHints, start/end Direction903d?, disablePortSnapping, allowDirectConnection} → `TransportsManager.TryBuildOrJoinTransport` (build-or-JOIN semantics; result can be a mini-zipper id). **`BuildTransportCmd` and `BatchCreateStaticEntitiesCmd` are both ABSENT from the web registry** — the unlisted-type channel question (Protocol B) now gates belts/pipes/blueprints too.
 - **Listed transport modifiers**: `AddTransportPillarCmd` indexes `Trajectory.TilesSupportInfo` (NoAttachment/out-of-range errors; builds-or-extends; pillar under a constructed transport is force-constructed instantly); `RemoveTransportPillarCmd` only when `IsPillarRedundant`, instant destroy, no refund; `DeconstructTransportSegmentCmd` splits a sub-section into deconstruction, `quickRemove:true` adds the Unity quick-removal; **`ClearTransportCmd` only toggles cargo products-removal** (request/cancel) — it removes nothing structural; `ReverseTransportCmd` reverses the whole entity via `TryReverseTransport`.
 - **Track**: `CreateTrainTrackEntityWithDirectionCmd : CreateStaticEntityCmd` — ctor asserts direction ≠ Unknown; override creates via `EntitiesCreator` then `NotifyDirectionChanged` on `IEntityWithTrainTrackFriend`. Ground/elevated proto auto-selected by terrain in the processor. `CreateNewTrainLineCmd`/`CreateNewTrainNetworkCmd` are parameterless, processed by `TrainLinesManager`/`TrainNetworksManager`, returning the new line/network id (empty objects).
+
+## Recon round 10 (2026-11-05) — transports/blueprints + the web-channel verdict (full trail: qol-recon/10-transports-blueprints.md)
+- **Q1 SETTLED FROM CODE: an unlisted type can NEVER be constructed from `POST /command`.** `WebCommandRoutes.command` does a pure dictionary lookup in a prebuilt `WebCommandIndex` (miss → HTTP 400 "Command type '\<name\>' is unknown or cannot be built from JSON yet."). The index is built once at server start from the assemblies of `resolver.AllResolvedInstances`; `WebCommandIndex.tryCreateInfo` keeps a type **only if ≥1 public ctor passes `JsonObjectBuilder.CanBuild`**. `JsonObjectBuilder.createBuildInfo` Blocks collections (`IEnumerable`/`IImmutableArray`/`Mafi.Collections…`), interfaces/abstract/arrays/System types, and — via the routes' predicate `(type) => !type.IsValueType && !typeof(IInputCommand).IsAssignableFrom(type)` — **any reference type that is not itself a command**. `[Obsolete]`/`[OnlyForSaveCompatibility]` ctors are rejected in `canBuildParamsOf`. No reflection fallback exists. Protocol B is retired on this evidence.
+- **Why each target is absent:** `BuildTransportCmd` — both ctors take `ImmutableArray<Tile3i>`/`ImmutableArray<Tile2i>` (collections → Blocked; second ctor also `[Obsolete]`). `BatchCreateStaticEntitiesCmd` — ctor takes `ImmutableArray<EntityConfigData>` (collection → Blocked). `ToggleEdictEnabledCmd` — its only ctor takes the **live `EdictProto` object** (non-command reference type → excluded); no argument-key spelling could ever have worked — the Protocol B key ladder was testing the wrong layer.
+- **`BuildTransportCmd`** (`InputCommand<EntityId>`, processor `TransportsCommandsProcessor`): {protoId, pivotPositions `ImmutableArray<Tile3i>` (non-empty enforced; absolute tiles, Z=height — start, corners, end), pillarHints `ImmutableArray<Tile2i>`, start/end `Direction903d?`, disablePortSnapping, allowDirectConnection=false; isFree ignored}. No product field — proto is the only selection. Processor: proto lookup → `TryCheckUnlocked` → `TransportsManager.TryBuildOrJoinTransport` (build-or-JOIN); result = new transport id, else the start/end mini-zipper id, else success with `EntityId.Invalid`. UI ground truth (`TransportBuildController`): `new BuildTransportCmd(proto.Id, result.RequestPivots, result.SupportedTiles.Map(x => x.Xy), result.RequestStartDirection, result.RequestEndDirection, m_disableSnapping)`.
+- **`BatchCreateStaticEntitiesCmd`** (`InputCommand`, bool result; processor `EntitiesCommandsProcessor`): {configData `ImmutableArray<EntityConfigData>`, buildMiniZippers=DeferToProto, allowValidationSuppression=false, applyConfiguration=false; isFree ignored}. **Per-item, NOT atomic** — failures recorded (last error wins), successes stay; transports route to `TryBuildTransportFromConfig`, statics to the recon-09 validator chain, tracks to the track builder, trees to planting. Identity shortcut makes re-apply idempotent for buildings. **Result is bool + last-error only — no ids returned** (recover via census diff). No size limit in code.
+- **`EntityConfigData` IS the blueprint item**: a property bag over five typed dicts (ints/bools/strings/string-arrays/byte-arrays) — the exact serialization our codec decodes; `Transform`/`Trajectory`/`Pillars`/`OriginalEntityId` are dict-backed accessors. Stored trajectory blob = startDir RelTile3i, endDir RelTile3i, pivotCount, Tile3i pivots (`TrajectorySerializer`); on read it is **rebuilt from pivots** via `TransportTrajectory.TryCreateFromPivots(..., ignoreSoftConstraints: true)` — pivots authoritative, directions are end-port hints.
+- **The game's blueprint flow**: `Blueprint.Items` is `ImmutableArray<EntityConfigData>` (same deserialization as our strings). `StaticEntityMassPlacer` (Unity) applies `ApplyTransformDelta(Δpos, Δrot, Δreflect, pivot=old origin)` via previews; transports get `Trajectory.OffsetBy(offset)` + pillars offset by `offset.Xy`; `OriginalEntityId` cleared on copies; `IsAutoBuiltByParent` protos skipped. Confirm schedules **ONE** `BatchCreateStaticEntitiesCmd(items, DeferToProto, allowValidationSuppression: false, applyConfiguration: true)` for normal placement.
+- **Codec gaps** (detail in recon 10): no payload gap for placement (a mod can deserialize via the game's own path — but `Blueprint.DeserializeForBlueprints`/`EntityConfigData.DeserializeForBlueprints` are `internal`; public-access route is the build round's open probe, with a per-item `CreateStaticEntityCmd`+`BuildTransportCmd` job format as fallback). Real gap: rotating a stored blueprint's transports = new pivot/direction rotation math (game does it in Unity previews). Trajectory-direction worry downgraded: pivots rule.
+- **Mod channel is the only route** for transports/blueprints/edicts: all three ctors are public with mod-assemblable values. Design note (recon 10 §Q5, NOT built, needs Philip's posture decision): QoSBuilder mod executing single-use, expiring, gameId-pinned job files the companion writes ONLY at the §12 confirm step; results via the QoSEventLog feed into the Log tab; partial-placement honesty via census/topology diff.
+
+## Recon round 11 (2026-11-05) — SAVE SERIALIZATION: calendar events serialize their subscribers; the eligibility rule + the sanctioned hand-written pattern (QoS save-bug fix, suite 0.5.1)
+
+Full incident trail: qos/BUILD-NOTES.md round 7. The durable rules,
+all decompiled from the 0.8.8 assemblies (Mafi.dll / Mafi.Core.dll):
+
+- **`ICalendar` events are SAVED events.** `calendar.NewDayEnd.Add(this, handler)`
+  looks identical to shipped code because it IS the shipped call shape
+  (`StatsManager` does exactly `calendar.NewDayEnd.Add(this, new Action(onNewDay))`).
+  What differs is the SUBSCRIBER's serializability: `EventBase<T>.Add`
+  stores `CallbackSaveData { Owner, DeclaringType, MethodName }` and
+  `EventBase.SerializeData` writes that list into every save;
+  `CallbackSaveData.Serialize` calls `writer.WriteGeneric(value.Owner)`.
+  **Subscribing any object to a saveable event makes that object part of
+  the save format.** `m_callbacksSaveData` is the field to check; the
+  live delegate list (`m_callbacks`) is [DoNotSave].
+- **Eligibility rule (quoted mechanics).** `BlobWriter.WriteGeneric(object)` ->
+  special factories -> `GenericSerializersFactory.CreateClassSerializer`:
+  structs use StructSerializer; concrete CLASSES use `DirectCallSerializer<T>`,
+  whose constructor requires `SerializerGenerator.TryGetSerializeMethod(type, out _)`
+  == `type.GetMethod("Serialize", BindingFlags 24 /* Public|Static */)` to find
+  `public static void Serialize(T, BlobWriter)` AND the matching
+  `public static T Deserialize(BlobReader)`. Missing -> factory returns null ->
+  save dies with "Failed to create generic serializer for '<Class>'".
+  `BlobWriter.CanSerialize(type)` is exactly that probe, and
+  `DependencyResolver.serializeData` uses it to EXCLUDE unserializable
+  resolved instances from the save's resolver section — which is why an
+  unserializable global dep is harmless UNTIL something saved (like an
+  event) references it directly.
+- **`[ManuallyWrittenSerialization]` (Mafi.Serialization) is the sanctioned
+  hand-written route.** The serializer-spec generation/validation pass
+  (SerializerGenerator.generateSerializationSpecs) skips marked types, and
+  THROWS for a type that has Serialize/Deserialize methods but is marked
+  neither `[GenerateSerializer]` nor `[ManuallyWrittenSerialization]`.
+  So: hand-written pair WITHOUT the attribute = load-time failure; pair
+  WITH the attribute = the designed path for types the generator cannot
+  handle (mod types with runtime-only state are exactly that).
+- **The pair's shape** (copied from generated code on
+  `Mafi.Core.Simulation.StatsManager`): Serialize =
+  `if (writer.TryStartClassSerialization(value)) writer.EnqueueDataSerialization(value, s_delayed)`;
+  Deserialize = `if (reader.TryStartClassDeserialization<T>(out var o)) reader.EnqueueDataDeserialization(o, s_delayed); return o;`.
+  SerializeData writes genuine persistent state only; global-dependency
+  REFERENCES are written as `writer.WriteGeneric(field)` and restored by
+  `reader.SetField(this, "field", reader.ReadGenericAs<ICalendar>())`;
+  dependency FIELDS are restored by
+  `reader.RegisterResolvedMember(this, "field", typeof(DepType), isField: true)`,
+  resolved from the game's DependencyResolver at FinalizeLoading
+  (resolution failure = CorruptedSaveException — register only types the
+  resolver provably holds: game global deps, and the mod instance itself,
+  which the resolver already constructor-injects).
+- **Load identity.** The blob object map materialises each class instance
+  ONCE (uninitialised — no ctor, no field initialisers); the event's lazy
+  `Callbacks` getter rebinds saved CallbackSaveData via
+  `Delegate.CreateDelegate(actionType, data.Owner, method)` against that
+  instance. Therefore DeserializeData must restore EVERYTHING the callback
+  path touches, including re-initialising session-only collections
+  (documented "resets on reload" semantics make that free).
+- **Do NOT store a bare `ModJsonConfig` in a serializable service.**
+  ModJsonConfig is not resolver-registered, so it cannot be a
+  RegisterResolvedMember target. Hold the mod instance (`m_mod`) instead
+  and read `m_mod.JsonConfig` at use time.
+- **The genuinely unsaved callback surface is `IGameLoopEvents`**
+  (GameLoopEvents' lists are [DoNotSave]/[DoNotSaveCreateNewOnLoad]) —
+  renderer-init / new-game lifecycle only, no periodic hook. ICalendar has
+  NO non-saveable surface (all 7 members are saveable IEvents).
+- **Removal-safety consequence.** Any mod whose global-dep service
+  subscribes to a saveable event leaves a serialized footprint in saves;
+  its manifest must set `can_remove_from_saved_game: false` (the game
+  then blocks removal with a clear message instead of producing an
+  unloadable save). "Registers no prototypes" no longer implies
+  removal-safe — check event subscriptions too.
+- Applied: QoSChickens / QoSVehicleRecovery / QoSPriorityActuator 0.1.2,
+  suite pack 0.5.1 (qos/BUILD-NOTES.md round 7). Audit: QoSCore,
+  QoSWorldMap, CoiBridge all clear (no saveable-event subscriptions;
+  evidence in the same round). Code-level verification only — final
+  proof is a live save + reload on the fixed build.
+
+## Recon round 12 (2026-11-05) — QoSBuilder probe: the blueprint deserialization path IS public (QoSBuilder build round)
+- **Probe question** (recon 10's open flag): `Blueprint.DeserializeForBlueprints` / `EntityConfigData.DeserializeForBlueprints` are `internal` (BlobReader-based) — can a mod reach blueprint-string → `EntityConfigData[]` at all? **Verdict: YES, via a fully public facade. No reflection, no internals.** Probe harness: `qos/build/probe/` (reflection survey + attribute reads + targeted ilspycmd).
+- **Internals are closed to mods**: `InternalsVisibleTo` on Mafi.Core/Mafi.Base/Mafi grants only Mafi's own assemblies (Mafi.Unity, Mafi.Base, Mafi.Tests, …) — no mod-facing grant. The internal `Blueprint` class (vis=internal) and its BlobReader deserializers stay unreachable at compile time. They don't need to be reached:
+- **THE FACADE — `Mafi.Core.Entities.Blueprints.BlueprintsLibrary`**: public class carrying `[GlobalDependency]` (as is `ConfigSerializationContext`), so a mod service constructor-injects the game's own library instance. **`TryParseFromString(string code, out string error, out IBlueprintItem result)` is public** (4 overloads; the instance ones use the library's own `m_serializationContext`) and is a pure parse — it calls `tryParseFromStringCore` directly and does NOT add anything to the player's library (contrast `TryAddBlueprintFromString(folder, code, out item)`, which does). This is the sanctioned string → blueprint path.
+- **`IBlueprint` is public and carries the payload**: `Items` is a public `ImmutableArray<EntityConfigData>` property on the interface — exactly the type `BatchCreateStaticEntitiesCmd`'s public ctor consumes. `EntityConfigData` is public, with **public setters** for `Transform` / `Trajectory` / `Pillars` / `OriginalEntityId`, a public `CreateCopy()`, and a public `Prototype` field. The placer's skip rule is public too: `BlueprintRotationUtils.ShouldSkipForPlacement(config)`.
+- **Transform math is all public**: `TileTransform` (public struct; public `Position`/`Rotation`/`IsReflected` fields; ctor `(Tile3i, Rotation90, bool)`; `OffsetBy(RelTile3i)` offsets position only, `RotateBy(Rotation90)` composes rotation only). Blueprint strings store positions **blueprint-local** (origin = capture origin — codec doc), so world placement = rotate local coords about the origin, then add the anchor: statics via `Tile3i.RotatedAroundZ(Rotation90)` (public) + `Rotation90` composition; transports by rebuilding the trajectory from transformed pivots via the **public static** `TransportTrajectory.TryCreateFromPivots(proto, pivots, startDir, endDir, out traj, out err, ignoreSoftConstraints, allowDenormalizedStartEndDirections, padStart)` — the same call the game's own trajectory read path uses (pivots authoritative, directions hints). Pillars are absolute XYs, offset/rotated with the same delta.
+- **gameId surface settled**: the vanilla `/api/v1/game-info` handler (`GameInfoApi`, decompiled) constructor-injects **`Mafi.Logging.IGameIdProvider`** and serves `GameId.ToString()` ("gameId stays the same for a playthrough"). A mod service injecting `IGameIdProvider` therefore reads exactly the value the companion pins from game-info — the job-file gameId check compares like with like.
+- **Command state**: `InputCommand<TResult>` exposes public `IsProcessed` / `Result` / `HasError` / `ErrorMessage`; `IInputScheduler.ScheduleInputCmd<T>(T) -> T`. (QoSBuilder still reports only claimed/scheduled/refused — the batch result is bool + last-error and per-item detail does not exist; the honest placement verdict stays the companion's census diff, per recon 10.)
+- **Fallback remains fully public** (not needed for v1): `CreateStaticEntityCmd(StaticEntityProto.ID, TileTransform, bool)` and `BuildTransportCmd(StaticEntityProto.ID, ImmutableArray<Tile3i>, ImmutableArray<Tile2i>, Direction903d?, Direction903d?, bool, bool)` ctors are public; `Direction903d` has a public `(dx, dy, dz)` ctor and `Proto.ID` a public `(string)` ctor.
+- **Save-safety note for the builder's own service**: its job scan runs on `ICalendar.NewDayEnd` — a SAVED event (round 11) — so the service carries the same `[ManuallyWrittenSerialization]` pair as the fixed feature services (only the calendar reference is written; every other dependency re-resolves via `RegisterResolvedMember`, including the consumed-job-id record path state — no: the processed-ids record is a FILE next to the jobs folder, never serialized state).

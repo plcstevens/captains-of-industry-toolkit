@@ -1248,3 +1248,82 @@ Placement is a verified capability for buildings; belts/pipes/blueprints
 still hinge on Protocol B (unlisted BuildTransportCmd /
 BatchCreateStaticEntitiesCmd). Catalogue: 15 verified / 224 wired /
 1 excluded.
+
+## 2026-11-05 (evening) — Recon round 10: transports + blueprints; the web channel is closed by construction
+
+Philip: "We need to get belts and pipes and generate and use blueprints." Static-only round (ilspycmd on the shipped 0.8.8 assemblies; NO game contact, nothing prepared or sent). Full trail: qol-recon/10-transports-blueprints.md; summary in bridge/MODDING-NOTES round 10; Protocol B updated with the verdict (live test retired, real-save abort guard preserved). Headlines: (1) **Q1 settled from code — an unlisted type can NEVER be constructed from POST /command.** `WebCommandRoutes.command` is a dictionary lookup in a prebuilt `WebCommandIndex` (miss = HTTP 400 "unknown or cannot be built from JSON yet"); the index keeps only types with ≥1 `JsonObjectBuilder.CanBuild` constructor, and the builder structurally blocks collection parameters and any non-command reference type. `BuildTransportCmd`/`BatchCreateStaticEntitiesCmd` die on `ImmutableArray<…>` ctor params; `ToggleEdictEnabledCmd` dies because its only ctor takes the live `EdictProto` object — the Protocol B key ladder was testing the wrong layer. (2) BuildTransportCmd fully mapped (pivots = absolute Tile3i with heights, pillar hints = XY of supported tiles per the TransportBuildController call site; build-or-JOIN; result = transport or mini-zipper id). (3) BatchCreateStaticEntitiesCmd is per-item, NOT atomic, bool + last-error result only (ids via census diff), no size limit; a blueprint IS its `ImmutableArray<EntityConfigData>` — the same five-dict serialization our codec decodes, trajectories rebuilt from pivots on read. (4) The game's own flow (StaticEntityMassPlacer) = transform items about the anchor, then ONE batch command with applyConfiguration:true — the recipe the placement layer mirrors. Codec gaps are small: no payload gap (game deserializer is authoritative; internal-access is the build round's open probe), transport rotation math is the one real new piece. (5) Since Q1 kills the direct route, recon 10 §Q5 carries a DESIGN NOTE (not built): a QoSBuilder mod executing single-use, expiring, gameId-pinned job files written only at the §12 confirm step, reporting through the QoSEventLog feed — §12 discipline preserved, but the suite's first entity-creating mod, so it needs Philip's explicit posture decision. Minimal next live step: none for the web channel; if the mod channel is approved, the owed sandbox import test of the 82-string pack comes first.
+
+## 2026-11-05 (evening) — QoS SAVE BUG fixed: suite 0.5.1 (three features 0.1.2)
+
+Philip hit a live save failure with suite 0.5.0 installed ("Failed to
+create generic serializer for 'ChickenBalancer'" — the game itself
+unharmed, still paused). Root cause decompiled: ICalendar events are
+SAVED events; Add(this, ...) serializes the callback OWNER into every
+save, and our three daily services (Chickens / VehicleRecovery /
+PriorityActuator) had no serializer pair — shipped subscribers get
+theirs from the game's [GenerateSerializer] generator. Fix = the
+game's sanctioned hand-written pattern: [ManuallyWrittenSerialization]
++ public static Serialize/Deserialize pair in the generated
+(StatsManager) shape; SerializeData writes only the calendar ref;
+DeserializeData restores it and re-resolves all other deps via
+RegisterResolvedMember; services now hold the mod instance instead of
+a bare ModJsonConfig; session state re-initialised on load (documented
+reset semantics). Manifests: three features can_remove_from_saved_game
+-> false (saves written with the fix contain the subscription; removal
+is now game-blocked with a clear message). Audit: QoSCore, QoSWorldMap
+(renderer-init lists are [DoNotSave] in shipped GameLoopEvents) and
+CoiBridge all CLEAR. Builds: 5 projects 0/0; pack QoS-suite-0.5.1.zip
+126,268 B; all prior packs sha256-verified untouched; compiled DLLs
+inspected — attribute + pair present. Docs: qos/BUILD-NOTES.md round 7,
+bridge/MODDING-NOTES.md round 11, local-coi-bridge-dev SKILL corrected
+at the source. Verification is CODE-LEVEL ONLY — final proof is
+Philip saving + reloading successfully on 0.5.1. Incident bonus: the
+failure proves the suite loads in-game and QoSCore resolution works.
+QoSBuilder build (approved 19:31) NOT started — the save bug took the
+slot; it remains next.
+
+## 2026-11-05 (evening) — Companion design system v1: DESIGN.md + Overview mock (design phase only)
+
+Philip: "the coi companion UI is fucking awful, we should adopt a good
+design system…" Phase 1 = design only (a QoSBuilder coordinator is
+editing serve.rs concurrently; no Rust touched, SPEC.md untouched —
+the design addendum lands with implementation, after Philip reacts).
+Deliverables: DESIGN.md (36 KB) + design-mock/overview.html +
+design-mock/overview.png (headless-Chromium screenshot, verified
+visually). System summary: dark-first token set (5 surface layers,
+semantic status palette bound to the app's own vocabulary —
+Working/Starved/Blocked/Paused, quadrant severities, gate
+TRUE/FALSE/UNEVALUABLE, plus a violet dashed UNVERIFIED treatment for
+unproven data), system font stack + tabular numbers discipline,
+232 px sidebar shell with the 12 pages grouped Monitor / Game /
+Library / System and an always-visible game status strip (retires
+the per-page game_header and the bare 502 page), component contracts
+(.btn tiers, .badge set, .table in table-cards, .callout replacing
+.err/.ok, .filterbar, .gate-chip, .fillbar), six server-side inline-
+SVG chart patterns using only data that already exists (history
+sparklines, TM/LM flow bars, forecast runway bars, machine-state
+stacked bar, power balance bar, storage fill bars) with the
+honest-labelling rule made visual, a deliberately distinct confirm
+sheet for the §12 safety surface (warning band, plain-language
+summary, exact JSON, danger variant for irreversible commands), and
+a full page map restating all 12 pages + detail/utility screens so
+the implementation round executes page by page. Reference discipline
+borrowed from Carbon / Primer / Radix / GOV.UK (named, not copied).
+Open forks left for Philip in DESIGN.md §9: dark-only vs light
+theme, comfortable vs compact density, blue vs amber accent.
+
+## 2026-11-05 (evening) — QoSBuilder 0.1.0 built: placement via confirmed job files (SPEC Addendum XVII)
+
+Philip approved the suite's first entity-creating mod; built the same evening. Probe first (MODDING-NOTES round 12): the blueprint STRING route is reachable through fully public API — inject the game's own [GlobalDependency] BlueprintsLibrary, TryParseFromString is a pure parse, IBlueprint.Items is exactly the batch command's input; gameId via IGameIdProvider (the game-info handler's own surface). The internal DeserializeForBlueprints path is not mod-reachable and not needed; the items[] fallback stays documented, unbuilt.
+
+The mod: day-end passes only while `enabled` (ships OFF); a job file is claimed (rename + processed.txt record) BEFORE scheduling, so single-use survives crashes; refusals (bad hash / expired / wrong game / over cap / unparseable / …) are consumed with a QoSEventLog JobRefused and zero action; placement mirrors StaticEntityMassPlacer (skip rule, OriginalEntityId cleared, rotate-then-anchor, trajectories rebuilt from pivots) as ONE BatchCreateStaticEntitiesCmd. Serializer pair from birth (round-7 lesson), can_remove_from_saved_game: false. The companion gained /place (library of the 82-layout pack embedded via tools/gen_blueprint_library.py — pack manifest counts found stale, codec-decoded counts used instead), prepare pinned to the live gameId (refuses when the game is unreachable), confirm = the only write, 30-minute job TTL, 120 s single-use token. Canonical-hash interop pinned three ways (C# builder, Rust builder, independent Python vector + stub check re-verifying a real written file).
+
+Verified: C# 0/0, Rust 17/17, check_place_page.sh PASS, QoSBuilder-mod-0.1.0.zip 35,184 B standalone (suite packs untouched — integration after live proof), coi.exe restaged 6,062,808 B. Owed live: DI resolution of BlueprintsLibrary/IGameIdProvider in-game, first real job end-to-end with the census-diff verdict, save+reload with the mod loaded. Suggested first live step: sandbox save, one concrete-v1 confirm, watch Log + census.
+
+## 2026-11-05 (evening) — Fresh-start plan 4.3 pass: v1.2.1 → v1.2.2, runner re-proven
+
+The fresh-start plan is now the operative plan for Philip's new 4.3 run (he starts fresh this weekend and wants the supervised play session on it). Pass contents: (1) Version reconciliation — `game_version` confirmed 0.8.8 per format §3.1 (the plan targets the version Philip will run; the 0.8.7d figure is the sibling continuation plan's save provenance and never applied here); `requires.companion` refreshed from the stale 13 verified / 226 wired / 1 excluded to the current **15 / 224 / 1** plus the /place flow; bridge floor stays >=0.5.0 with the note that >=0.6.2 makes `research.completed` directly evaluable (weekend stack is 0.6.4). The plan gains a `plan.changelog` (backfilled 1.2.0 / 1.2.1 from the blueprint-status record). (2) Order audit against the generated catalogue: 53 orders total — 26 command orders (23 verified / 3 wired: AddVehicleToBuildQueueCmd, held by its placeholder args; CreateNewTrainLineCmd + CreateNewTrainNetworkCmd, held by requires_sandbox_validation), 12 place-blueprint, 12 manual-step, 3 observe-only; every arg name matches the catalogue spec; no command changed status in a way that touches the plan; the Research<Construction> placeholder stays (genuinely unsourceable) and stays non-wedging — completion derives from exit gates. (3) Blueprint refs: audit unchanged (9 AUTHORED / 11 MISSING-DECLARED / 0 undeclared across both plans); all 6 fresh-start authored slugs (iron-v1, iron-v2, starter-assemblies-v1, concrete-v1, diesel-v1, rubber-v1) confirmed present in the embedded /place library; the 6 authored place-blueprint orders' notes now name the QoSBuilder job route as the placement mechanism (kind/completion/autonomy untouched). (4) 4.3 substance verdict: NO phase, gate, order or threshold changed — mixed-materials support touches storage/cargo buffer semantics, but the plan's gates read aggregate product stats, it uses no `storage.*` metric anywhere, and its storage orders target dedicated single-product buffers by doctrine; overlays / radiation-shielded trains / train stats are surfaces no phase references; recipe ratios unchanged in 0.8.8. (5) Runner proof on v1.2.2: validate_plan PASS (0 errors), check_plan_parity PARITY PASS (both plans), Python+Rust sequence dry-runs regenerated and in verdict agreement; `coi play` over the 12-month growth fixtures reproduces timeline v2 exactly (phases 0–3 COMPLETE at months 1/3/5/8 — phase 2 completes via its exit gate despite its UNEVALUABLE placeholder entry, the non-wedge property in action — phase 4 ACTIVE, blocked on diesel stock 220 < 300 with the other three exit leaves TRUE; 21 orders recorded: 6 PREPARED with exact payloads, 15 SKIPPED with reasons) and over a single-state early-game sequence (phase 0 COMPLETE, phase 1 ACTIVE, 1 prepared / 5 skipped — the first-pass picture for the weekend). New: plans/WEEKEND-RUNBOOK.md (gate zero = save+reload proof on suite 0.5.1 before any play; first builder job = iron-v1 on the new save under Philip's confirm, optional concrete-v1 scratch-save rehearsal first). GAME-PLAN-FORMAT.md untouched — the format itself did not change.
+
+## 2026-11-05 (evening) — Design system v1 implemented across the companion website
+
+Philip called the UI "fucking awful" and delegated the last design decisions; adopted defaults: dark only, comfortable density, blue accent #5b9dff. The whole of serve.rs is restated on DESIGN.md: sidebar shell with the four nav groups + always-visible status strip (fetches game-info per render; OFFLINE is a state, never a fabricated "last known"), token stylesheet, token badges (UNVERIFIED/UNEVALUABLE dashed), the §3.9 confirm sheet verbatim (warning/danger band, summary, exact JSON, Run + Cancel peers), server-SVG charts (sparklines, flow pairs, runway bars with basis verbatim, machine-state stacked bars, power bars with UNVERIFIED average mini-bars, storage fill bars), the Log as a day-grouped feed, degraded states in-shell (D1–D3). Functionality frozen throughout — routes, fields, CSRF, tokens, §12 semantics, audit/activity writes untouched; layout() now takes &State for the strip, which was the one structural change. Deviations are listed in SPEC Addendum XVIII (Place in the Game nav group, no nav pills, productivity verdict lines kept as text under the bars, issue Act tables full-width, no runway hatching — no seasonal flag exists on Forecast). Verified: build clean 0 warnings, tests 17/17, check_place_page.sh + check_log_page.sh PASS, stub sweep all-200 populated + degraded in-shell, screenshots inspected (after-overview / after-issues / after-confirm in design-mock/). Stub gained a /coi/v1/power route (v06 synthetic capture) so the power panel is sweep-verifiable. dist/coi.exe restaged 6,160,589 B (sha256 9976089f…) — install alongside suite 0.5.1 + QoSBuilder when Philip's PC is back.
