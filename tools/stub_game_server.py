@@ -61,6 +61,13 @@ BRIDGE_ROUTES = {
     "/coi/v1/census": "bridge-census.json",
     "/coi/v1/topology": "bridge-topology.json",
     "/coi/v1/machines": "bridge-machines.json",
+    "/coi/v1/power": "bridge-power.json",
+    "/coi/v1/terrain": "bridge-terrain.json",
+    "/coi/v1/deposits": "bridge-deposits.json",
+    "/coi/v1/designations": "bridge-designations.json",
+    # The region route takes query params; the stub serves ONE
+    # canned region (bridge-region.json) whatever was asked for.
+    "/coi/v1/terrain/region": "bridge-region.json",
 }
 
 CAPTURE_DIR = os.path.join(ROOT, "live-synthetic-v064")

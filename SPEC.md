@@ -1672,3 +1672,103 @@ design-mock/after-overview.png, after-issues.png, after-confirm.png
 Not covered by the stub: product-history sparklines against real
 history (the stub serves empty series by design) — the code path is
 the same one the Snapshots trends render through, which is covered.
+
+## Addendum XIX — Terrain sensing: heights, deposits, designations (CoiBridge v0.6.5, companion Terrain page) — 2026-11-06
+
+Philip's layout question ("how well do we understand layout?")
+exposed the blind spot: built things were exact, the land itself
+was unsensed. Recon round 13 (`qol-recon/11-terrain-deposits.md`,
+bridge MODDING-NOTES round 13) closed the knowledge gap; this
+addendum is the built contract.
+
+### The coordinate guarantee
+
+Terrain tiles and entity positions are ONE grid. Terrain height
+lives per-tile on `TerrainManager` (`index = y * width + x`);
+`TerrainTile.WithHeightFloored` builds its Tile3i from
+`TileCoordSlim.ExtendHeight(Height.TilesHeightFloored)` — an
+entity's Z IS the floored terrain height at its tile, in the same
+units. No transform, no offset, ever. Heights are Fix32
+(`heightRawPerTile = 65536` per tile); a tile is 2 m × 2 m and
+`TerrainTile.TILE_VOLUME_M = 8` m3 — so one tile-cubed of
+earthworks = 8 m3 exactly.
+
+### New bridge routes (read-only, own DI class, own failure domain)
+
+- `GET /coi/v1/terrain` — map meta (width/height/tilesCount,
+  playable limits, unit semantics) + full-grid min/max + ocean
+  count + a point-sampled summary grid (stride chosen so the grid
+  is at most 96x96). Default payload stays ~2-4 MB even at
+  640x640.
+- `GET /coi/v1/terrain/region?x0&y0&x1&y1` — exact raw heights for
+  a rectangle (x1/y1 exclusive, -1 = map edge, clamped to the
+  map). Area capped at 16,384 tiles; oversized rectangles shrink
+  from the requested origin and carry `"truncated": true`.
+  Empty-after-clamp is a 400 JSON error.
+- `GET /coi/v1/deposits` — on-map resources ARE terrain material
+  layers (no deposit entities exist). Per-material totals
+  (tiles, summed layer thickness as `volumeTilesCubedRaw`,
+  remaining `quantity`/`quantityRaw` via the game's own
+  `ToPartialProductQuantity` conversion — depletion-exact, since
+  mining removes layer thickness) + connected deposit regions
+  (4-connectivity components with bounds; bedrock and
+  product-less materials excluded; list capped at 1024 with
+  `"truncated"`). The full-grid scan is cached 30 s in the mod.
+- `GET /coi/v1/designations` — mining/dumping/other partition via
+  the shipped designation managers (HashSet membership):
+  area, size, target-height band, fulfilled, assigned jobs.
+
+### Companion side
+
+- `fetch_live` pulls terrain summary + deposits BEST-EFFORT into
+  `Live.terrain` / `Live.deposits` (Null on an older bridge;
+  absence never fails the vanilla fetch). Snapshots carry them as
+  `bridgeTerrain` / `bridgeDeposits`; store schema v4 derives
+  `deposit_state` rows (per snapshot + material: tiles,
+  volume_raw, quantity_raw) — deposit history is queryable;
+  heights are NOT stored per snapshot (bulky, re-fetchable).
+- **Terrain page** (`/terrain`, Monitor group): stat tiles (map,
+  height range, ocean), whole-map summary heatmap (server-side
+  SVG, range printed as text beside it), a region form (exact
+  heights fetched ON DEMAND; capped rectangles say so), the
+  deposits tables (totals + regions, product names resolved),
+  and the designations table (kind/state always worded badges).
+- **Earthworks estimator** (`coi/src/terrain.rs`, pure + unit
+  tested): rectangle + target height -> cut (sum of heights above
+  target) and fill (sum below), tiles-cubed and m3 (x8), with
+  above/below/at tile counts. MATERIAL-AGNOSTIC by design: it
+  prices geometry, and the deposits table says what the cut is
+  made of. Exposed three ways, one implementation: the Terrain
+  page form, the CLI (`coi terrain deposits|region|estimate`),
+  and the documented JSON shape the estimator emits
+  (`{targetTiles, tiles, tilesAbove, tilesBelow, tilesAt,
+  cutTilesCubed, fillTilesCubed, cutCubicMeters,
+  fillCubicMeters}`) for the playing layer.
+- CLI: `coi terrain deposits`, `coi terrain region X0 Y0 X1 Y1`,
+  `coi terrain estimate X0 Y0 X1 Y1 TARGET` (prints the estimator
+  JSON plus the region descriptor).
+
+### Still NOT sensed after this round
+
+- An excavator's CURRENT digging target / in-progress terraforming
+  job internals (designations expose areas + assigned-job counts,
+  not per-job state).
+- Nothing else from the 2026-11-06 answer remains open: heights,
+  earthworks and on-map ore are all sensed as of v0.6.5.
+
+Verification: bridge builds 0/0; companion 22/22 cargo tests
+(5 new terrain tests: flat-at-target, flat fill, ramp split,
+single peak, raw->tiles parse); Terrain page rendered against a
+synthetic v0.6.5 stub capture (summary, region, estimator —
+numbers cross-checked against an independent computation) and
+degrades to the standard bridge note at HTTP 200 against the
+v0.6.4 capture; check_log_page.sh + check_place_page.sh still
+PASS. LIVE verification is outstanding by design (game PC off):
+the four routes against a real save join the weekend checklist
+with the suite 0.5.1 save+reload proof and the first QoSBuilder
+job.
+
+Packaging for this round: dist/CoiBridge-mod-0.6.5.zip 27,032 B,
+sha256 3f26d817943e69244fe083bc176db848f76cb76ea0f8687b2a369ec96c238cf5; dist/coi.exe restaged 6,215,930 B, sha256
+e71ff3de9225f81cfa51c4b276812aae633a470ec01f04bd4a526a3db911d7e5
+(supersedes the 6,160,589 B redesign build).

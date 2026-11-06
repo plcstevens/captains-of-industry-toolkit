@@ -442,6 +442,7 @@ fn route(state: &State, req: &Request) -> Response {
                 ("GET", "/products") => page_products(state, &session),
                 ("GET", "/product") => page_product(state, &session, req),
                 ("GET", "/entities") => page_entities(state, &session, req),
+                ("GET", "/terrain") => page_terrain(state, &session, req),
                 ("GET", "/trade") => page_trade(state, &session, req),
                 ("GET", "/plans") => page_plans(state, &session, req),
                 ("GET", "/place") => page_place(state, &session),
@@ -730,6 +731,7 @@ fn nav_active(title: &str) -> &'static str {
         "Issues" | "Issue detail" | "Issue gone" => "Issues",
         "Products" => "Products",
         "Entities" => "Entities",
+        "Terrain" => "Terrain",
         "Research" => "Research",
         "Trade" => "Trade",
         "Plans" => "Plans",
@@ -751,11 +753,12 @@ fn layout(state: &State, session: &Session, title: &str, body: &str) -> String {
 }
 
 fn layout_nav(state: &State, session: &Session, title: &str, active: &str, body: &str) -> String {
-    const NAV: [(&str, &str, &str); 13] = [
+    const NAV: [(&str, &str, &str); 14] = [
         ("Monitor", "Overview", "/"),
         ("Monitor", "Issues", "/issues"),
         ("Monitor", "Products", "/products"),
         ("Monitor", "Entities", "/entities"),
+        ("Monitor", "Terrain", "/terrain"),
         ("Game", "Research", "/research"),
         ("Game", "Trade", "/trade"),
         ("Game", "Plans", "/plans"),
@@ -978,6 +981,66 @@ fn svg_flow_pair(produced: i64, consumed: i64) -> String {
          <span class=\"fillbar\" style=\"width:64px;display:block\"><i style=\"width:{:.1}%;background:var(--paused)\"></i></span></span>",
         pw, cw
     )
+}
+
+/// Terrain heatmap: a height grid (tiles, row-major) as inline
+/// SVG rects on a low→high ramp (deep water blue → green → tan →
+/// pale → white). Colour is never alone: the caller prints the
+/// height range as text beside it. Cell size scales so the SVG
+/// stays ~720 px wide; north (y = 0) is up, matching the game's
+/// own map orientation in bridge coordinates.
+fn svg_heatmap(heights: &[f64], w: usize, h: usize, min: f64, max: f64) -> String {
+    if w == 0 || h == 0 || heights.len() < w * h {
+        return String::new();
+    }
+    const STOPS: [(u8, u8, u8); 5] = [
+        (31, 64, 110),
+        (46, 125, 79),
+        (150, 128, 80),
+        (205, 198, 182),
+        (246, 246, 242),
+    ];
+    let span = if (max - min).abs() < f64::EPSILON { 1.0 } else { max - min };
+    let cell = (720.0 / w as f64).clamp(1.0, 24.0);
+    let mut rects = String::new();
+    for y in 0..h {
+        for x in 0..w {
+            let t = ((heights[y * w + x] - min) / span).clamp(0.0, 1.0);
+            let seg = (t * (STOPS.len() - 1) as f64).min((STOPS.len() - 2) as f64);
+            let i = seg as usize;
+            let f = seg - i as f64;
+            let (r0, g0, b0) = STOPS[i];
+            let (r1, g1, b1) = STOPS[i + 1];
+            let (r, g, b) = (
+                (r0 as f64 + (r1 as f64 - r0 as f64) * f) as u8,
+                (g0 as f64 + (g1 as f64 - g0 as f64) * f) as u8,
+                (b0 as f64 + (b1 as f64 - b0 as f64) * f) as u8,
+            );
+            rects.push_str(&format!(
+                "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" fill=\"rgb({},{},{})\"/>",
+                x as f64 * cell,
+                y as f64 * cell,
+                cell,
+                cell,
+                r,
+                g,
+                b
+            ));
+        }
+    }
+    format!(
+        "<svg width=\"{:.0}\" height=\"{:.0}\" viewBox=\"0 0 {:.1} {:.1}\" role=\"img\" style=\"max-width:100%;height:auto\">{}</svg>",
+        w as f64 * cell,
+        h as f64 * cell,
+        w as f64 * cell,
+        h as f64 * cell,
+        rects
+    )
+}
+
+/// Human tiles value from a bridge raw Fix32 height/quantity.
+fn fmt_tiles(raw: i64) -> String {
+    format!("{:.2}", raw as f64 / crate::terrain::RAW_PER_TILE)
 }
 
 /// f64 view of a stats flow array entry (values are i64 in the API).
@@ -4251,6 +4314,289 @@ fn machines_section(state: &State) -> String {
 const MACHINES_JS: &str = "<script>
 function filterMachines(){var q=document.getElementById('mfilter').value.toLowerCase();var st=document.getElementById('mstate').value;document.querySelectorAll('#mtable tbody tr').forEach(function(r){var ok=r.textContent.toLowerCase().indexOf(q)>=0;if(ok&&st!==''){ok=r.getAttribute('data-state')===st}r.style.display=ok?'':'none'})}
 </script>";
+
+/// Terrain page (CoiBridge v0.6.5): the land itself — height
+/// summary + heatmap, an exact-region heatmap with the earthworks
+/// estimator, on-map deposit totals and regions, and terrain
+/// designations. Terrain (x, y) is the same grid as every entity
+/// position the companion serves; heights are in tiles
+/// (1 tile = 2 m; one tile-cubed = 8 m3).
+fn page_terrain(state: &State, session: &Session, req: &Request) -> Response {
+    let live = match fetch_live(&client(state)) {
+        Ok(l) => l,
+        Err(e) => {
+            let mut html = page_head(
+                "Monitor",
+                "Terrain",
+                "The land itself: heights, on-map deposits and designations.",
+                "",
+            );
+            html.push_str(&degraded_game(&e));
+            return Response::html(200, layout(state, session, "Terrain", &html));
+        }
+    };
+    let mut body = page_head(
+        "Monitor",
+        "Terrain",
+        "The land itself: heights, on-map deposits and designations — the same tile grid as everything else (an entity's Z is the floored terrain height).",
+        "",
+    );
+    if live.terrain.is_null() {
+        body.push_str(&degraded_bridge("Terrain, deposit and designation data", "0.6.5"));
+        return Response::html(200, layout(state, session, "Terrain", &body));
+    }
+    let t = &live.terrain;
+    let (map_w, map_h) = (vi(&t["width"]), vi(&t["height"]));
+    let q = &req.query;
+    let qint = |k: &str| q.get(k).and_then(|s| s.parse::<i64>().ok());
+    let (rx0, ry0, rx1, ry1) = (qint("rx0"), qint("ry0"), qint("rx1"), qint("ry1"));
+    let target: Option<f64> = q.get("target").and_then(|s| s.parse::<f64>().ok());
+
+    // Headline tiles.
+    let mut tiles = String::from("<div class=\"stats\">");
+    tiles.push_str(&stat_tile(
+        "MAP",
+        &format!("{} × {}", fmt_num(&t["width"]), fmt_num(&t["height"])),
+        &format!(
+            "playable x {}–{}, y {}–{}",
+            vi(&t["limits"]["minX"]),
+            vi(&t["limits"]["maxXExcl"]),
+            vi(&t["limits"]["minY"]),
+            vi(&t["limits"]["maxYExcl"])
+        ),
+        false,
+    ));
+    tiles.push_str(&stat_tile(
+        "HEIGHT RANGE (TILES)",
+        &format!(
+            "{} → {}",
+            fmt_tiles(vi(&t["minHeightRaw"])),
+            fmt_tiles(vi(&t["maxHeightRaw"]))
+        ),
+        "1 tile = 2 m · heights are floored into entity Z",
+        false,
+    ));
+    tiles.push_str(&stat_tile(
+        "OCEAN TILES",
+        &fmt_num(&t["oceanTiles"]),
+        &format!("of {} tiles", fmt_num(&t["tilesCount"])),
+        false,
+    ));
+    tiles.push_str("</div>");
+    body.push_str(&tiles);
+
+    // Region fetch (on demand — exact heights are never pulled
+    // per page view without the user asking for a rectangle).
+    let region = match (rx0, ry0, rx1, ry1) {
+        (Some(x0), Some(y0), Some(x1), Some(y1)) => {
+            let path = format!("/coi/v1/terrain/region?x0={x0}&y0={y0}&x1={x1}&y1={y1}");
+            bridge_json(state, &path).and_then(|v| crate::terrain::region_from_json(&v))
+        }
+        _ => None,
+    };
+
+    // Heatmap + region/estimator form card.
+    {
+        let (grid, gw, gh, caption) = match &region {
+            Some(r) => (
+                r.heights.clone(),
+                r.width(),
+                r.height(),
+                format!(
+                    "Exact heights for x {}–{}, y {}–{}{}.",
+                    r.x0,
+                    r.x1,
+                    r.y0,
+                    r.y1,
+                    if r.truncated { " (bridge capped the rectangle at 16,384 tiles)" } else { "" }
+                ),
+            ),
+            None => {
+                let raw = t["summaryHeightsRaw"].as_array().cloned().unwrap_or_default();
+                let heights: Vec<f64> = raw
+                    .iter()
+                    .map(|v| v.as_i64().unwrap_or(0) as f64 / crate::terrain::RAW_PER_TILE)
+                    .collect();
+                (
+                    heights,
+                    vi(&t["summaryWidth"]) as usize,
+                    vi(&t["summaryHeight"]) as usize,
+                    format!(
+                        "Whole-map summary, point-sampled every {} tiles. Pick a rectangle below for exact heights.",
+                        vi(&t["summaryStride"])
+                    ),
+                )
+            }
+        };
+        let (mut mn, mut mx) = (f64::INFINITY, f64::NEG_INFINITY);
+        for &v in &grid {
+            if v < mn {
+                mn = v;
+            }
+            if v > mx {
+                mx = v;
+            }
+        }
+        if !grid.is_empty() {
+            body.push_str(&format!(
+                "<div class=\"card\"><div class=\"cardhead\"><h2>Height map</h2></div>\
+                 <p class=\"sub\">{} Height range shown: <b>{:.2} → {:.2} tiles</b>. North (y = 0) is up.</p>{}</div>",
+                esc(&caption),
+                mn,
+                mx,
+                svg_heatmap(&grid, gw, gh, mn, mx),
+            ));
+        }
+        // Region + target form.
+        body.push_str(&format!(
+            "<div class=\"card\"><div class=\"cardhead\"><h2>Region &amp; earthworks</h2></div>\
+             <form method=\"get\" action=\"/terrain\">\
+             <div class=\"field\"><label for=\"tr-x0\">x from</label><input id=\"tr-x0\" type=\"number\" name=\"rx0\" value=\"{}\" required></div>\
+             <div class=\"field\"><label for=\"tr-y0\">y from</label><input id=\"tr-y0\" type=\"number\" name=\"ry0\" value=\"{}\" required></div>\
+             <div class=\"field\"><label for=\"tr-x1\">x to (exclusive)</label><input id=\"tr-x1\" type=\"number\" name=\"rx1\" value=\"{}\" required></div>\
+             <div class=\"field\"><label for=\"tr-y1\">y to (exclusive)</label><input id=\"tr-y1\" type=\"number\" name=\"ry1\" value=\"{}\" required></div>\
+             <div class=\"field\"><label for=\"tr-t\">target height (tiles)</label><input id=\"tr-t\" type=\"text\" name=\"target\" value=\"{}\" placeholder=\"e.g. 12.5\"></div>\
+             <button type=\"submit\">Show region</button></form>\
+             <p class=\"sub\">Exact heights are fetched on demand; the bridge caps a region at 16,384 tiles. With a target height, the estimator sums the height deltas: cut = above target (mine away), fill = below target (dump). Volumes in tiles-cubed and m³ (1 tile³ = 8 m³).</p></div>",
+            rx0.unwrap_or(vi(&t["limits"]["minX"])),
+            ry0.unwrap_or(vi(&t["limits"]["minY"])),
+            rx1.unwrap_or(map_w),
+            ry1.unwrap_or(map_h),
+            target.map(|v| v.to_string()).unwrap_or_default(),
+        ));
+        if let (Some(r), Some(tg)) = (&region, target) {
+            let ew = crate::terrain::estimate(&r.heights, tg);
+            let mut tiles = String::from("<div class=\"stats\">");
+            tiles.push_str(&stat_tile(
+                "CUT — MINE AWAY",
+                &format!("{:.0} m³", ew.cut_m3()),
+                &format!("{:.1} tiles³ over {} tiles above target", ew.cut_tiles3, ew.tiles_above),
+                false,
+            ));
+            tiles.push_str(&stat_tile(
+                "FILL — DUMP",
+                &format!("{:.0} m³", ew.fill_m3()),
+                &format!("{:.1} tiles³ over {} tiles below target", ew.fill_tiles3, ew.tiles_below),
+                false,
+            ));
+            tiles.push_str(&stat_tile(
+                "ALREADY AT TARGET",
+                &format!("{}", ew.tiles_at),
+                &format!("of {} tiles in the region", ew.tiles),
+                false,
+            ));
+            tiles.push_str("</div>");
+            body.push_str(&format!(
+                "<div class=\"card\"><div class=\"cardhead\"><h2>Earthworks to flatten at {:.2} tiles</h2></div>{}</div>",
+                tg, tiles
+            ));
+        } else if region.is_some() {
+            body.push_str("<div class=\"callout\"><b>Region loaded.</b> Add a target height to run the earthworks estimator over it.</div>");
+        } else if target.is_some() {
+            body.push_str("<div class=\"callout callout--danger\"><b>No region.</b> The estimator needs a rectangle the bridge could serve — check the bounds against the map size above.</div>");
+        }
+    }
+
+    // Deposits: on-map resources are terrain material layers.
+    if live.deposits.is_null() {
+        body.push_str(&degraded_bridge("Deposit data", "0.6.5"));
+    } else {
+        let d = &live.deposits;
+        let name_of = |pid: &str| {
+            live.names
+                .get(pid)
+                .cloned()
+                .unwrap_or_else(|| pid.trim_start_matches("Product_").to_string())
+        };
+        if let Some(mats) = d["materials"].as_array() {
+            body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>On-map resources — totals by material</h2></div><table><thead><tr><th>Product</th><th>Material</th><th class=\"num\">Tiles</th><th class=\"num\">Remaining</th></tr></thead><tbody>");
+            for m in mats {
+                body.push_str(&format!(
+                    "<tr><td>{}</td><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td></tr>",
+                    esc(&name_of(m["product"].as_str().unwrap_or(""))),
+                    esc(m["material"].as_str().unwrap_or("")),
+                    fmt_num(&m["tiles"]),
+                    fmt_num(&m["quantity"]),
+                ));
+            }
+            body.push_str("</tbody></table><p class=\"sub\" style=\"padding:0 16px 12px\">Remaining quantities use the game's own mined-quantity conversion over today's layers — mining removes layer thickness, so this is what is left, bedrock excluded.</p></div>");
+        }
+        if let Some(deps) = d["deposits"].as_array() {
+            body.push_str(&format!(
+                "<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Deposit regions</h2></div><table><thead><tr><th>Product</th><th>Bounds (x, y)</th><th class=\"num\">Tiles</th><th class=\"num\">Remaining</th></tr></thead><tbody>"
+            ));
+            let shown = deps.len().min(200);
+            for dep in &deps[..shown] {
+                body.push_str(&format!(
+                    "<tr><td>{}</td><td>{}–{}, {}–{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td></tr>",
+                    esc(&name_of(dep["product"].as_str().unwrap_or(""))),
+                    vi(&dep["minX"]),
+                    vi(&dep["maxX"]),
+                    vi(&dep["minY"]),
+                    vi(&dep["maxY"]),
+                    fmt_num(&dep["tiles"]),
+                    fmt_num(&dep["quantity"]),
+                ));
+            }
+            body.push_str("</tbody></table>");
+            if deps.len() > shown {
+                body.push_str(&format!(
+                    "<p class=\"sub\" style=\"padding:0 16px 12px\">Showing the first {} of {} regions (bridge order: by material, then discovery).</p>",
+                    shown,
+                    deps.len()
+                ));
+            }
+            if d["truncated"].as_bool().unwrap_or(false) {
+                body.push_str("<p class=\"sub\" style=\"padding:0 16px 12px\">The bridge capped the region list; the totals above stay complete.</p>");
+            }
+            body.push_str("</div>");
+        }
+    }
+
+    // Designations (mining / dumping areas the player marked).
+    match bridge_json(state, "/coi/v1/designations") {
+        Some(dz) => {
+            let rows = dz["designations"].as_array().cloned().unwrap_or_default();
+            body.push_str("<div class=\"card tablecard\"><div class=\"cardhead\" style=\"padding:16px 16px 0\"><h2>Terrain designations</h2></div>");
+            if rows.is_empty() {
+                body.push_str("<div class=\"empty\">No mining or dumping designations are currently marked.</div>");
+            } else {
+                body.push_str("<table><thead><tr><th>Kind</th><th>Area (x, y)</th><th class=\"num\">Tiles</th><th>Target height</th><th>State</th><th class=\"num\">Jobs</th></tr></thead><tbody>");
+                for r in &rows {
+                    let kind = r["kind"].as_str().unwrap_or("other");
+                    let kind_badge = match kind {
+                        "mining" => badge("info", "Mining"),
+                        "dumping" => badge("warning", "Dumping"),
+                        _ => badge("paused", "Other"),
+                    };
+                    let state_badge = if r["isFulfilled"].as_bool().unwrap_or(false) {
+                        badge("ok", "Fulfilled")
+                    } else {
+                        badge("starved", "Open")
+                    };
+                    body.push_str(&format!(
+                        "<tr><td>{}</td><td>{}–{}, {}–{}</td><td class=\"num\">{}</td><td>{}–{} tiles</td><td>{}</td><td class=\"num\">{}</td></tr>",
+                        kind_badge,
+                        vi(&r["area"]["minX"]),
+                        vi(&r["area"]["maxXExcl"]),
+                        vi(&r["area"]["minY"]),
+                        vi(&r["area"]["maxYExcl"]),
+                        fmt_num(&r["sizeTiles"]),
+                        vi(&r["minTargetHeight"]),
+                        vi(&r["maxTargetHeight"]),
+                        state_badge,
+                        fmt_num(&r["jobsAssigned"]),
+                    ));
+                }
+                body.push_str("</tbody></table>");
+            }
+            body.push_str("</div>");
+        }
+        None => body.push_str(&degraded_bridge("Designation data", "0.6.5")),
+    }
+
+    Response::html(200, layout(state, session, "Terrain", &body))
+}
 
 fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
     let machines_html = machines_section(state);

@@ -6,6 +6,7 @@ mod productivity;
 mod saveinfo;
 mod store;
 mod serve;
+mod terrain;
 
 use client::Client;
 use serde_json::Value;
@@ -86,6 +87,7 @@ fn main() {
         "saveinfo" => saveinfo::cmd(&rest[1..]),
         "plan-check" => plan::cmd(&rest[1..]),
         "play" => plan::play_cmd(&rest[1..]),
+        "terrain" => terrain::cmd(&cfg, &rest[1..]),
         "serve" => serve::cmd(&cfg, &db_path, &rest[1..]),
         _ => {
             eprintln!("unknown command: {cmd}");
@@ -161,7 +163,7 @@ fn usage() {
   db       Database tools: `db info`, `db import <snapshot.json>`\n  products Table of all products (arg: name filter)\n  report   Triage board (Eisenhower) over live data (arg: output .md path)
   forecast Outlook at current rates: stock runways + storage fill ETAs (arg: saved raw-stats JSON bundle, offline)
   serve    Local dashboard at http://127.0.0.1:8484/ (opts: --port, --bind)
-  saveinfo Inspect a .save file offline (arg: path; flags: --json, --extract-screenshot)\n  plan-check DRY-RUN plan evaluation vs a state dir (arg: plan.json; flags: --state-dir, --out)\n  play     PREPARE-ONLY session walk over a state sequence (arg: plan.json; flags: --state-seq, --session-out, --transcript-out)\n\n\
+  saveinfo Inspect a .save file offline (arg: path; flags: --json, --extract-screenshot)\n  plan-check DRY-RUN plan evaluation vs a state dir (arg: plan.json; flags: --state-dir, --out)\n  play     PREPARE-ONLY session walk over a state sequence (arg: plan.json; flags: --state-seq, --session-out, --transcript-out)\n  terrain  Terrain sensing (CoiBridge 0.6.5): `terrain deposits`, `terrain region X0 Y0 X1 Y1`, `terrain estimate X0 Y0 X1 Y1 TARGET`\n\n\
          ENV: COI_GAME_URL, COI_PROXY, COI_HOST_HEADER, COI_DB (default ./coi.db)\n\
          Default game URL: http://127.0.0.1:3073 (direct, on the game PC).\n\
          Via Tailscale from another machine: --proxy tailnet --game-url http://<pc-name>:3073 --host-header localhost:3073"
@@ -361,6 +363,8 @@ pub(crate) struct Live {
     pub(crate) history: Value,          // monthly history for pinned ids (may be Null)
     pub(crate) census: Value,           // CoiBridge /coi/v1/census (Null when bridge absent)
     pub(crate) machines: Value,         // CoiBridge /coi/v1/machines (Null when bridge absent)
+    pub(crate) terrain: Value,          // CoiBridge /coi/v1/terrain summary (Null pre-0.6.5)
+    pub(crate) deposits: Value,         // CoiBridge /coi/v1/deposits (Null pre-0.6.5)
 }
 
 pub(crate) fn fetch_live(c: &Client) -> Result<Live, String> {
@@ -425,6 +429,13 @@ pub(crate) fn fetch_live(c: &Client) -> Result<Live, String> {
     // layer reports INSUFFICIENT for it (prep §5).
     let census = get_json(c, "/coi/v1/census").unwrap_or(Value::Null);
     let machines = get_json(c, "/coi/v1/machines").unwrap_or(Value::Null);
+    // Terrain sensing (CoiBridge v0.6.5): the height SUMMARY and
+    // the deposits payload ride along best-effort like the other
+    // bridge payloads. Exact region heights are bulky and are
+    // fetched on demand (Terrain page / `coi terrain`), never
+    // per snapshot.
+    let terrain = get_json(c, "/coi/v1/terrain").unwrap_or(Value::Null);
+    let deposits = get_json(c, "/coi/v1/deposits").unwrap_or(Value::Null);
     Ok(Live {
         game,
         server,
@@ -435,6 +446,8 @@ pub(crate) fn fetch_live(c: &Client) -> Result<Live, String> {
         history,
         census,
         machines,
+        terrain,
+        deposits,
     })
 }
 
@@ -479,6 +492,13 @@ pub(crate) fn snapshot_json(live: &Live) -> Value {
         // Null when the bridge was unreachable at capture time.
         "bridgeCensus": live.census,
         "bridgeMachines": live.machines,
+        // Terrain sensing (schema v4 store support): deposit
+        // totals are derived into deposit_state rows by
+        // insert_snapshot; the terrain summary is carried for
+        // consumers of the snapshot JSON (heights themselves are
+        // re-fetched on demand, they are not stored per snapshot).
+        "bridgeTerrain": live.terrain,
+        "bridgeDeposits": live.deposits,
     });
     snap
 }
@@ -1234,6 +1254,8 @@ fn cmd_forecast(cfg: &Config, file: Option<String>) -> i32 {
                 history,
                 census: Value::Null,
                 machines: Value::Null,
+                terrain: Value::Null,
+                deposits: Value::Null,
             }
         }
         None => {

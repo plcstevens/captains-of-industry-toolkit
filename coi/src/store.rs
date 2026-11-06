@@ -55,6 +55,22 @@
 //!     -- the payload; their game context was never stored and stays
 //!     -- NULL — it is not reconstructed. The legacy `audit` table is
 //!     -- kept and still written by do_apply (Actions page unchanged).
+//!
+//! Schema v4 (PRAGMA user_version = 4; terrain sensing, CoiBridge
+//! v0.6.5, recon round 13):
+//!   deposit_state(snapshot_id, material, product, tiles,
+//!                 volume_raw, quantity_raw)
+//!     -- per-snapshot ON-MAP resource totals derived from the
+//!     -- snapshot's bridgeDeposits payload (the /coi/v1/deposits
+//!     -- materials list): one row per terrain material with its
+//!     -- mined product, tile count, summed layer thickness
+//!     -- (volume_raw, Fix32 tiles-cubed) and remaining quantity
+//!     -- (quantity_raw, Fix32 product units — the game's own
+//!     -- mined-quantity conversion, depletion-exact). Snapshots
+//!     -- taken without the 0.6.5 bridge have no rows; absence is
+//!     -- data, never backfilled. Terrain HEIGHTS are not stored
+//!     -- per snapshot (bulky, and re-fetchable on demand); only
+//!     -- the deposit totals are queryable history.
 
 use rusqlite::{params, Connection};
 use serde_json::Value;
@@ -186,6 +202,23 @@ CREATE INDEX IF NOT EXISTS idx_activity_ts ON activity_events(recorded_ts_unix D
 CREATE INDEX IF NOT EXISTS idx_activity_source ON activity_events(source);
 ";
 
+/// Schema v4 additions (see module docs). Applied by `Store::open`
+/// when `PRAGMA user_version` < 4; IF NOT EXISTS like the earlier
+/// migrations.
+const SCHEMA_V4: &str = "
+CREATE TABLE IF NOT EXISTS deposit_state (
+    snapshot_id INTEGER NOT NULL REFERENCES snapshots(id),
+    material TEXT NOT NULL,
+    product TEXT,
+    tiles INTEGER NOT NULL,
+    volume_raw INTEGER NOT NULL,
+    quantity_raw INTEGER NOT NULL,
+    PRIMARY KEY (snapshot_id, material)
+);
+CREATE INDEX IF NOT EXISTS idx_deposit_snap ON deposit_state(snapshot_id);
+CREATE INDEX IF NOT EXISTS idx_deposit_material ON deposit_state(material);
+";
+
 impl Store {
     pub fn open(path: &str) -> Result<Store, String> {
         let conn = Connection::open(path).map_err(|e| format!("open db {path}: {e}"))?;
@@ -210,6 +243,12 @@ impl Store {
                 .map_err(|e| format!("db schema v3: {e}"))?;
             backfill_legacy_audit(&conn)?;
             conn.execute_batch("PRAGMA user_version = 3")
+                .map_err(|e| format!("db user_version set: {e}"))?;
+        }
+        if version < 4 {
+            conn.execute_batch(SCHEMA_V4)
+                .map_err(|e| format!("db schema v4: {e}"))?;
+            conn.execute_batch("PRAGMA user_version = 4")
                 .map_err(|e| format!("db user_version set: {e}"))?;
         }
         Ok(Store { conn })
@@ -331,6 +370,17 @@ impl Store {
                 ],
             )
             .map_err(|e| format!("db machine_state_instance: {e}"))?;
+        }
+        // Schema v4: per-material deposit totals from the
+        // snapshot's bridgeDeposits payload (absent pre-0.6.5 —
+        // no rows, like the machine-state tables).
+        for (material, product, tiles, volume_raw, quantity_raw) in snapshot_deposit_rows(snap) {
+            tx.execute(
+                "INSERT INTO deposit_state(snapshot_id, material, product, tiles, volume_raw, quantity_raw)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![sid, material, product, tiles, volume_raw, quantity_raw],
+            )
+            .map_err(|e| format!("db deposit_state: {e}"))?;
         }
         for issue in issues {
             tx.execute(
@@ -700,6 +750,32 @@ fn activity_filter(_source: Option<&str>, search: Option<&str>) -> (String, Stri
                AND (action LIKE ?2 ESCAPE '\\' OR COALESCE(summary, '') LIKE ?2 ESCAPE '\\')"
         .to_string();
     (sql, like)
+}
+
+/// Per-material deposit totals parsed from a snapshot's
+/// bridgeDeposits payload: (material, product, tiles, volume_raw,
+/// quantity_raw) — raw values are Fix32 (65536 = 1), volume in
+/// tiles-cubed, quantity in product units (the game's own
+/// conversion, summed by the bridge). Materials with no mined
+/// product or a malformed row are skipped; a Null payload (bridge
+/// absent or pre-0.6.5) yields no rows.
+pub fn snapshot_deposit_rows(snap: &Value) -> Vec<(String, String, i64, i64, i64)> {
+    let mut out = Vec::new();
+    if let Some(materials) = snap["bridgeDeposits"]["materials"].as_array() {
+        for m in materials {
+            let Some(material) = m["material"].as_str() else {
+                continue;
+            };
+            out.push((
+                material.to_string(),
+                m["product"].as_str().unwrap_or("").to_string(),
+                m["tiles"].as_i64().unwrap_or(0),
+                m["volumeTilesCubedRaw"].as_i64().unwrap_or(0),
+                m["quantityRaw"].as_i64().unwrap_or(0),
+            ));
+        }
+    }
+    out
 }
 
 // ---------------------------------------------------------------------------
@@ -1146,7 +1222,9 @@ mod tests {
                 .conn
                 .query_row("PRAGMA user_version", [], |r| r.get(0))
                 .unwrap();
-            assert_eq!(version, 3);
+            // The v2 file migrates through v3 (backfill below) to
+            // the current head version (v4, deposit_state).
+            assert_eq!(version, 4);
             assert_eq!(st.activity_count(None, None).unwrap(), 2);
             let rows = st.activity_recent(None, None, 10, 0).unwrap();
             assert_eq!(rows.len(), 2);
