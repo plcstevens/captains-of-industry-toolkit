@@ -13,12 +13,17 @@ your browser. (On this repo, the Actions tab's companion-release
 workflow also builds the current program — Run workflow on main, then
 download the artifact it produces.)
 
-The current build is 6,160,589 bytes. It adds the /place page
-(blueprint placement through the QoSBuilder mod, section 4 below)
-and the redesigned interface: sidebar navigation, an always-visible
-game status strip, and server-drawn charts throughout.
+The current build is 6,215,930 bytes. It includes the /place page
+(blueprint placement through the QoSBuilder mod, section 4 below),
+the redesigned interface — sidebar navigation, an always-visible
+game status strip, and server-drawn charts throughout — and the
+Terrain page: a whole-map height view fed by the CoiBridge 0.6.5
+terrain routes (section 2 below), ore deposit totals with
+per-snapshot depletion history, and an earthworks estimator that
+works out cut and fill volumes for levelling a rectangle to a
+chosen height.
 
-## 2. The CoiBridge mod (archive: CoiBridge-mod-0.6.4)
+## 2. The CoiBridge mod (archive: CoiBridge-mod-0.6.5)
 
 Unzip into the game's Mods folder:
 
@@ -26,6 +31,9 @@ Unzip into the game's Mods folder:
 
 The archive contains a single CoiBridge folder. Replace the old
 CoiBridge folder there completely — do not merge old and new files.
+Version 0.6.5 adds read-only terrain, deposits and designations
+routes that feed the companion's Terrain page; the older routes are
+unchanged.
 
 ## 3. The QoS suite (archive: QoS-suite-0.5.1)
 
