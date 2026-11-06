@@ -42,14 +42,12 @@ APPDATA="$WORK/appdata" "$COI" --db "$WORK/coi.db" \
   >"$WORK/serve.log" 2>&1 &
 SRV=$!
 for i in $(seq 1 50); do
-  curl -s -o /dev/null "http://127.0.0.1:$PORT/login" && break || sleep 0.2
+  curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break || sleep 0.2
 done
-curl -s -c "$WORK/cookies" -o /dev/null -X POST "http://127.0.0.1:$PORT/login" \
-  --data 'mode=setup&username=tester&password=testpass123&password2=testpass123'
 
-get() { curl -s -b "$WORK/cookies" "http://127.0.0.1:$PORT$1"; }
+get() { curl -s "http://127.0.0.1:$PORT$1"; }
 fail() { echo "FAIL: $1"; exit 1; }
-csrf() { get "$1" | grep -o 'name="csrf" value="[^"]*"' | head -1 | sed 's/.*value="//; s/"//'; }
+csrf() { get "$1" | grep -o 'name="csrf" value="[^"]*"' | awk 'NR==1' | sed 's/.*value="//; s/"//'; }
 
 PAGE="$(get '/designate')"
 grep -q 'Designate' <<<"$PAGE" || fail '/designate heading missing'
@@ -67,19 +65,19 @@ CSRF="$(csrf '/designate')"
 # --- Pad prepare: rect (44,24)-(56,32) inside the stub's canned
 # region (40,20)-(64,38); terrain there is 15.4-17.0 tiles, so a
 # target of 12 must produce edge-step warnings on every side.
-CONFIRM="$(curl -s -b "$WORK/cookies" -X POST "http://127.0.0.1:$PORT/designate/prepare" \
+CONFIRM="$(curl -s -X POST "http://127.0.0.1:$PORT/designate/prepare" \
   --data "csrf=$CSRF&op=pad&x0=44&y0=24&x1=56&y1=32&target=12&proto=MiningDesignator&name=Check%20pad")"
 grep -q 'Confirm designation' <<<"$CONFIRM" || fail 'pad prepare did not render the confirm sheet'
 grep -q '5583213724730880438' <<<"$CONFIRM" || fail 'confirm sheet not pinned to the stub gameId'
 grep -q '6 Mining cells' <<<"$CONFIRM" || fail 'confirm sheet does not show 6 cells'
 grep -q 'Edge-step warnings' <<<"$CONFIRM" || fail 'edge-step warnings missing (terrain 15-17 vs target 12)'
 grep -q 'designations-add' <<<"$CONFIRM" || fail 'job JSON missing designations-add'
-TOKEN="$(grep -o 'name="token" value="[^"]*"' <<<"$CONFIRM" | head -1 | sed 's/.*value="//; s/"//')"
+TOKEN="$(grep -o 'name="token" value="[^"]*"' <<<"$CONFIRM" | awk 'NR==1' | sed 's/.*value="//; s/"//')"
 SHA_SHOWN="$(grep -o 'sha256 is <code>[0-9a-f]*</code>' <<<"$CONFIRM" | sed 's/.*<code>//; s/<.*//')"
 [ -n "$TOKEN" ] || fail 'no confirm token'
 [ -n "$SHA_SHOWN" ] || fail 'no sha256 on the confirm sheet'
 
-DONE="$(curl -s -b "$WORK/cookies" -X POST "http://127.0.0.1:$PORT/designate/confirm" \
+DONE="$(curl -s -X POST "http://127.0.0.1:$PORT/designate/confirm" \
   --data "csrf=$CSRF&token=$TOKEN")"
 grep -q 'Designation job written' <<<"$DONE" || fail 'confirm did not write the job'
 grep -q 'verdict pending' <<<"$DONE" || fail 'outcome page lacks the honest verdict-pending panel (stub never applies jobs)'
@@ -121,7 +119,7 @@ assert digest == shown, "confirm-sheet sha != file sha"
 assert job['schema'] == 2 and job['jobType'] == 'designations-add'
 assert job['protoId'] == 'MiningDesignator'
 assert job['gameId'] == '5583213724730880438'
-assert job['companionUser'] == 'tester'
+assert job['companionUser'] == 'local'
 assert job['planName'] == 'Check pad'
 assert job['limits']['maxCells'] == 200
 origins = [(c['x'], c['y']) for c in job['cells']]
@@ -135,7 +133,7 @@ print('add job file canonical-v2 hash + fields verified')
 PY
 
 # Single-use: replaying the same token writes nothing new.
-REPLAY="$(curl -s -b "$WORK/cookies" -X POST "http://127.0.0.1:$PORT/designate/confirm" \
+REPLAY="$(curl -s -X POST "http://127.0.0.1:$PORT/designate/confirm" \
   --data "csrf=$CSRF&token=$TOKEN")"
 grep -q 'Confirmation expired' <<<"$REPLAY" || fail 'token replay was not refused'
 COUNT="$(ls "$JOBS_DIR"/*.json | wc -l)"
@@ -149,15 +147,15 @@ grep -q 'verdict pending' <<<"$PAGE2" || fail 'latest-job panel does not show ve
 # --- Remove prepare: origin (20, 12) picked from the read-back
 # (first row, sel_0). The stub read-back never changes, so the
 # outcome verdict stays pending — the honest state.
-RCONFIRM="$(curl -s -b "$WORK/cookies" -X POST "http://127.0.0.1:$PORT/designate/prepare" \
+RCONFIRM="$(curl -s -X POST "http://127.0.0.1:$PORT/designate/prepare" \
   --data "csrf=$CSRF&op=remove&sel_0=20,12")"
 grep -q 'Confirm designation' <<<"$RCONFIRM" || fail 'remove prepare did not render the confirm sheet'
 grep -q 'MiningDesignator' <<<"$RCONFIRM" || fail 'remove sheet does not show the picked designation kind'
 grep -q 'designations-remove' <<<"$RCONFIRM" || fail 'remove job JSON missing designations-remove'
-RTOKEN="$(grep -o 'name="token" value="[^"]*"' <<<"$RCONFIRM" | head -1 | sed 's/.*value="//; s/"//')"
+RTOKEN="$(grep -o 'name="token" value="[^"]*"' <<<"$RCONFIRM" | awk 'NR==1' | sed 's/.*value="//; s/"//')"
 [ -n "$RTOKEN" ] || fail 'no remove confirm token'
 
-RDONE="$(curl -s -b "$WORK/cookies" -X POST "http://127.0.0.1:$PORT/designate/confirm" \
+RDONE="$(curl -s -X POST "http://127.0.0.1:$PORT/designate/confirm" \
   --data "csrf=$CSRF&token=$RTOKEN")"
 grep -q 'Designation job written' <<<"$RDONE" || fail 'remove confirm did not write the job'
 COUNT="$(ls "$JOBS_DIR"/*.json | wc -l)"
@@ -204,12 +202,12 @@ grep -q 'PlaceDesignationJob' <<<"$LOGPAGE" || fail 'designation jobs missing fr
 # 200-with-notice — never a 500, never a job.
 kill $STUB 2>/dev/null || true
 sleep 0.3
-CODE="$(curl -s -o "$WORK/down.html" -w '%{http_code}' -b "$WORK/cookies" -X POST \
+CODE="$(curl -s -o "$WORK/down.html" -w '%{http_code}' -X POST \
   "http://127.0.0.1:$PORT/designate/prepare" \
   --data "csrf=$CSRF&op=pad&x0=44&y0=24&x1=56&y1=32&target=12&proto=MiningDesignator")"
 [ "$CODE" = "502" ] || fail "prepare with game down returned $CODE, expected 502"
 grep -q 'Prepare refused' "$WORK/down.html" || fail 'refusal page text missing'
-CODE="$(curl -s -o "$WORK/down2.html" -w '%{http_code}' -b "$WORK/cookies" \
+CODE="$(curl -s -o "$WORK/down2.html" -w '%{http_code}' \
   "http://127.0.0.1:$PORT/designate")"
 [ "$CODE" = "200" ] || fail "/designate with game down returned $CODE, expected 200-with-notice"
 grep -q 'Game unreachable' "$WORK/down2.html" || fail '/designate degraded notice missing'

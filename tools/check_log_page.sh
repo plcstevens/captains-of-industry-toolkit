@@ -28,16 +28,14 @@ cat > "$WORK/events.jsonl" <<'JSONL'
 {"schema":1,"eventId":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee","recordedAtUtc":"2026-11-05T13:05:00.0000000Z","source":"qos","modId":"QoSWorldMap","modVersion":"0.1.1","kind":"navigation","action":"NavigateToMine","summary":"Navigated to Iron mine","data":{"mine":"Iron mine","product":"Product_IronOre"}}
 JSONL
 
-# 3. Serve + log in (fresh user = setup mode).
+# 3. Serve (no login — the site is loopback-only, DESIGN V2).
 COI_QOS_EVENTS_PATH="$WORK/events.jsonl" "$COI" --db "$WORK/coi.db" serve --port "$PORT" >"$WORK/serve.log" 2>&1 &
 SRV=$!
 for i in $(seq 1 50); do
-  curl -s -o /dev/null "http://127.0.0.1:$PORT/login" && break || sleep 0.2
+  curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break || sleep 0.2
 done
-curl -s -c "$WORK/cookies" -o /dev/null -X POST "http://127.0.0.1:$PORT/login" \
-  --data 'mode=setup&username=tester&password=testpass123&password2=testpass123'
 
-get() { curl -s -b "$WORK/cookies" "http://127.0.0.1:$PORT$1"; }
+get() { curl -s "http://127.0.0.1:$PORT$1"; }
 fail() { echo "FAIL: $1"; exit 1; }
 
 ALL="$(get '/log')"
@@ -45,7 +43,9 @@ grep -q 'ToggleEnabledCmd' <<<"$ALL" || fail 'legacy audit row missing from /log
 grep -q 'Legacy detail: paused the starter steel line' <<<"$ALL" || fail 'legacy detail text missing'
 grep -q 'MoveAnimalsCmd' <<<"$ALL" || fail 'QoS chickens event missing'
 grep -q 'NavigateToMine' <<<"$ALL" || fail 'QoS navigation event missing'
-grep -q 'imported 2 new, skipped 0 already stored, 0 malformed' <<<"$ALL" || fail 'first import counts wrong'
+grep -q '>New</div><div class="figv">2<' <<<"$ALL" || fail 'first import: New fig wrong'
+grep -q '>Skipped</div><div class="figv">0<' <<<"$ALL" || fail 'first import: Skipped fig wrong'
+grep -q '>Malformed</div><div class="figv">0<' <<<"$ALL" || fail 'first import: Malformed fig wrong'
 
 QOS="$(get '/log?source=qos')"
 grep -q 'MoveAnimalsCmd' <<<"$QOS" || fail 'source=qos lost the chickens event'
@@ -60,6 +60,7 @@ grep -q 'NavigateToMine' <<<"$SEARCH" || fail 'search lost the navigation event'
 grep -q 'MoveAnimalsCmd' <<<"$SEARCH" && fail 'search leaked a non-matching row'
 
 AGAIN="$(get '/log')"
-grep -q 'imported 0 new, skipped 2 already stored, 0 malformed' <<<"$AGAIN" || fail 're-import not idempotent'
+grep -q '>New</div><div class="figv">0<' <<<"$AGAIN" || fail 're-import: New fig wrong'
+grep -q '>Skipped</div><div class="figv">2<' <<<"$AGAIN" || fail 're-import not idempotent (Skipped fig)'
 
 echo "LOG PAGE CHECK PASS"

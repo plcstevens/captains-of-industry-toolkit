@@ -2738,10 +2738,16 @@ mod tests {
     /// bridge-research.json payload (every other capture file is
     /// optional in State::load).
     fn state_with_research(research_json: &str) -> (State, PathBuf) {
+        // Unique per call: two tests share the same payload (hence
+        // the same length), and pid+length alone made them race on
+        // one directory under parallel test execution.
+        static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let dir = std::env::temp_dir().join(format!(
-            "coi-plan-decide-test-{}-{}",
+            "coi-plan-decide-test-{}-{}-{}",
             std::process::id(),
-            research_json.len()
+            research_json.len(),
+            seq
         ));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();

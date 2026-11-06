@@ -888,8 +888,10 @@ pub fn snapshot_machine_instances(
 // ---------------------------------------------------------------------------
 
 impl Store {
-    /// The single web user, if one has been created:
-    /// (username, salt_hex, pass_hash_hex).
+    /// VESTIGIAL (2026-11-06): the login concept was removed from
+    /// the companion — nothing calls this any more. The web_users
+    /// table and these accessors stay for schema stability only.
+    #[allow(dead_code)]
     pub fn web_user(&self) -> Result<Option<(String, String, String)>, String> {
         let mut stmt = self
             .conn
@@ -908,6 +910,7 @@ impl Store {
         }
     }
 
+    #[allow(dead_code)]
     pub fn create_web_user(&self, username: &str, salt_hex: &str, pass_hash_hex: &str) -> Result<(), String> {
         self.conn
             .execute(

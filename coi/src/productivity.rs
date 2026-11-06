@@ -727,6 +727,12 @@ pub fn evaluate_snapshot(
                             ),
                             evidence: ev.label.clone(),
                             fix: fix_for(cause).to_string(),
+                            class: match cause {
+                                "starved" => "prod-starved",
+                                "blocked" => "prod-blocked",
+                                "mixed" => "prod-mixed",
+                                _ => "prod-unclassified",
+                            },
                         });
                         log.push(format!("productivity (a): FIRE {} — {}", ev.proto, ev.label));
                     }
@@ -782,6 +788,12 @@ pub fn evaluate_snapshot(
                         ),
                         evidence: ev.label.clone(),
                         fix: fix_for(cause).to_string(),
+                            class: match cause {
+                                "starved" => "prod-starved",
+                                "blocked" => "prod-blocked",
+                                "mixed" => "prod-mixed",
+                                _ => "prod-unclassified",
+                            },
                     });
                 }
             }
@@ -842,6 +854,7 @@ pub fn evaluate_snapshot(
                                     ),
                                     evidence: ev.label.clone(),
                                     fix: fix_for("below-baseline").to_string(),
+                                    class: "below-baseline",
                                 });
                                 log.push(format!(
                                     "productivity (b): FIRE {} — {}",
