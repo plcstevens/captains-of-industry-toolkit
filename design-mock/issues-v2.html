@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Issues — CoI Companion (design mock V2)</title>
+<style>
+:root{
+  --bg-0:#0b0e14; --bg-1:#10141d; --surface:#151a26; --surface-2:#1b2130; --surface-3:#232b3e;
+  --border:#263048; --border-strong:#37466a; --border-subtle:#1a2132;
+  --text-1:#e9edf6; --text-2:#a9b3c7; --text-3:#8494ab; --text-disabled:#5b6a84;
+  --accent:#5b9dff; --accent-strong:#3b78e0; --accent-soft:rgba(91,157,255,.13); --on-accent:#fff;
+  --ok:#4cc38a; --ok-soft:rgba(76,195,138,.13);
+  --starved:#e8933c; --starved-soft:rgba(232,147,60,.14);
+  --blocked:#e5534b; --blocked-soft:rgba(229,83,75,.13);
+  --paused:#8494ab; --paused-soft:rgba(132,148,171,.14);
+  --warning:#e5c33b; --warning-soft:rgba(229,195,59,.12);
+  --critical:#f85149; --critical-soft:rgba(248,81,73,.12);
+  --info:#5b9dff; --info-soft:rgba(91,157,255,.13);
+  --unverified:#a371f7; --unverified-soft:rgba(163,113,247,.12);
+  --chart-grid:#232c42; --chart-track:#232b3e;
+  --pos:var(--ok); --neg:var(--critical); --flat:var(--text-2);
+  --font-ui:system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+  --r-sm:6px; --r-md:10px; --r-lg:14px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-0);color:var(--text-1);font:14px/1.5 var(--font-ui)}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.mono{font-family:var(--font-mono);font-size:12.5px}
+.num{font-variant-numeric:tabular-nums;text-align:right}
+.u{color:var(--text-3);font-size:12px;font-weight:400}
+.ic{width:16px;height:16px;flex:none;vertical-align:-3px}
+.topbar{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:18px;height:48px;padding:0 16px;background:var(--bg-1);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;font-size:15px;white-space:nowrap}
+.meganav{display:flex;align-items:stretch;height:48px}
+.mega{position:relative;display:flex}
+.mega>a{display:flex;align-items:center;gap:5px;padding:0 12px;color:var(--text-2);font-weight:600}
+.mega>a:hover,.mega:hover>a{color:var(--text-1);text-decoration:none;background:var(--surface-2)}
+.mega.active>a{color:var(--text-1);box-shadow:inset 0 -2px 0 var(--accent)}
+.mega .caret{font-size:10px;color:var(--text-3)}
+.mega-panel{display:none;position:absolute;left:0;top:48px;width:560px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 8px 28px rgba(0,0,0,.45);padding:8px;z-index:70}
+.mega:hover .mega-panel,.mega:focus-within .mega-panel,.mega.open .mega-panel{display:block}
+.mega-panel .cols{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
+.mega-row{display:flex;gap:10px;padding:8px;border-radius:var(--r-sm);color:var(--text-1);align-items:flex-start}
+.mega-row:hover{background:var(--surface-2);text-decoration:none}
+.mega-row .ic{color:var(--text-2);margin-top:2px}
+.mega-row .nm{font-weight:600;font-size:13.5px}
+.mega-row .ds{color:var(--text-2);font-size:12px;line-height:1.35}
+.mega-row .count{margin-left:auto}
+.mega-foot{border-top:1px solid var(--border-subtle);margin-top:6px;padding:7px 8px 2px;color:var(--text-3);font-size:12px}
+.topsearch{margin-left:auto;display:flex;align-items:center;gap:6px;background:var(--surface-3);border:1px solid var(--border-strong);border-radius:var(--r-sm);padding:5px 9px;color:var(--text-3)}
+.topsearch input{background:none;border:0;color:var(--text-1);font:13px var(--font-ui);width:170px;outline:none}
+.topstatus{display:flex;align-items:center;gap:8px;white-space:nowrap;color:var(--text-2);font-size:13px}
+.topstatus .date{color:var(--text-1);font-weight:650}
+.topuser{display:flex;align-items:center;gap:8px;color:var(--text-2);font-size:13px;white-space:nowrap}
+.shell{display:grid;grid-template-columns:232px 1fr;align-items:start}
+aside.rail{background:var(--bg-1);border-right:1px solid var(--border-subtle);padding:14px 12px;position:sticky;top:48px;height:calc(100vh - 48px);overflow:auto}
+.rail .sec{color:var(--text-3);font-size:12px;letter-spacing:.02em;padding:2px 8px 6px}
+.rail .ctx{color:var(--text-3);font-size:12px;letter-spacing:.02em;padding:14px 8px 6px;border-top:1px solid var(--border-subtle);margin-top:12px}
+.navitem{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r-sm);color:var(--text-2);margin-bottom:2px;font-size:13.5px}
+.navitem:hover{background:var(--surface-2);text-decoration:none}
+.navitem.active{background:var(--accent-soft);color:var(--text-1);font-weight:600;box-shadow:inset 2px 0 0 var(--accent)}
+.navitem .count{margin-left:auto}
+.navitem.anchor{color:var(--text-3);font-size:13px}
+.navitem.anchor:hover{color:var(--text-1)}
+main{padding:20px 24px;max-width:1280px;width:100%}
+.crumb{color:var(--text-3);font-size:12px;letter-spacing:.02em}
+.pagehead{display:flex;align-items:flex-end;gap:16px;margin-bottom:16px}
+.pagehead h1{font-size:20px;line-height:26px;margin:2px 0 2px;font-weight:650}
+.pagehead .summary{color:var(--text-2);font-size:13.5px}
+.pagehead .actions{margin-left:auto;display:flex;gap:8px}
+.btn{background:var(--accent-strong);color:var(--on-accent);border:1px solid transparent;border-radius:var(--r-sm);padding:6px 14px;font-size:14px;cursor:pointer;display:inline-block}
+.btn:hover{background:#4a86ec;text-decoration:none}
+.btn--secondary{background:var(--surface-2);border-color:var(--border-strong);color:var(--text-1)}
+.btn--secondary:hover{background:var(--surface-3)}
+.btn--ghost{background:transparent;color:var(--text-2);border-color:transparent}
+.btn--ghost:hover{background:var(--surface-3);color:var(--text-1)}
+.btn--sm{padding:4px 10px;font-size:13px}
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.badge--ok{background:var(--ok-soft);color:var(--ok)}
+.badge--starved{background:var(--starved-soft);color:var(--starved)}
+.badge--blocked{background:var(--blocked-soft);color:var(--blocked)}
+.badge--paused{background:var(--paused-soft);color:var(--paused)}
+.badge--warning{background:var(--warning-soft);color:var(--warning)}
+.badge--critical{background:var(--critical-soft);color:var(--critical)}
+.badge--info{background:var(--info-soft);color:var(--info)}
+.badge--unverified{background:transparent;color:var(--unverified);border:1px dashed var(--unverified)}
+.badge--solid-paused{background:var(--paused);color:#0b0e14}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px;margin-bottom:16px}
+.card h2{font-size:15px;line-height:20px;font-weight:650;margin:0}
+.card .cardhead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.card .cardhead .right{margin-left:auto}
+.caption{color:var(--text-2);font-size:12px;margin-top:6px}
+.empty{border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:14px;text-align:center;color:var(--text-2);margin-bottom:8px}
+details.howit{border:1px solid var(--border);border-radius:var(--r-md);padding:8px 12px;margin-bottom:16px;background:var(--surface)}
+details.howit summary{cursor:pointer;color:var(--text-2);font-size:13px}
+details.howit p{color:var(--text-2);font-size:13px;margin:8px 0 2px}
+.figstrip{display:flex;flex-wrap:wrap;border:1px solid var(--border-subtle);border-radius:var(--r-sm);background:var(--surface-3);overflow:hidden}
+.fig{padding:6px 12px;border-left:1px solid var(--border-subtle);min-width:96px}
+.fig:first-child{border-left:0}
+.fig .fl{font-size:11px;color:var(--text-3);letter-spacing:.02em}
+.fig .fv{font-size:15px;line-height:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.fig .fv.warn{color:var(--warning)}
+.delta{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.delta .ic{width:12px;height:12px}
+.delta--pos{background:var(--ok-soft);color:var(--pos)}
+.delta--neg{background:var(--critical-soft);color:var(--neg)}
+.delta--flat{background:var(--surface-2);color:var(--flat);border:1px solid var(--border-subtle)}
+.fillbar{height:6px;background:var(--chart-track);border-radius:3px;overflow:hidden;display:block;margin-top:4px}
+.fillbar>i{display:block;height:100%}
+.runway{position:relative;height:8px;background:var(--chart-track);border-radius:4px;min-width:140px}
+.runway>i{display:block;height:100%;border-radius:4px}
+.runway .tick{position:absolute;left:25%;top:-2px;width:1px;height:12px;background:var(--text-3)}
+.stackbar{display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--chart-track)}
+.stackbar>i{display:block;height:100%}
+.issue2{background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px}
+.issue2--fn{box-shadow:inset 2px 0 0 var(--critical)} .issue2--fl{box-shadow:inset 2px 0 0 var(--warning)}
+.issue2--wa{box-shadow:inset 2px 0 0 var(--info)} .issue2--ig{box-shadow:inset 2px 0 0 var(--paused)}
+.issue2 .r1{display:flex;align-items:center;gap:8px}
+.issue2 .r1 .p{font-weight:600}
+.issue2 .figstrip{margin-top:8px}
+.issue2 .guide{color:var(--text-2);font-size:13px;margin-top:7px}
+.issue2 .ctas{display:flex;gap:6px;align-items:center;margin-top:8px}
+.issue2 .noact{color:var(--text-3);font-size:13px;display:inline-flex;gap:6px;align-items:center}
+.issue2 .noact .ic{color:var(--ok)}
+.quadhead{display:flex;gap:8px;align-items:center;margin:16px 0 8px}
+.quadhead:first-child{margin-top:0}
+.quadwhy{margin-left:auto}
+.quadwhy summary{cursor:pointer;color:var(--text-3);font-size:12.5px;list-style:none}
+.quadwhy p{color:var(--text-2);font-size:13px;max-width:640px}
+@media(max-width:900px){.shell{grid-template-columns:1fr}aside.rail{position:static;height:auto}}
+</style></head>
+<body>
+
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-power" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></g></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></g></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v5.5L4.8 18.5A2 2 0 0 0 6.6 21.5h10.8a2 2 0 0 0 1.8-3L14 8.5V3"/><path d="M7.8 15h8.4"/></g></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></g></symbol>
+  <symbol id="i-factory" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V11l5 3.5V11l5 3.5V7h8v14"/><path d="M3 21h18"/><path d="M16.5 11h.01M16.5 15h.01"/></g></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></g></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></g></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></g></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></g></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></g></symbol>
+  <symbol id="i-flat" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="8 8 4 12 8 16"/><polyline points="16 8 20 12 16 16"/></g></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></g></symbol>
+  <symbol id="i-anchor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></g></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></g></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="brand">🏛️ CoI Companion</div>
+  <nav class="meganav">
+    <div class="mega active open"><a href="#">Monitor <span class="caret">▾</span></a>
+      <div class="mega-panel">
+        <div class="cols">
+          <a class="mega-row" href="#"><svg class="ic"><use href="#i-chart"/></svg><span><span class="nm">Overview</span><div class="ds">The run at a glance</div></span></a>
+          <a class="mega-row" href="#"><svg class="ic"><use href="#i-alert"/></svg><span><span class="nm">Issues</span><div class="ds">What to fix, in what order</div></span><span class="count badge badge--warning">4 later</span></a>
+          <a class="mega-row" href="#"><svg class="ic"><use href="#i-box"/></svg><span><span class="nm">Products</span><div class="ds">Every product, its flows and storage</div></span></a>
+          <a class="mega-row" href="#"><svg class="ic"><use href="#i-factory"/></svg><span><span class="nm">Entities</span><div class="ds">Every storage and machine, with controls</div></span></a>
+          <a class="mega-row" href="#"><svg class="ic"><use href="#i-layers"/></svg><span><span class="nm">Terrain</span><div class="ds">Heights, deposits and designations</div></span></a>
+        </div>
+        <div class="mega-foot">Monitor — what is my factory doing · <a href="#">Take a snapshot</a></div>
+      </div>
+    </div>
+    <div class="mega"><a href="#">Game <span class="caret">▾</span></a></div>
+    <div class="mega"><a href="#">Library <span class="caret">▾</span></a></div>
+    <div class="mega"><a href="#">System <span class="caret">▾</span></a></div>
+  </nav>
+  <label class="topsearch"><svg class="ic"><use href="#i-search"/></svg><input placeholder="Jump to product, page…"></label>
+  <div class="topstatus"><span class="date">27 Feb 0388</span><span class="badge badge--solid-paused">PAUSED</span><span>speed 3×</span><span class="mono">tick 2,787,522</span><span><svg class="ic"><use href="#i-users"/></svg> 2,320</span></div>
+  <div class="topuser"><span>captain</span><a class="btn btn--ghost btn--sm" href="#">Log out</a></div>
+</header>
+
+<div class="shell">
+<aside class="rail">
+  <div class="sec">MONITOR</div>
+  <a class="navitem" href="#">Overview</a>
+  <a class="navitem active" href="#">Issues <span class="count badge badge--warning">4 later</span></a>
+  <a class="navitem" href="#">Products</a>
+  <a class="navitem" href="#">Entities</a>
+  <a class="navitem" href="#">Terrain</a>
+  <div class="ctx">QUADRANTS</div>
+  <a class="navitem anchor" href="#fn">Fix now <span class="count">0</span></a>
+  <a class="navitem anchor" href="#fl">Fix later <span class="count">4</span></a>
+  <a class="navitem anchor" href="#wa">Watch <span class="count">5</span></a>
+  <a class="navitem anchor" href="#ig">Ignore for now <span class="count">6</span></a>
+  <a class="navitem anchor" href="#prod">Productivity</a>
+</aside>
+
+<main>
+  <div class="crumb">MONITOR › ISSUES</div>
+  <div class="pagehead">
+    <div><h1>Issues</h1><div class="summary">What to fix, in what order — generated live from flows and storage levels.</div></div>
+    <div class="actions"><a class="btn btn--secondary btn--sm" href="#">Report as markdown</a><a class="btn btn--secondary btn--sm" href="#">Raw snapshot JSON</a></div>
+  </div>
+
+  <details class="howit"><summary>How the board is built</summary><p>Generated live from production/consumption flows and storage levels. Urgency comes from how soon a buffer runs dry or blocks; importance from how much of the factory depends on the product. Click any issue title to open it in depth: why it sits in its quadrant (with the numbers), the full evidence, the forecast, how to fix it — and, where a fix is a game command, buttons that prepare it for the specific storages and machines involved.</p></details>
+
+  <div class="quadhead" id="fn"><span class="badge badge--critical">Fix now</span><span style="color:var(--text-2)">0 issue(s)</span>
+    <details class="quadwhy"><summary>Why this quadrant?</summary><p>Urgent and important: the runway is measured in weeks. Act before the buffer empties or the chain blocks.</p></details></div>
+  <div class="empty">No issues in 'Fix now' right now.</div>
+
+  <div class="quadhead" id="fl"><span class="badge badge--warning">Fix later</span><span style="color:var(--text-2)">4 issue(s)</span>
+    <details class="quadwhy"><summary>Why this quadrant?</summary><p>Important, but the runway is measured in quarters, not weeks. Schedule the fix — a build, a capacity increase, a rebalance — rather than firefighting it today.</p></details></div>
+
+  <div class="issue2 issue2--fl">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-box"/></svg></span><a class="p" href="#">Crude oil</a><span>Storage full while still producing — output will block</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">STORED</div><div class="fv warn">9,713</div><span class="fillbar" style="width:110px"><i style="width:100%;background:var(--blocked)"></i></span></div>
+      <div class="fig"><div class="fl">CAPACITY</div><div class="fv">9,000</div></div>
+      <div class="fig"><div class="fl">PRODUCED · LM</div><div class="fv">554 <span class="u">/mo</span></div></div>
+    </div>
+    <div class="guide">Add storage, raise draw, or pause the producer before it backs up the chain.</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">Open fix panel…</a><a class="btn btn--ghost btn--sm" href="#">See storages</a></div>
+    <div class="caption">Evidence: stored 9713 / capacity 9000, produced 554 last month</div>
+  </div>
+
+  <div class="issue2 issue2--fl">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-chart"/></svg></span><a class="p" href="#">Fertilizer II</a><span>Net deficit — buffer draining</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">NET · LM</div><span class="delta delta--neg"><svg class="ic"><use href="#i-down"/></svg>−20 /mo</span></div>
+      <div class="fig"><div class="fl">STOCK</div><div class="fv">290</div></div>
+      <div class="fig"><div class="fl">COVER</div><div class="fv">14.5 <span class="u">mo</span></div></div>
+    </div>
+    <div class="guide">Raise production or cut the largest consumer (the product page names who draws it).</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">See who draws it</a><a class="btn btn--ghost btn--sm" href="#">View product</a></div>
+    <div class="caption">Evidence: net −20/mo last month, stock 290 ≈ 14.5 months at that rate</div>
+  </div>
+
+  <div class="issue2 issue2--fl">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-box"/></svg></span><a class="p" href="#">Fertilizer (organic)</a><span>Storage full while still producing — output will block</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">STORED</div><div class="fv warn">526</div><span class="fillbar" style="width:110px"><i style="width:100%;background:var(--blocked)"></i></span></div>
+      <div class="fig"><div class="fl">CAPACITY</div><div class="fv">526</div></div>
+      <div class="fig"><div class="fl">PRODUCED · LM</div><div class="fv">16 <span class="u">/mo</span></div></div>
+    </div>
+    <div class="guide">Add storage, raise draw, or pause the producer before it backs up the chain.</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">Open fix panel…</a><a class="btn btn--ghost btn--sm" href="#">See storages</a></div>
+    <div class="caption">Evidence: stored 526 / capacity 526, produced 16 last month</div>
+  </div>
+
+  <div class="issue2 issue2--fl">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-factory"/></svg></span><a class="p" href="#">Steel</a><span>Production stalled, consumption continues</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">PRODUCED · LM</div><div class="fv">0</div></div>
+      <div class="fig"><div class="fl">CONSUMED · LM</div><div class="fv">46 <span class="u">/mo</span></div></div>
+      <div class="fig"><div class="fl">STOCK</div><div class="fv">1,108</div></div>
+      <div class="fig"><div class="fl">COVER</div><div class="fv">24.1 <span class="u">mo</span></div></div>
+    </div>
+    <div class="guide">Steel line is not running: check furnace charge (iron/coal), oxygen supply and caster state; per the relocation plan, size from the casters (24 steel/min per line).</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">Inspect producers…</a><a class="btn btn--ghost btn--sm" href="#">See machines</a></div>
+    <div class="caption">Evidence: produced 0 last month (8 this month), consumed 46/mo, stock 1108 ≈ 24.1 months of cover</div>
+  </div>
+
+  <div class="quadhead" id="wa"><span class="badge badge--info">Watch</span><span style="color:var(--text-2)">5 issue(s)</span>
+    <details class="quadwhy"><summary>Why this quadrant?</summary><p>Not yet urgent, or not yet important: keep an eye on the trend; the board re-judges every snapshot.</p></details></div>
+
+  <div class="issue2 issue2--wa">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-chart"/></svg></span><a class="p" href="#">Broken glass</a><span>Net deficit — buffer draining</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">NET · LM</div><span class="delta delta--neg"><svg class="ic"><use href="#i-down"/></svg>−20 /mo</span></div>
+      <div class="fig"><div class="fl">STOCK</div><div class="fv">40</div></div>
+      <div class="fig"><div class="fl">COVER</div><div class="fv warn">2.0 <span class="u">mo</span></div></div>
+      <div class="fig"><div class="fl">RUNWAY</div><div class="runway" style="margin-top:6px"><i style="width:33%;background:var(--starved)"></i><span class="tick"></span></div><div class="caption" style="margin-top:2px">stock lasts ≈ 4.0 mo</div></div>
+    </div>
+    <div class="guide">Raise production or cut the largest consumer (the product page names who draws it).</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">See who draws it</a><a class="btn btn--ghost btn--sm" href="#">View product</a></div>
+    <div class="caption">Evidence: net −20/mo last month, stock 40 ≈ 2.0 months at that rate</div>
+  </div>
+
+  <div class="issue2 issue2--wa">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-box"/></svg></span><a class="p" href="#">Crude oil</a><span>Stored above nominal capacity</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">STORED</div><div class="fv warn">9,713</div><span class="fillbar" style="width:110px"><i style="width:100%;background:var(--blocked)"></i></span></div>
+      <div class="fig"><div class="fl">CAPACITY</div><div class="fv">9,000</div></div>
+      <div class="fig"><div class="fl">QUANTITY (INCL. BUFFERS)</div><div class="fv">11,947</div></div>
+    </div>
+    <div class="guide">Check what holds the excess (vehicles/machine buffers?) and whether capacity accounting changed in 0.8.8.</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">See storages</a><a class="btn btn--ghost btn--sm" href="#">View product</a></div>
+    <div class="caption">Evidence: stored 9713 vs capacity 9000 (quantity 11947)</div>
+  </div>
+
+  <div class="issue2 issue2--wa">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-box"/></svg></span><a class="p" href="#">Gravel</a><span>Storage full while still producing — output will block</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">STORED</div><div class="fv warn">1,663</div><span class="fillbar" style="width:110px"><i style="width:100%;background:var(--blocked)"></i></span></div>
+      <div class="fig"><div class="fl">CAPACITY</div><div class="fv">1,663</div></div>
+      <div class="fig"><div class="fl">PRODUCED · LM</div><div class="fv">16 <span class="u">/mo</span></div></div>
+    </div>
+    <div class="guide">Add storage, raise draw, or pause the producer before it backs up the chain.</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">Open fix panel…</a><a class="btn btn--ghost btn--sm" href="#">See storages</a></div>
+    <div class="caption">Evidence: stored 1663 / capacity 1663, produced 16 last month</div>
+  </div>
+
+  <div class="issue2 issue2--wa">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-box"/></svg></span><a class="p" href="#">Rail Parts</a><span>Storage full while still producing — output will block</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">STORED</div><div class="fv warn">1,342</div><span class="fillbar" style="width:110px"><i style="width:100%;background:var(--blocked)"></i></span></div>
+      <div class="fig"><div class="fl">CAPACITY</div><div class="fv">1,342</div></div>
+      <div class="fig"><div class="fl">PRODUCED · LM</div><div class="fv">8 <span class="u">/mo</span></div></div>
+    </div>
+    <div class="guide">Add storage, raise draw, or pause the producer before it backs up the chain.</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">Open fix panel…</a><a class="btn btn--ghost btn--sm" href="#">See storages</a></div>
+    <div class="caption">Evidence: stored 1342 / capacity 1342, produced 8 last month</div>
+  </div>
+
+  <div class="issue2 issue2--wa">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-chart"/></svg></span><a class="p" href="#">Vehicle Parts</a><span>Seasonal producer in deficit on the long-window balance</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">LONG-WINDOW NET</div><span class="delta delta--neg"><svg class="ic"><use href="#i-down"/></svg>−2 /mo avg</span></div>
+      <div class="fig"><div class="fl">STOCK</div><div class="fv">3</div></div>
+      <div class="fig"><div class="fl">COVER</div><div class="fv">18.0 <span class="u">mo</span></div></div>
+    </div>
+    <div class="guide">Judged on the long window — plan next season's capacity; don't chase one month.</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">View product</a></div>
+    <div class="caption">Evidence: seasonal producer — last year's balance: produced 62, consumed 64 (bursts make monthly rates mislead); stock 3 ≈ 18.0 months at that average rate</div>
+  </div>
+
+  <div class="quadhead" id="ig"><span class="badge badge--paused">Ignore for now</span><span style="color:var(--text-2)">6 issue(s)</span>
+    <details class="quadwhy"><summary>Why this quadrant?</summary><p>Neither urgent nor important at current rates. Listed so the judgement is visible; no action is expected.</p></details></div>
+
+  <div class="issue2 issue2--ig">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-box"/></svg></span><a class="p" href="#">Acid</a><span>Storage full, chain parked (no production or draw)</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">STORED</div><div class="fv">9,066</div><span class="fillbar" style="width:110px"><i style="width:100%;background:var(--accent)"></i></span></div>
+      <div class="fig"><div class="fl">CAPACITY</div><div class="fv">9,066</div></div>
+      <div class="fig"><div class="fl">MOVEMENT · LM</div><span class="delta delta--flat"><svg class="ic"><use href="#i-flat"/></svg>0</span></div>
+    </div>
+    <div class="guide">Consistent with a filled buffer / war chest. No action unless draw resumes.</div>
+    <div class="ctas"><span class="noact"><svg class="ic"><use href="#i-check"/></svg>No action needed</span><a class="btn btn--ghost btn--sm" href="#">View storages</a></div>
+    <div class="caption">Evidence: stored 9066 / capacity 9066, no movement last month</div>
+  </div>
+
+  <div class="issue2 issue2--ig">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-box"/></svg></span><a class="p" href="#">Construction Parts</a><span>Storage full, chain parked (no production or draw)</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">STORED</div><div class="fv">741</div><span class="fillbar" style="width:110px"><i style="width:100%;background:var(--accent)"></i></span></div>
+      <div class="fig"><div class="fl">CAPACITY</div><div class="fv">741</div></div>
+      <div class="fig"><div class="fl">MOVEMENT · LM</div><span class="delta delta--flat"><svg class="ic"><use href="#i-flat"/></svg>0</span></div>
+    </div>
+    <div class="guide">Consistent with a filled buffer / war chest. No action unless draw resumes.</div>
+    <div class="ctas"><span class="noact"><svg class="ic"><use href="#i-check"/></svg>No action needed</span><a class="btn btn--ghost btn--sm" href="#">View storages</a></div>
+    <div class="caption">Evidence: stored 741 / capacity 741, no movement last month</div>
+  </div>
+
+  <div class="issue2 issue2--ig">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-box"/></svg></span><a class="p" href="#">Construction Parts II</a><span>Storage full, chain parked (no production or draw)</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">STORED</div><div class="fv">507</div><span class="fillbar" style="width:110px"><i style="width:100%;background:var(--accent)"></i></span></div>
+      <div class="fig"><div class="fl">CAPACITY</div><div class="fv">507</div></div>
+      <div class="fig"><div class="fl">MOVEMENT · LM</div><span class="delta delta--flat"><svg class="ic"><use href="#i-flat"/></svg>0</span></div>
+    </div>
+    <div class="guide">Consistent with a filled buffer / war chest. No action unless draw resumes.</div>
+    <div class="ctas"><span class="noact"><svg class="ic"><use href="#i-check"/></svg>No action needed</span><a class="btn btn--ghost btn--sm" href="#">View storages</a></div>
+    <div class="caption">Evidence: stored 507 / capacity 507, no movement last month</div>
+  </div>
+
+  <div class="issue2 issue2--ig">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-factory"/></svg></span><a class="p" href="#">Glass mix</a><span>Production stalled, consumption continues</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">PRODUCED · LM</div><div class="fv">0</div></div>
+      <div class="fig"><div class="fl">CONSUMED · LM</div><div class="fv">10 <span class="u">/mo</span></div></div>
+      <div class="fig"><div class="fl">STOCK</div><div class="fv">140</div></div>
+      <div class="fig"><div class="fl">COVER</div><div class="fv">14.0 <span class="u">mo</span></div></div>
+    </div>
+    <div class="guide">Producer is idle while demand continues: check its inputs, power, workers and recipe state.</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">Inspect producers…</a><a class="btn btn--ghost btn--sm" href="#">See machines</a></div>
+    <div class="caption">Evidence: produced 0 last month (0 this month), consumed 10/mo, stock 140 ≈ 14.0 months of cover</div>
+  </div>
+
+  <div class="issue2 issue2--ig">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-chart"/></svg></span><a class="p" href="#">Naphtha</a><span>Net deficit — buffer draining</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">NET · LM</div><span class="delta delta--neg"><svg class="ic"><use href="#i-down"/></svg>−58 /mo</span></div>
+      <div class="fig"><div class="fl">STOCK</div><div class="fv">852</div></div>
+      <div class="fig"><div class="fl">COVER</div><div class="fv">14.7 <span class="u">mo</span></div></div>
+    </div>
+    <div class="guide">Raise production or cut the largest consumer (the product page names who draws it).</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">See who draws it</a><a class="btn btn--ghost btn--sm" href="#">View product</a></div>
+    <div class="caption">Evidence: net −58/mo last month, stock 852 ≈ 14.7 months at that rate</div>
+  </div>
+
+  <div class="issue2 issue2--ig">
+    <div class="r1"><span style="color:var(--text-2);display:flex"><svg class="ic"><use href="#i-chart"/></svg></span><a class="p" href="#">Waste</a><span>Net deficit — buffer draining</span></div>
+    <div class="figstrip">
+      <div class="fig"><div class="fl">NET · LM</div><span class="delta delta--neg"><svg class="ic"><use href="#i-down"/></svg>−20 /mo</span></div>
+      <div class="fig"><div class="fl">STOCK</div><div class="fv">87</div></div>
+      <div class="fig"><div class="fl">COVER</div><div class="fv">4.3 <span class="u">mo</span></div></div>
+    </div>
+    <div class="guide">Raise production or cut the largest consumer (the product page names who draws it).</div>
+    <div class="ctas"><a class="btn btn--sm" href="#">See who draws it</a><a class="btn btn--ghost btn--sm" href="#">View product</a></div>
+    <div class="caption">Evidence: net −20/mo last month, stock 87 ≈ 4.3 months at that rate</div>
+  </div>
+
+  <div class="card" id="prod" style="margin-top:16px">
+    <div class="cardhead"><h2>Productivity evidence</h2><span class="right caption" style="margin:0">from stored snapshots</span></div>
+    <div style="display:flex;gap:10px;align-items:center;padding:4px 0">
+      <span style="flex:1">Machine working-share, all types</span>
+      <span class="stackbar" style="flex:1;border:1px dashed var(--border-strong);background:transparent"></span>
+      <span class="badge badge--paused" style="border-style:dashed">INSUFFICIENT</span>
+    </div>
+    <div class="caption">Judged only when the evidence class reaches ESTIMATED — below that, a line reads INSUFFICIENT and means <b>unjudged</b>, not healthy. Take snapshots over time to build the evidence.</div>
+  </div>
+</main>
+</div>
+</body></html>

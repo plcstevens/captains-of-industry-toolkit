@@ -1926,3 +1926,56 @@ replaces 0.1.0, exe replaced; BUNDLE-README rows
 re-measured from the files + the designation install
 line (builder 0.2.0 includes designation jobs, ships
 disabled). The follow-up push carries all of it.
+
+## 2026-11-06 (late evening) — Design V2 implemented + login removed + must-fix badge
+
+DESIGN.md V2 addendum (§§V2.1–V2.9) implemented in the addendum's
+own step order: chrome (mega-nav top bar, left rail, crumbs) →
+tokens/components/icons (20-glyph inline sprite, stat2/figstrip/
+delta components, compact tables, contrast lifts) → number-
+semantics sweep (§V2.5: sign colour only on differences with
+mandatory arrows, measured zero = muted flat chip, absolutes
+neutral, amber only on findings) → Overview + Issues (issue2
+cards with per-class figure strips and the §V2.7 CTA table;
+parked class gets the no-action treatment) → directory pages
+(Products facets + 60/page server pagination, Research tabs +
+/research/node, Entities ?view= sub-views, Catalogue facets,
+Log 50/page) → remaining pages → verification. Philip's two
+additions landed in the same round: the top-bar must-fix badge
+(GET /api/v1/must-fix-count, server-side cache fed by page loads,
+never fetches the game; "last known" state when unreachable) and
+the complete removal of the login concept (login page, sessions
+and username deleted; per-form CSRF tokens kept; Host-header
+check added; web_users table vestigial; reset-password moot).
+
+VERIFICATION: cargo build 0 warnings; cargo test 47/47 (6 new:
+delta semantics, signed formatting, Host check, badge
+endpoint/states, power panel). All check scripts PASS —
+check_badge.sh (new), check_place_page, check_log_page,
+check_designate_page, check_audit_fail_loud (the fail-loud §12
+pattern intact), check_plan_parity, check_serializer_pairs.
+Check scripts moved to the no-login flow (companionUser is now
+"local"); their token extractions hardened against SIGPIPE on
+the larger V2 pages. One real rendering bug found by screenshot
+and fixed: the fig label class collided with v1's fix-later
+quadrant class (inset warning shadow ate the labels' first
+letter) — renamed to figl/figv. A pre-existing flaky plan.rs
+test (temp-dir race) fixed in its helper. §V2.5 examples
+verified in rendered markup (diesel −77 TM / −28 LM red ▼,
+stored 5,992 neutral, bar 5,188/7,800; hydrogen +295 LM green ▲;
+coal −211; bread −15; steel 1,108 / 24.1 months neutral;
+broken glass 2.0 months amber; crude 9,713/9,000 full amber
+bar). Heights at 1440×900 (shot2-*.png in design-mock/):
+Products 2,690 · Research 949 · Entities 1,306 · Issues 3,394 ·
+Overview 3,422 (over the ≈2,700 target with all spec caps
+applied — the capture is issue-dense; recorded in DESIGN.md).
+
+RESTAGE + BUNDLE: dist/coi.exe = 6,504,511 B, sha256
+c0039faeb1ef092d251babcf55ba2d3b1e8b5a98935d060b66c83aadb05537ee
+(Windows release build, 0 warnings), replacing 6,345,284 B /
+33f063ce...dd1d. weekend-bundle exe + BUNDLE-README row updated;
+the three mod zips verified byte-identical (806b7a9e...ffe10,
+a2ed9232...cc52626, 680d81ea...05131). INSTALL.md and
+plans/WEEKEND-RUNBOOK.md login wording updated to match (no
+login; build size line refreshed). DESIGN.md carries the
+"Implemented" closing note with the full numbers.

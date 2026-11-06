@@ -7,18 +7,19 @@ mod files — relaunch afterwards.
 
 Replace the old companion program file in the folder where you already
 keep it — the same folder as its database file. Keep the database file:
-it holds your website password and all snapshots, and carries over.
+it holds all snapshots and the audit history, and carries over.
 Run the program by double-clicking it; it opens the local website in
 your browser. (On this repo, the Actions tab's companion-release
 workflow also builds the current program — Run workflow on main, then
 download the artifact it produces.)
 
-The current build is 6,345,284 bytes. It includes the /place page
+The current build is 6,504,511 bytes. It includes the /place page
 (blueprint placement through the QoSBuilder mod, section 4 below),
 the /designate page (terrain designation pads and removals through
-the same mod, section 4 below), the redesigned interface — sidebar
-navigation, an always-visible game status strip, and server-drawn
-charts throughout — and the Terrain page: a whole-map height view
+the same mod, section 4 below), the Design V2 interface — mega-nav
+top bar with the must-fix alert badge, left-rail in-page navigation,
+figure-based stats throughout, and no login (the site is
+loopback-only and just opens) — and the Terrain page: a whole-map height view
 fed by the CoiBridge terrain routes (section 2 below), ore deposit
 totals with per-snapshot depletion history, and an earthworks
 estimator that works out cut and fill volumes for levelling a
