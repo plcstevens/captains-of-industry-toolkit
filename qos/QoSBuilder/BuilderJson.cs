@@ -36,6 +36,28 @@ namespace QoSBuilder;
 /// everything else raw UTF-8. The companion builds the identical
 /// string (its test suite pins a shared test vector), so both sides
 /// hash the same bytes or the job is refused as tampered.
+///
+/// Job schema v2 (DESIGNATION-DESIGN-NOTE §2.3) — designation jobs,
+/// dispatched on the `jobType` field (v1 files carry none):
+///   jobId / schema 2 / jobType / createdUtc / expiresUtc /
+///   gameId / companionUser / planName — as v1, with planName in
+///   place of blueprintName
+///   protoId          add jobs only: the ONE designation kind for
+///                    the whole batch (kind is a property of
+///                    AddTerrainDesignationsCmd, not of a cell)
+///   cells            add jobs only: [{x, y, origin, plusX,
+///                    plusXY, plusY}] — origin tile coords, then
+///                    the four corner heights in integer tiles, in
+///                    DesignationData CTOR ORDER (plusXY before
+///                    plusY). The centre height is NOT a field:
+///                    the 5-arg ctor derives it.
+///   origins          remove jobs only: [{x, y}]
+///   limits           {maxCells}
+/// Canonical v2 field order: jobId, schema, jobType, createdUtc,
+/// expiresUtc, gameId, companionUser, planName, protoId (add only),
+/// cells|origins, limits.maxCells — same compact form, same
+/// escaping rule. Pinned by an executed test vector on this side
+/// too (BUILD-NOTES round 9), not just the companion's.
 /// </summary>
 public static class BuilderJson {
 
@@ -83,6 +105,86 @@ public static class BuilderJson {
 		sb.Append(",\"rotationDeg\":").Append(rotationDeg.ToString(CultureInfo.InvariantCulture));
 		sb.Append(",\"applyConfiguration\":").Append(applyConfiguration ? "true" : "false");
 		sb.Append(",\"limits\":{\"maxItems\":").Append(maxItems.ToString(CultureInfo.InvariantCulture));
+		sb.Append("}}");
+		return sb.ToString();
+	}
+
+	/// <summary>
+	/// One designation cell as carried in a schema-2 add job: the
+	/// origin tile coords, then the four corner target heights in
+	/// integer tiles, in DesignationData ctor order (origin, plusX,
+	/// plusXY, plusY). The centre is never carried — the game's
+	/// 5-arg ctor derives it as the corners' mean.
+	/// </summary>
+	public struct DesignationCell {
+		public long X, Y, Origin, PlusX, PlusXY, PlusY;
+
+		public DesignationCell(long x, long y, long origin, long plusX, long plusXY, long plusY) {
+			X = x; Y = y; Origin = origin; PlusX = plusX; PlusXY = plusXY; PlusY = plusY;
+		}
+	}
+
+	/// <summary>One origin tile as carried in a schema-2 remove job.</summary>
+	public struct DesignationOrigin {
+		public long X, Y;
+
+		public DesignationOrigin(long x, long y) {
+			X = x; Y = y;
+		}
+	}
+
+	/// <summary>
+	/// The canonical payload string for a schema-2 designation job,
+	/// rebuilt from its parsed fields. For "designations-add" pass
+	/// protoId + cells (origins null); for "designations-remove"
+	/// pass origins (protoId/cells null) — the field set itself is
+	/// part of the contract, so an add-shaped canonical can never
+	/// collide with a remove-shaped one.
+	/// </summary>
+	public static string CanonicalDesignation(string jobId, long schema, string jobType,
+			string createdUtc, string expiresUtc, string gameId, string companionUser,
+			string planName, string protoId, List<DesignationCell> cells,
+			List<DesignationOrigin> origins, long maxCells) {
+		var sb = new StringBuilder();
+		sb.Append("{\"jobId\":\"").Append(Escape(jobId)).Append('"');
+		sb.Append(",\"schema\":").Append(schema.ToString(CultureInfo.InvariantCulture));
+		sb.Append(",\"jobType\":\"").Append(Escape(jobType)).Append('"');
+		sb.Append(",\"createdUtc\":\"").Append(Escape(createdUtc)).Append('"');
+		sb.Append(",\"expiresUtc\":\"").Append(Escape(expiresUtc)).Append('"');
+		sb.Append(",\"gameId\":\"").Append(Escape(gameId)).Append('"');
+		sb.Append(",\"companionUser\":\"").Append(Escape(companionUser)).Append('"');
+		sb.Append(",\"planName\":\"").Append(Escape(planName)).Append('"');
+		if (jobType == "designations-add") {
+			sb.Append(",\"protoId\":\"").Append(Escape(protoId)).Append('"');
+			sb.Append(",\"cells\":[");
+			for (int i = 0; i < cells.Count; i++) {
+				DesignationCell c = cells[i];
+				if (i > 0) {
+					sb.Append(',');
+				}
+				sb.Append("{\"x\":").Append(c.X.ToString(CultureInfo.InvariantCulture));
+				sb.Append(",\"y\":").Append(c.Y.ToString(CultureInfo.InvariantCulture));
+				sb.Append(",\"origin\":").Append(c.Origin.ToString(CultureInfo.InvariantCulture));
+				sb.Append(",\"plusX\":").Append(c.PlusX.ToString(CultureInfo.InvariantCulture));
+				sb.Append(",\"plusXY\":").Append(c.PlusXY.ToString(CultureInfo.InvariantCulture));
+				sb.Append(",\"plusY\":").Append(c.PlusY.ToString(CultureInfo.InvariantCulture));
+				sb.Append('}');
+			}
+			sb.Append(']');
+		} else {
+			sb.Append(",\"origins\":[");
+			for (int i = 0; i < origins.Count; i++) {
+				DesignationOrigin o = origins[i];
+				if (i > 0) {
+					sb.Append(',');
+				}
+				sb.Append("{\"x\":").Append(o.X.ToString(CultureInfo.InvariantCulture));
+				sb.Append(",\"y\":").Append(o.Y.ToString(CultureInfo.InvariantCulture));
+				sb.Append('}');
+			}
+			sb.Append(']');
+		}
+		sb.Append(",\"limits\":{\"maxCells\":").Append(maxCells.ToString(CultureInfo.InvariantCulture));
 		sb.Append("}}");
 		return sb.ToString();
 	}
@@ -153,6 +255,17 @@ public static class BuilderJson {
 			return false;
 		}
 		value = raw as Dictionary<string, object>;
+		return value != null;
+	}
+
+	public static bool GetList(Dictionary<string, object> obj, string key,
+			out List<object> value) {
+		value = null;
+		object raw;
+		if (obj == null || !obj.TryGetValue(key, out raw)) {
+			return false;
+		}
+		value = raw as List<object>;
 		return value != null;
 	}
 

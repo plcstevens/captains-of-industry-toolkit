@@ -23,6 +23,14 @@ for dll in Mafi.dll Mafi.Core.dll Mafi.Unity.dll; do
   [ -f "$REFS_DIR/$dll" ] || { echo "missing reference assembly: $REFS_DIR/$dll (set COI_REFS_DIR to the folder with the game's Mafi*.dll)"; exit 1; }
 done
 
+# Serializer-pair lint (QUALITY-AUDIT item 1): QoSBuilder's
+# BuilderService subscribes to the calendar's saveable NewDayEnd
+# event — fail the build if it (or any discovered subscriber) lacks
+# [ManuallyWrittenSerialization] + the pair + manifest
+# can_remove_from_saved_game:false. That omission broke ALL saving
+# in suite 0.5.0.
+python3 "$ROOT/tools/check_serializer_pairs.py" || { echo "!! serializer-pair lint FAILED — refusing to build (see above)"; exit 1; }
+
 VER="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" "$HERE/../QoSBuilder/manifest.json")"
 echo "QoSBuilder $VER (standalone; suite pack untouched)"
 

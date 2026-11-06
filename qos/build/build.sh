@@ -57,6 +57,14 @@ if [ "$WORLDMAP_OK" = "0" ]; then
   echo "!! (the pack readme declares its membership explicitly)."
 fi
 
+# Serializer-pair lint (QUALITY-AUDIT item 1): fail the build if any
+# service subscribing to a saveable calendar event lacks
+# [ManuallyWrittenSerialization] + the Serialize/Deserialize pair, or
+# its manifest lacks can_remove_from_saved_game:false. That omission
+# broke ALL saving in suite 0.5.0. Discovery is by subscription
+# pattern, not a hardcoded list; the script scans qos/ + bridge/.
+python3 "$ROOT/tools/check_serializer_pairs.py" || { echo "!! serializer-pair lint FAILED — refusing to build (see above)"; exit 1; }
+
 ver() { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" "$1"; }
 CORE_VER="$(ver "$HERE/../QoSCore/manifest.json")"
 CHICK_VER="$(ver "$HERE/../QoSChickens/manifest.json")"

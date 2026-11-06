@@ -211,3 +211,63 @@ with the mod gone they are inert data, read by nothing.
   no benefit. If the advisor ever wants an in-game home, §2's
   window pattern is the route, and *that* window mod would join
   the suite as another sibling feature mod depending on QoSCore.
+
+## Coding standards (distilled by the 2026-11-06 quality audit)
+
+The rules below are the ones the codebase demonstrably follows
+(QUALITY-AUDIT.md has the file:line evidence), plus the handful
+the audit adopted to close gaps it found. They bind future rounds.
+
+**Structure & DI (C#).** One folder, one DLL, one manifest,
+`config.json`, `readme.txt` per mod. `IMod` shell + service
+class(es); services register belt-and-braces —
+`[GlobalDependency(RegistrationMode.AsEverything)]` on the class
+AND `RegisterDependency<T>().AsSelf()` in `RegisterDependencies`
+— and each class family resolves in its own try/catch at
+`Initialize`, so one broken family never takes the others down.
+Features depend on QoSCore only, never on each other.
+
+**Saved-state law (supersedes the blanket statement in "Removal
+safety" above).** Any service that subscribes to a saveable event
+(calendar `NewDayEnd` is the case today) carries
+`[ManuallyWrittenSerialization]` + a hand-written static
+`Serialize`/`Deserialize` pair in the generated shape, and its
+manifest sets `can_remove_from_saved_game: false`. Mods with no
+saved footprint keep `can_remove: true`. `can_add` stays `true`
+suite-wide. (The "Removal safety" paragraph's claim that all
+manifests carry `can_remove: true` is stale — this section
+governs.)
+
+**Money and game data.** Costs, caps and defaults that exist in
+the game's own data are read from shipped constants/protos at
+runtime (`VehiclesManager.VEHICLE_RECOVERY_COST`,
+`machine.Prototype.Costs.DefaultPriority`, …) — never hardcoded.
+Policy thresholds that are *ours* live in `config.json`; the
+`Get*(name, default)` literal in code must match the
+`config.json` default (audit R3: a build check is owed).
+
+**Acting on the game.** Simulate-then-schedule: predict the
+shipped command's effect with the game's own semantics, check
+every guard against the predicted outcome, only then
+`IInputScheduler.ScheduleInputCmd`. Features ship with their
+master switch OFF. No Harmony.
+
+**Errors & logging.** No silent catches in policy code: a catch
+logs via `QoSLog` (suite, `QoS.<Feature>:` prefix) or `Log`
+(bridge), or surfaces the failure count in the payload. Every
+bridge handler body runs inside `BridgeRoutes.Guard`. Actions
+are recorded to `QoSEventLog` when they happen; diagnostics are
+not events.
+
+**Rust companion.** `Result<T, String>` with context at layer
+boundaries; pages degrade in-shell rather than erroring; pure
+estimators (terrain, productivity, plan evaluation) stay
+separated from I/O and carry unit tests; generated code
+(`catalogue.rs`) changes only through its generator.
+
+**Verification floor (adopted from the audit).** New
+mutation-capable or save-touching logic ships with at least one
+automated check — unit test, cross-checked vector, or a build
+lint (the serializer-pair lint is the template) — never
+compile-only. Read-only/advisory logic keeps the existing
+unit + fixture standard.

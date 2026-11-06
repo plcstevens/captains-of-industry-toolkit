@@ -18,8 +18,13 @@ namespace QoSBuilder;
 /// its §12 confirm step, and this mod executes the job — once, if
 /// it is unexpired, untampered and pinned to the running game — by
 /// scheduling the game's own BatchCreateStaticEntitiesCmd through
-/// IInputScheduler. See BuilderService for the execution contract
-/// and readme.txt for the plain-words version.
+/// IInputScheduler. Since 0.2.0 it executes DESIGNATION jobs
+/// (schema 2) the same way — one AddTerrainDesignationsCmd /
+/// RemoveDesignationsCmd per confirmed plan; the designation
+/// commands are JSON-blocked from the web channel for the same
+/// reason (ImmutableArray ctor params). See BuilderService for
+/// the execution contract and readme.txt for the plain-words
+/// version.
 ///
 /// Depends on QoSCore (manifest: "QoSCore >= 0.2.0") for suite
 /// logging + the activity recorder; the QoSCore.dll reference is
@@ -30,7 +35,7 @@ namespace QoSBuilder;
 public sealed class QoSBuilderMod : IMod {
 
 	/// <summary>Mod version. Keep in step with manifest.json (manifest is the truth).</summary>
-	public const string Version = "0.1.0";
+	public const string Version = "0.2.0";
 
 	public QoSBuilderMod(ModManifest manifest) {
 		Manifest = manifest;

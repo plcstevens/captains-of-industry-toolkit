@@ -10,7 +10,9 @@ using Mafi.Core.Entities.Blueprints;
 using Mafi.Core.Entities.Static.Commands;
 using Mafi.Core.Factory.Transports;
 using Mafi.Core.Input;
+using Mafi.Core.Prototypes;
 using Mafi.Core.Simulation;
+using Mafi.Core.Terrain.Designation;
 using Mafi.Logging;
 using Mafi.Serialization;
 using QoSCore;
@@ -52,6 +54,17 @@ namespace QoSBuilder;
 /// later. The batch command's own result is bool + last-error
 /// only, so this service attests "scheduled", never "placed" —
 /// the honest placement verdict is the companion's census diff.
+///
+/// Since 0.2.0 the service also executes DESIGNATION jobs
+/// (schema 2, dispatched on the job's `jobType` field — v1 files
+/// carry none and take the blueprint path unchanged;
+/// DESIGNATION-DESIGN-NOTE.md is the spec): one
+/// AddTerrainDesignationsCmd or RemoveDesignationsCmd per job,
+/// same claim/refusal discipline, activity kind "designation".
+/// The Add command reports success even for cells the manager
+/// silently refuses, so the verdict there is the companion's
+/// /designations read-back diff — this service attests
+/// "scheduled" only, exactly as for placements.
 ///
 /// Master switch `enabled` ships FALSE: while off, the service
 /// does not even scan — job files simply wait and expire.
@@ -169,12 +182,16 @@ public sealed class BuilderService : IDisposable {
 		Directory.CreateDirectory(jobsDir);
 		bool logJobs = m_mod.JsonConfig.GetBool("log_jobs", true);
 		int configCap = Math.Max(1, m_mod.JsonConfig.GetInt("max_items_per_job", 500));
+		// Designation cell cap: config declares [1, 2000] (note §2.2);
+		// clamp rather than trust a hand-edited value.
+		int configCellCap = Math.Max(1, Math.Min(2000,
+			m_mod.JsonConfig.GetInt("max_cells_per_job", 200)));
 		HashSet<string> processed = ReadProcessed(jobsDir);
 		string[] files = Directory.GetFiles(jobsDir, "*.json");
 		Array.Sort(files, StringComparer.Ordinal);
 		foreach (string file in files) {
 			try {
-				ProcessJob(file, jobsDir, processed, configCap, logJobs);
+				ProcessJob(file, jobsDir, processed, configCap, configCellCap, logJobs);
 			} catch (Exception ex) {
 				// One bad job must never stop the pass or reach the sim.
 				QoSLog.Error("Builder", "job file " + Path.GetFileName(file) +
@@ -188,7 +205,7 @@ public sealed class BuilderService : IDisposable {
 	// ------------------------------------------------------------------
 
 	private void ProcessJob(string file, string jobsDir, HashSet<string> processed,
-			int configCap, bool logJobs) {
+			int configCap, int configCellCap, bool logJobs) {
 		string fileName = Path.GetFileName(file);
 		string text;
 		try {
@@ -205,6 +222,15 @@ public sealed class BuilderService : IDisposable {
 		} catch (Exception ex) {
 			Refuse(file, jobsDir, processed, null, null, "malformed",
 				"not valid job JSON: " + ex.Message, logJobs);
+			return;
+		}
+
+		// Family dispatch (note §2.2): v1 job files carry no jobType
+		// and take the blueprint path below exactly as before; a
+		// non-empty string jobType marks a schema-2 designation job.
+		string jobType;
+		if (BuilderJson.GetString(job, "jobType", out jobType) && jobType.Length > 0) {
+			ProcessDesignationJob(file, jobsDir, processed, job, jobType, configCellCap, logJobs);
 			return;
 		}
 
@@ -414,6 +440,339 @@ public sealed class BuilderService : IDisposable {
 	}
 
 	// ------------------------------------------------------------------
+	// Designation jobs (schema 2) — DESIGNATION-DESIGN-NOTE.md §2.
+	// Same folder, same claim discipline, same shared refusal rungs
+	// in the same order as placements; the family rungs follow
+	// wrong-game. Events carry kind "designation".
+	// ------------------------------------------------------------------
+
+	private static bool IsDesignationProtoAllowed(string protoId) {
+		// The allowlist (note §2.2): the three terraforming
+		// designators — kind is the Add command's Proto.ID, one per
+		// batch. ForestryDesignator is excluded (not terraforming,
+		// different fulfilment semantics; AFD owns that niche) and
+		// the surface/decal designators are excluded absolutely.
+		return protoId == "MiningDesignator" || protoId == "DumpingDesignator" ||
+			protoId == "LevelDesignator";
+	}
+
+	private void ProcessDesignationJob(string file, string jobsDir, HashSet<string> processed,
+			Dictionary<string, object> job, string jobType, int configCellCap, bool logJobs) {
+		string fileName = Path.GetFileName(file);
+		bool isAdd = jobType == "designations-add";
+		bool isRemove = jobType == "designations-remove";
+
+		// Best-effort jobId so even the earliest refusal is recorded
+		// against it (null when unextractable, the v1 convention).
+		string jobId;
+		if (!BuilderJson.GetString(job, "jobId", out jobId) || jobId.Length == 0 || jobId.Length > 64) {
+			jobId = null;
+		}
+
+		if (!isAdd && !isRemove) {
+			RefuseD(file, jobsDir, processed, jobId, null, jobType, null, "malformed",
+				"unknown jobType '" + jobType + "' — this mod speaks designations-add and designations-remove",
+				logJobs);
+			return;
+		}
+
+		// ---- Shared fields (note §2.3) + structural cell extraction.
+		// The canonical payload is rebuilt from the parsed cells, so
+		// structural cell problems (not an array / item not an object
+		// / field missing or non-integer) are necessarily detected
+		// here and refuse as malformed-cells BEFORE the hash rung —
+		// an unparseable cell has no canonical to hash. The semantic
+		// malformed-cells checks (alignment, plausibility) sit in
+		// their note order after wrong-game, below.
+		string createdUtc = null, expiresUtc = null, gameId = null, companionUser = null,
+			planName = null, protoId = null, sha = null;
+		long schema = 0, jobCellCap = 0;
+		Dictionary<string, object> limits = null;
+		List<object> rawList = null;
+		bool fieldsOk = jobId != null &&
+			BuilderJson.GetLong(job, "schema", out schema) &&
+			BuilderJson.GetString(job, "createdUtc", out createdUtc) &&
+			BuilderJson.GetString(job, "expiresUtc", out expiresUtc) &&
+			BuilderJson.GetString(job, "gameId", out gameId) &&
+			BuilderJson.GetString(job, "companionUser", out companionUser) &&
+			BuilderJson.GetString(job, "planName", out planName) &&
+			BuilderJson.GetObject(job, "limits", out limits) &&
+			BuilderJson.GetLong(limits, "maxCells", out jobCellCap) &&
+			BuilderJson.GetString(job, "sha256", out sha) &&
+			BuilderJson.GetList(job, isAdd ? "cells" : "origins", out rawList);
+		if (fieldsOk && isAdd) {
+			fieldsOk = BuilderJson.GetString(job, "protoId", out protoId);
+		}
+		if (!fieldsOk) {
+			RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "malformed",
+				"designation job is missing fields or has wrong-typed fields (schema v2)", logJobs);
+			return;
+		}
+
+		var cells = new List<BuilderJson.DesignationCell>();
+		var origins = new List<BuilderJson.DesignationOrigin>();
+		bool cellsShapeOk = true;
+		foreach (object rawItem in rawList) {
+			var item = rawItem as Dictionary<string, object>;
+			long cx, cy;
+			if (item == null ||
+					!BuilderJson.GetLong(item, "x", out cx) ||
+					!BuilderJson.GetLong(item, "y", out cy)) {
+				cellsShapeOk = false;
+				break;
+			}
+			if (isAdd) {
+				long o, px, pxy, py;
+				if (!BuilderJson.GetLong(item, "origin", out o) ||
+						!BuilderJson.GetLong(item, "plusX", out px) ||
+						!BuilderJson.GetLong(item, "plusXY", out pxy) ||
+						!BuilderJson.GetLong(item, "plusY", out py)) {
+					cellsShapeOk = false;
+					break;
+				}
+				cells.Add(new BuilderJson.DesignationCell(cx, cy, o, px, pxy, py));
+			} else {
+				origins.Add(new BuilderJson.DesignationOrigin(cx, cy));
+			}
+		}
+		if (!cellsShapeOk) {
+			RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "malformed-cells",
+				"cells/origins entries are missing integer fields — the canonical payload cannot be rebuilt",
+				logJobs);
+			return;
+		}
+
+		// Single-use (shared rung, as v1): filed away, no event.
+		if (processed.Contains(jobId)) {
+			TryMove(file, file + ".done");
+			QoSLog.Debug("Builder", "duplicate job file for already-consumed job " + jobId +
+				" filed away (" + fileName + ")");
+			return;
+		}
+
+		if (schema != 2) {
+			RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "unsupported-schema",
+				"job schema is " + schema + ", designation jobs speak schema 2", logJobs);
+			return;
+		}
+
+		string canonical = BuilderJson.CanonicalDesignation(jobId, schema, jobType, createdUtc,
+			expiresUtc, gameId, companionUser, planName, protoId, cells, origins, jobCellCap);
+		if (!string.Equals(BuilderJson.Sha256Hex(canonical), sha, StringComparison.OrdinalIgnoreCase)) {
+			RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "bad-hash",
+				"sha256 does not match the canonical payload — the file was edited after confirm", logJobs);
+			return;
+		}
+
+		DateTime expires;
+		if (!DateTime.TryParse(expiresUtc, CultureInfo.InvariantCulture,
+				DateTimeStyles.RoundtripKind, out expires)) {
+			RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "malformed",
+				"expiresUtc is not a parseable timestamp", logJobs);
+			return;
+		}
+		if (expires.ToUniversalTime() <= DateTime.UtcNow) {
+			RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "expired",
+				"job expired at " + expiresUtc + " (confirm again to re-issue)", logJobs);
+			return;
+		}
+
+		string runningGameId = m_gameIds.GameId.ToString(CultureInfo.InvariantCulture);
+		if (!string.Equals(gameId, runningGameId, StringComparison.Ordinal)) {
+			RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "wrong-game",
+				"job is pinned to game " + gameId + " but the running game is " + runningGameId, logJobs);
+			return;
+		}
+
+		// ---- Family rungs (note §2.2, in order). ----
+		if (isAdd && !IsDesignationProtoAllowed(protoId)) {
+			RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "unsupported-proto",
+				"protoId '" + protoId + "' is not on the designation allowlist " +
+				"(MiningDesignator / DumpingDesignator / LevelDesignator)", logJobs);
+			return;
+		}
+
+		// malformed-cells (semantic): alignment + plausibility. The
+		// mod checks alignment itself — the game's ctor assert must
+		// never become the validator (note §2.2, open question 1).
+		int rawCount = isAdd ? cells.Count : origins.Count;
+		for (int i = 0; i < rawCount; i++) {
+			long ox = isAdd ? cells[i].X : origins[i].X;
+			long oy = isAdd ? cells[i].Y : origins[i].Y;
+			if (ox % 4 != 0 || oy % 4 != 0) {
+				RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "malformed-cells",
+					"origin (" + ox + "," + oy + ") is not on the 4-tile designation grid", logJobs);
+				return;
+			}
+			if (ox < -100000 || ox > 100000 || oy < -100000 || oy > 100000) {
+				RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "malformed-cells",
+					"origin (" + ox + "," + oy + ") is outside any plausible map range", logJobs);
+				return;
+			}
+			if (isAdd) {
+				BuilderJson.DesignationCell c = cells[i];
+				if (c.Origin < -1000 || c.Origin > 1000 || c.PlusX < -1000 || c.PlusX > 1000 ||
+						c.PlusXY < -1000 || c.PlusXY > 1000 || c.PlusY < -1000 || c.PlusY > 1000) {
+					RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "malformed-cells",
+						"cell at (" + ox + "," + oy + ") has a corner height outside +/-1000 tiles " +
+						"(the mod's own sanity bound — the game sets none, note §2.2)", logJobs);
+					return;
+				}
+			}
+		}
+
+		// duplicate-cells: inside an ADD batch the game applies
+		// duplicate origins sequentially — last wins, silently. In a
+		// sealed order that is refused (note §1.3). REMOVE is
+		// idempotent and proto-agnostic (removing an empty origin is
+		// a no-op), so duplicates there are deduplicated silently,
+		// first occurrence kept. The hash above covered the file as
+		// confirmed; dedupe shapes only the execution.
+		if (isAdd) {
+			var seen = new HashSet<long>();
+			foreach (BuilderJson.DesignationCell c in cells) {
+				long key = (c.X << 32) | (c.Y & 0xffffffffL);
+				if (!seen.Add(key)) {
+					RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "duplicate-cells",
+						"origin (" + c.X + "," + c.Y + ") appears twice in the add plan", logJobs);
+					return;
+				}
+			}
+		} else {
+			var seen = new HashSet<long>();
+			var deduped = new List<BuilderJson.DesignationOrigin>();
+			foreach (BuilderJson.DesignationOrigin o in origins) {
+				long key = (o.X << 32) | (o.Y & 0xffffffffL);
+				if (seen.Add(key)) {
+					deduped.Add(o);
+				}
+			}
+			origins = deduped;
+		}
+
+		int planCount = isAdd ? cells.Count : origins.Count;
+		long effectiveCellCap = Math.Min(jobCellCap, configCellCap);
+		if (planCount > effectiveCellCap) {
+			RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "over-cell-cap",
+				"plan has " + planCount + (isAdd ? " cells" : " origins") + ", cap is " +
+				effectiveCellCap + " (job cap " + jobCellCap + ", mod cap " + configCellCap + ")", logJobs);
+			return;
+		}
+		if (planCount == 0) {
+			RefuseD(file, jobsDir, processed, jobId, planName, jobType, protoId, "nothing-to-designate",
+				"the plan is empty", logJobs);
+			return;
+		}
+
+		// ---- CLAIM: rename + record BEFORE scheduling (identical
+		// discipline to placements — single-use even across a crash).
+		string claimedPath = file + ".claimed";
+		try {
+			if (File.Exists(claimedPath)) {
+				File.Delete(claimedPath);
+			}
+			File.Move(file, claimedPath);
+		} catch (Exception ex) {
+			QoSLog.Error("Builder", "could not claim job " + jobId + " (" + fileName + "): " +
+				ex.Message + " — job left unclaimed, will retry next pass");
+			return;
+		}
+		AppendProcessed(jobsDir, processed, jobId);
+		var claimData = new Dictionary<string, object> {
+			{ "jobId", jobId },
+			{ "jobType", jobType },
+			{ "planName", planName },
+			{ "companionUser", companionUser },
+			{ "gameId", gameId },
+		};
+		if (isAdd) {
+			claimData["protoId"] = protoId;
+			claimData["cells"] = cells.Count;
+		} else {
+			claimData["origins"] = origins.Count;
+		}
+		QoSEventLog.Record("QoSBuilder", QoSBuilderMod.Version, "designation", "JobClaimed",
+			"claimed designation job " + jobId + " (" + planName + ") from " + companionUser,
+			claimData);
+		if (logJobs) {
+			QoSLog.Info("Builder", "claimed designation job " + jobId + " (" + planName + ")");
+		}
+
+		// ---- SCHEDULE the one command. ----
+		try {
+			if (isAdd) {
+				var data = new DesignationData[cells.Count];
+				for (int i = 0; i < cells.Count; i++) {
+					BuilderJson.DesignationCell c = cells[i];
+					// Corners only, in ctor order: the 5-arg ctor
+					// derives the centre as the corners' mean,
+					// exactly as the game does for its own
+					// designations (note §1.1).
+					data[i] = new DesignationData(
+						new Tile2i((int)c.X, (int)c.Y),
+						new HeightTilesI((int)c.Origin),
+						new HeightTilesI((int)c.PlusX),
+						new HeightTilesI((int)c.PlusXY),
+						new HeightTilesI((int)c.PlusY));
+				}
+				m_scheduler.ScheduleInputCmd(new AddTerrainDesignationsCmd(
+					new Proto.ID(protoId), ImmutableArray.Create(data)));
+			} else {
+				var tiles = new Tile2i[origins.Count];
+				for (int i = 0; i < origins.Count; i++) {
+					tiles[i] = new Tile2i((int)origins[i].X, (int)origins[i].Y);
+				}
+				m_scheduler.ScheduleInputCmd(new RemoveDesignationsCmd(
+					ImmutableArray.Create(tiles)));
+			}
+		} catch (Exception ex) {
+			var failData = new Dictionary<string, object> {
+				{ "jobId", jobId },
+				{ "jobType", jobType },
+				{ "planName", planName },
+				{ "error", ex.Message },
+			};
+			if (isAdd) {
+				failData["protoId"] = protoId;
+			}
+			QoSEventLog.Record("QoSBuilder", QoSBuilderMod.Version, "designation", "JobScheduleFailed",
+				"designation job " + jobId + " (" + planName + ") claimed but scheduling threw: " +
+				ex.Message, failData);
+			QoSLog.Error("Builder", "scheduling designation job " + jobId + " failed: " + ex.Message);
+			TryMove(claimedPath, file + ".failed");
+			return;
+		}
+		TryMove(claimedPath, file + ".done");
+
+		var doneData = new Dictionary<string, object> {
+			{ "jobId", jobId },
+			{ "jobType", jobType },
+			{ "planName", planName },
+			{ "companionUser", companionUser },
+			{ "gameId", gameId },
+		};
+		string scheduledSummary;
+		if (isAdd) {
+			doneData["protoId"] = protoId;
+			doneData["cells"] = cells.Count;
+			scheduledSummary = "scheduled " + cells.Count + " '" + protoId + "' designation cells " +
+				"from '" + planName + "' — scheduled, not verified landed: the Add command reports " +
+				"success even for cells the manager silently refuses, so the companion's " +
+				"/designations diff is the verdict";
+		} else {
+			doneData["origins"] = origins.Count;
+			scheduledSummary = "scheduled removal of designations at " + origins.Count +
+				" origins from '" + planName + "' — scheduled, not verified landed " +
+				"(companion /designations diff is the verdict)";
+		}
+		QoSEventLog.Record("QoSBuilder", QoSBuilderMod.Version, "designation", "JobScheduled",
+			scheduledSummary, doneData);
+		if (logJobs) {
+			QoSLog.Info("Builder", "scheduled designation job " + jobId + ": " + scheduledSummary);
+		}
+	}
+
+	// ------------------------------------------------------------------
 	// Placement composition — the game's own recipe (recon 10 §Q4),
 	// restricted to translation + quarter-turn rotation about the
 	// blueprint origin. Quarter-turns use the shipped rotation math
@@ -506,15 +865,44 @@ public sealed class BuilderService : IDisposable {
 
 	private void Refuse(string file, string jobsDir, HashSet<string> processed,
 			string jobId, string blueprintName, string reason, string detail, bool logJobs) {
-		QoSEventLog.Record("QoSBuilder", QoSBuilderMod.Version, "placement", "JobRefused",
+		RefuseCore(file, jobsDir, processed, jobId, "placement", "blueprintName", blueprintName,
+			reason, detail, logJobs, null);
+	}
+
+	/// <summary>Designation-family refusal: kind "designation", the
+	/// plan name under "planName", jobType (and protoId when known)
+	/// riding along in the event data (note §2.1).</summary>
+	private void RefuseD(string file, string jobsDir, HashSet<string> processed,
+			string jobId, string planName, string jobType, string protoId,
+			string reason, string detail, bool logJobs) {
+		var extra = new Dictionary<string, object> {
+			{ "jobType", jobType },
+		};
+		if (protoId != null) {
+			extra["protoId"] = protoId;
+		}
+		RefuseCore(file, jobsDir, processed, jobId, "designation", "planName", planName,
+			reason, detail, logJobs, extra);
+	}
+
+	private void RefuseCore(string file, string jobsDir, HashSet<string> processed,
+			string jobId, string kind, string nameKey, string nameValue,
+			string reason, string detail, bool logJobs, Dictionary<string, object> extra) {
+		var data = new Dictionary<string, object> {
+			{ "jobId", jobId },
+			{ nameKey, nameValue },
+			{ "reason", reason },
+			{ "detail", detail },
+			{ "file", Path.GetFileName(file) },
+		};
+		if (extra != null) {
+			foreach (KeyValuePair<string, object> kv in extra) {
+				data[kv.Key] = kv.Value;
+			}
+		}
+		QoSEventLog.Record("QoSBuilder", QoSBuilderMod.Version, kind, "JobRefused",
 			"refused job " + (jobId ?? Path.GetFileName(file)) + ": " + reason + " — " + detail,
-			new Dictionary<string, object> {
-				{ "jobId", jobId },
-				{ "blueprintName", blueprintName },
-				{ "reason", reason },
-				{ "detail", detail },
-				{ "file", Path.GetFileName(file) },
-			});
+			data);
 		if (logJobs) {
 			QoSLog.Warning("Builder", "refused job " + (jobId ?? Path.GetFileName(file)) +
 				": " + reason + " — " + detail);

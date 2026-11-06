@@ -1256,3 +1256,179 @@ ready: QoSBuilder zip alongside the suite, enable it in the
 save's mod list, leave `enabled` OFF until the first supervised
 placement, then confirm one small blueprint (concrete-v1, 39
 items) in a sandbox and watch the Log page + census.
+
+# QoS build notes — round 9 (2026-11-06 evening): QoSBuilder 0.2.0 — designation jobs (stage 2 of 4)
+
+Stage 2 of the designation programme (spec: DESIGNATION-DESIGN-NOTE.md,
+stage 1). MOD SIDE ONLY — bridge, companion Rust, serve.rs, plans and
+INSTALL.md untouched (stages 3–4 own them). QoSBuilder gains its second
+job family: schema-2 designation jobs, executed under the identical
+claim/refusal discipline as blueprint jobs. Built standalone (own zip,
+own build script); suite-pack integration still waits for live
+verification, as with 0.1.0.
+
+## Assembly surfaces re-verified before coding (qos probe, 0.8.8 refs)
+
+- `DesignationData` 5-arg ctor is `(Tile2i, HeightTilesI origin,
+  HeightTilesI plusX, HeightTilesI plusXY, HeightTilesI plusY)` —
+  ctor order Origin/PlusX/PlusXY/PlusY, centre derived. ✓ note §1.1.
+- `AddTerrainDesignationsCmd(Mafi.Core.Prototypes.Proto.ID,
+  ImmutableArray<DesignationData>)`; `RemoveDesignationsCmd(
+  ImmutableArray<Tile2i>)`; `Proto.ID(string)` public ctor;
+  `HeightTilesI(int)` in namespace `Mafi`. Kind is the command's
+  Proto.ID — one kind per batch; `DesignationData` has no kind
+  member. ✓ note §1.2.
+
+## What was built
+
+- **Family dispatch** (`BuilderService.ProcessJob`): files with a
+  non-empty string `jobType` branch to the new
+  `ProcessDesignationJob`; v1 files (no `jobType`) take the existing
+  blueprint path — same code, same order, same event payloads
+  (`Refuse` now delegates to a shared `RefuseCore` with kind
+  "placement" / key "blueprintName", byte-identical output).
+- **`BuilderJson`**: `GetList` accessor + `CanonicalDesignation(...)`
+  + the `DesignationCell` / `DesignationOrigin` structs. Canonical v2
+  field order per note §2.3 (jobId, schema, jobType, createdUtc,
+  expiresUtc, gameId, companionUser, planName, protoId [add only],
+  cells|origins, limits.maxCells); cells carry corners in ctor
+  order; the centre is never a field.
+- **Execution**: ONE `AddTerrainDesignationsCmd(new Proto.ID(protoId),
+  ImmutableArray<DesignationData>)` per add job, cells built via the
+  5-arg ctor (corners only, centre game-derived); ONE
+  `RemoveDesignationsCmd` per remove job. No new injected services.
+- **Events**: kind `"designation"`, the same four actions
+  (JobClaimed / JobScheduled / JobRefused / JobScheduleFailed); data
+  adds `jobType`, `protoId` (add jobs), `cells` / `origins` counts.
+  Claim-before-schedule, processed.txt, `.claimed`/`.done`/`.failed`
+  — identical to blueprints.
+- **Config**: `max_cells_per_job` (default 200, declared [1, 2000]).
+  Manifest + `QoSBuilderMod.Version` → 0.2.0;
+  `can_remove_from_saved_game` stays false. Readme rewritten for
+  both families; SUITE-README.txt gained a "NOT IN THIS PACK" note
+  (the builder still ships standalone; the note now records the
+  designation family).
+
+## The C# canonical leg — EXECUTED (quality-audit finding, closed)
+
+The audit found the v1 C# canonical had never been executed ("pinned
+three ways" was really two + visual equivalence). This round executes
+it, and pins v2 the same way. Harness: `qos/build/canonprobe/`
+(kept, rerunnable) — a net8 console that (a) compiles the exact
+shipping `BuilderJson.cs` source in, and (b) in `dll` mode invokes
+the methods on the packaged net48 `QoSBuilder.dll` itself by
+reflection. Expectations computed INDEPENDENTLY in Python from the
+specs (v1: the vector already pinned in serve.rs; v2: a from-the-note
+implementation of §2.3).
+
+| Vector | Expected sha256 (Python) | C# source leg | C# DLL leg |
+|---|---|---|---|
+| v1 blueprint | a8b4498e9edb99e4338bbee339a826f51db9f6ad7a0439c72d8e379343069cbf | MATCH | MATCH |
+| v2 designations-add | e4166dd35533a12049ee495a5192358f3a262272cc86475c0a79979158ed57f7 | MATCH | MATCH |
+| v2 designations-remove | 78fb273ccdb9d498cae5e05ecc077d1e18c58dd2c406d59c23d1a8617e70cfa4 | MATCH | MATCH |
+
+Canonical strings printed by both legs are identical to the Python
+strings, byte for byte (including the escaping exercise: a plan name
+with quote, backslash and "Béton"). Stage 3's Rust leg must reproduce
+the two v2 hashes exactly — they are the cross-stage contract.
+
+## Refusal ladder — walk-through against the code
+
+Shared rungs (same order as blueprints; events kind "designation"
+once the family is known):
+unreadable → malformed (missing/wrong-typed shared fields, unknown
+jobType, unparseable expiresUtc) → **malformed-cells (structural:**
+cells/origins not an array, item not an object, field missing or
+non-integer — see decision 1) → duplicate (jobId in processed.txt:
+filed `.done`, no event) → unsupported-schema (≠ 2) → bad-hash →
+expired → wrong-game.
+Family rungs (note §2.2 order): unsupported-proto (allowlist
+MiningDesignator / DumpingDesignator / LevelDesignator) →
+malformed-cells (semantic: origin off the 4-grid, origin magnitude,
+corner outside ±1000) → duplicate-cells (add: refuse; remove:
+dedupe) → over-cell-cap (count > min(job `limits.maxCells`, config
+`max_cells_per_job`)) → nothing-to-designate (count 0).
+Then claim → schedule (exception → JobScheduleFailed + `.failed`)
+→ JobScheduled. DI-bound parts (scheduler, IGameIdProvider) cannot
+execute on this VM — the ladder is verified by this code review and
+by the stage-4 sandbox shakedown live, stated honestly.
+
+### Ladder decisions where the note left a choice
+
+1. **Structural malformed-cells is detected pre-hash**, not in the
+   note's post-wrong-game position: the canonical payload is
+   REBUILT from the parsed cells, so an unparseable cell has no
+   canonical to hash — refusing it later is impossible by
+   construction. The note's rung placement is honoured for the
+   semantic half (alignment / plausibility), which needs no
+   canonical. Detail strings distinguish the two halves.
+2. **Unknown jobType → "malformed"** (the note names no rung): a
+   jobType this mod doesn't speak is a schema-shape problem, the
+   same class as v1's field malformations.
+3. **Remove duplicates: silently deduplicated** (first occurrence
+   kept); add duplicates refused. Rationale: RemoveDesignation is
+   proto-agnostic and idempotent (an empty origin is a no-op), so
+   a duplicate remove is unambiguous, while a duplicate add cell
+   triggers the game's silent last-wins (§1.3) — exactly what the
+   seal exists to prevent. The hash is verified over the file AS
+   CONFIRMED (duplicates included); dedupe shapes only execution.
+4. **Origin magnitude bound ±100000** added to malformed-cells,
+   mirroring the v1 anchor sanity bound; the note names only the
+   ±1000 corner bound. Range comparisons, not Math.Abs (see
+   observation 2 below).
+5. **Config cell cap clamped to [1, 2000]** at read time (the
+   note's declared config range), rather than trusting a
+   hand-edited stored value.
+6. **Designation refusals record the extractable jobId** in the
+   processed record + event, where v1's field-malformation refusal
+   passes null even when a jobId was readable. Blueprint behaviour
+   deliberately left as-is (byte-identical path).
+
+## Serializer discipline — untouched, verified in the compiled DLL
+
+No new fields on BuilderService (the proto allowlist is a static
+method, not state; the cell cap is a pass-local, like the item
+cap). ilspycmd on the built DLL: `[ManuallyWrittenSerialization]`
+present, exactly the five 0.1.0 instance fields (m_mod,
+m_scheduler, m_calendar, m_library, m_gameIds), SerializeData
+writes only `m_calendar`, the same four RegisterResolvedMember
+calls. The save surface of the mod did not change.
+
+## Artefacts
+
+- dist/QoSBuilder-mod-0.2.0.zip — 47,373 B — sha256
+  680d81eac4e68afa5d8e7a1354f5548891b63e56b33dffe07c4a74aa03005131
+  (QoSBuilder.dll 37,888 B + manifest/config/readme; no QoSCore.dll
+  inside — the build script's guard passed)
+- Build: `qos/build/build-builder.sh` — 0 warnings / 0 errors.
+  Suite build untouched; QoSCore recompiled only as the project
+  reference, sources unchanged.
+- ALL prior dist artefacts (31 zips + coi.exe, checksums recorded
+  before the build) sha256-verified byte-identical afterwards.
+
+## Observations on the existing builder code (not fixed — stage scope)
+
+1. v1's malformed-field refusal passes `jobId: null` even when the
+   file's jobId was extractable (the refusal call site passes
+   literal nulls), so a malformed v1 job is not added to
+   processed.txt under its id. Harmless (a re-delivered copy is
+   refused malformed again), but the designation path's decision 6
+   diverges deliberately.
+2. v1's anchor sanity uses `Math.Abs(long)`, which throws on
+   `long.MinValue`; such a job would escape as an unexpected
+   pass-level error and be left in place rather than refused.
+   Pre-existing; the new code uses range comparisons. One-line
+   fix candidate for a future round.
+
+## NOT verified (live proof deferred to the stage-4 shakedown)
+
+- The first real designation job end to end (day-end pass → batch
+  processed → cells visible in the /designations read-back diff —
+  exact for flat AND sloped cells now that bridge 0.6.6 serves
+  corners).
+- Manager behaviour the note flagged: blocked-cell skips,
+  replace-any-kind semantics, remove-result emptiness — all
+  read-back questions, none block execution design.
+- Save + reload with QoSBuilder 0.2.0 installed (same proof class
+  the suite still owes; the serializer surface is unchanged, so
+  the expectation is equivalence with 0.1.0).

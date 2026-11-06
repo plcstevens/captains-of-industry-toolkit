@@ -87,6 +87,16 @@ More feature mods (a safe train-cargo clear) are designed and
 will slot in as sibling folders — QoSTrainCargo/ — each
 depending on QoSCore, never on each other.
 
+NOT IN THIS PACK: QoSBuilder ships as its own zip
+(QoSBuilder-mod-<version>.zip), because it is the suite's
+executor for the CoI Companion website rather than a
+standalone feature: it runs confirmed job files from the
+website — blueprint placements, and since QoSBuilder 0.2.0
+also terrain designation plans (schema 2). Install it
+alongside this pack (it depends on QoSCore >= 0.2.0) when you
+use the companion's Place / Designate flows. Its own readme
+covers its guarantees and settings.
+
 INSTALL
 1. Close the game completely.
 2. Extract this zip into:
