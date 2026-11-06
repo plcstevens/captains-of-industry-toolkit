@@ -1,9 +1,9 @@
-CoI Bridge v0.6.5 — read-only web API bridge for the CoI Companion tool.
+CoI Bridge v0.6.6 — read-only web API bridge for the CoI Companion tool.
 Author: Lewis Cameron. For Captain of Industry v0.8.8 (Update 4.3).
 
 INSTALL (prebuilt — no building needed)
 1. Close the game completely.
-2. Unzip CoiBridge-mod-0.6.5.zip. You get a folder named CoiBridge
+2. Unzip CoiBridge-mod-0.6.6.zip. You get a folder named CoiBridge
    containing manifest.json, CoiBridge.dll, readme.txt.
 3. If an older CoiBridge folder already exists in the Mods folder,
    delete it first. Then move the new CoiBridge folder into:
@@ -17,6 +17,22 @@ INSTALL (prebuilt — no building needed)
    Settings -> Miscellaneous -> enable mods, then restart the game.
 5. Load your save. The manifest allows adding this mod to an existing
    save; if the game shows a mod list for the save, tick CoiBridge.
+WHAT'S NEW IN v0.6.6
+One read enrichment, additive only — every existing field keeps
+its name and shape:
+   GET /coi/v1/designations  each designation now also carries
+                             "corners": the four corner target
+                             heights in integer tiles, in
+                             DesignationData ctor order (origin,
+                             +X, +XY, +Y), and "centerRaw": the
+                             centre target height as raw Fix32
+                             (65536 = 1 tile). With the corners
+                             served, a designation read-back can
+                             be verified exactly even for sloped
+                             cells — the min/max band alone could
+                             not distinguish corner assignments.
+Everything else is unchanged from v0.6.5.
+
 WHAT'S NEW IN v0.6.5
 Terrain sensing — the land itself, not just built things. Terrain
 and entity positions are the same tile grid (an entity's Tile3i.Z

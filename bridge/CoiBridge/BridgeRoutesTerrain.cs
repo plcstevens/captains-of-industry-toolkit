@@ -429,7 +429,13 @@ public sealed class BridgeRoutesTerrain {
 	/// other designation area with its target heights and
 	/// fulfilment state. Kind comes from the manager partition
 	/// (mining set, dumping set, residue "other"). Target
-	/// heights are integer tiles (HeightTilesI).</summary>
+	/// heights are integer tiles (HeightTilesI). Since v0.6.6
+	/// each row also carries the designation's four corner
+	/// heights (DesignationData ctor order: origin, +X, +XY,
+	/// +Y) and its centre target height as raw Fix32 (65536 =
+	/// 1 tile), so a read-back can be verified exactly even
+	/// for sloped cells — the min/max band alone cannot
+	/// distinguish corner assignments.</summary>
 	[WebRoute("/coi/v1/designations", WebRouteStage.Background, "GET", "Terrain designations: mining/dumping areas, target heights, fulfilment.")]
 	public WebRouteResponse Designations() {
 		return BridgeRoutes.Guard("/coi/v1/designations", () => {
@@ -447,6 +453,7 @@ public sealed class BridgeRoutesTerrain {
 				string kind = mining.Contains(d) ? "mining"
 					: dumping.Contains(d) ? "dumping" : "other";
 				RectangleTerrainArea2i area = d.Area;
+				DesignationData data = d.Data;
 				sb.Append("{\"kind\":\"").Append(kind)
 					.Append("\",\"proto\":\"").Append(BridgeRoutes.JsonEscape(d.ProtoId.Value))
 					.Append("\",\"origin\":[").Append(d.OriginTileCoord.X)
@@ -458,6 +465,11 @@ public sealed class BridgeRoutesTerrain {
 					.Append("},\"sizeTiles\":").Append(d.SizeTiles)
 					.Append(",\"minTargetHeight\":").Append(d.MinTargetHeight.Value)
 					.Append(",\"maxTargetHeight\":").Append(d.MaxTargetHeight.Value)
+					.Append(",\"corners\":[").Append(data.OriginTargetHeight.Value)
+					.Append(',').Append(data.PlusXTargetHeight.Value)
+					.Append(',').Append(data.PlusXyTargetHeight.Value)
+					.Append(',').Append(data.PlusYTargetHeight.Value)
+					.Append("],\"centerRaw\":").Append(data.CenterTargetHeight.Value.RawValue)
 					.Append(",\"isFulfilled\":").Append(d.IsFulfilled ? "true" : "false")
 					.Append(",\"jobsAssigned\":").Append(d.NumberOfJobsAssigned)
 					.Append('}');

@@ -16,6 +16,11 @@ REFS_DIR="${COI_REFS_DIR:-$PWD/../../refs}"
 for dll in Mafi.dll Mafi.Core.dll Mafi.Base.dll Mafi.Unity.dll; do
   [ -f "$REFS_DIR/$dll" ] || { echo "missing reference assembly: $REFS_DIR/$dll (set COI_REFS_DIR to the folder with the game's Mafi*.dll)"; exit 1; }
 done
+# Serializer-pair lint (QUALITY-AUDIT item 1): the bridge itself
+# subscribes to nothing, but the check scans qos/ + bridge/ and a
+# future bridge subscription without the sanctioned serializer pair
+# would break saving exactly as suite 0.5.0 did — fail here too.
+python3 "$PWD/../../tools/check_serializer_pairs.py" || { echo "!! serializer-pair lint FAILED — refusing to build (see above)"; exit 1; }
 VERSION=$(python3 -c "import json;print(json.load(open('../CoiBridge/manifest.json'))['version'])")
 "$DOTNET" build -c Release -p:CoiRefsDir="$REFS_DIR/" -p:Version="$VERSION" -p:FileVersion="$VERSION" -p:AssemblyVersion="$VERSION"
 DLL="bin/Release/net48/CoiBridge.dll"
