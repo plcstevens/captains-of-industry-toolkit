@@ -66,7 +66,7 @@ jobs:
           (Get-FileHash superintendent.exe -Algorithm SHA256).Hash.ToLower() +
             "  superintendent.exe" | Out-File -Encoding ascii superintendent.exe.sha256
       - name: Upload workflow artefact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: superintendent-windows
           path: |
@@ -97,7 +97,7 @@ jobs:
           cp coi/target/release/superintendent superintendent-linux
           sha256sum superintendent-linux > superintendent-linux.sha256
       - name: Upload workflow artefact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: superintendent-linux
           path: |
@@ -131,7 +131,7 @@ jobs:
           cp coi/target/release/superintendent superintendent-macos
           shasum -a 256 superintendent-macos > superintendent-macos.sha256
       - name: Upload workflow artefact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: superintendent-macos
           path: |
