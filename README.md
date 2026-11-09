@@ -43,6 +43,7 @@ A personal toolkit for [Captains of Industry](https://www.captain-of-industry.co
   and the synthetic test captures.
 - `.llms/` — agent-facing material and the index of what an agent
   should read, in what order, for what task.
+- `LICENSE` — the toolkit is MIT-licensed.
 
 ## Not in this repo
 
