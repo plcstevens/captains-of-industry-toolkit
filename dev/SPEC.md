@@ -2483,3 +2483,41 @@ scroll horizontally) — no desktop rendering change, and every
 page's measured height is unchanged. Suspicions the evidence
 cleared (filter/sort cost, per-row handlers, paint blocking)
 are recorded in the DESIGN addendum; nothing else changed.
+
+## Addendum XXX — Hub submission pack + package text fixes (2026-11-09)
+
+Packaging round, no behaviour change. `dev/HUB-SUBMISSION.md`
+now carries the CoI Mod Hub submission pack: the package
+audit, paste-ready listing copy for CoiBridge 0.6.6,
+QoSBuilder 0.2.0 and the five QoS suite components, the
+per-mod-listing recommendation (per-mod, dependencies
+first — the Hub renders manifest dependencies as listing
+content and the game enforces them at load), the owed
+name-collision search procedure recorded as a procedure
+(not performed from here), and Philip's upload checklist
+plus post-submission scratch-save verification.
+
+Package defects found by the audit and fixed at source:
+
+- All six QoS manifests' `description_short` exceeded the
+  package linter's 200-char card limit (288–370 chars);
+  on QoSChickens the "Requires QoSCore" dependency notice
+  sat past the cut. All six rewritten to 187–199 chars,
+  each self-contained; the full text is unchanged in the
+  readmes. Package lint is now PASS with **0 warnings** in
+  both source and `--zips` modes.
+- CoiBridge's readme told readers to "tell Claudius" about
+  a failing route (an in-house name in a stranger-facing
+  package) and showed a stale `"version":"0.6.3"` in its
+  expected hello reply; both corrected.
+- Four QoS readmes (Chickens, Vehicle Recovery, Priority
+  Actuator, World Map) said "Requires: QoSCore >= 0.1.0"
+  while their manifests declare `>= 0.2.0`; aligned.
+
+The three zips were rebuilt via their build scripts and
+restaged into the weekend bundle (hashes in its
+BUNDLE-README): **every DLL is byte-identical to the
+previous build** — text-only changes, verified per DLL.
+Folded into the same round: `coi/README.md` pointed at
+`../SPEC.md`; the SPEC lives at `../dev/SPEC.md` since the
+restructure — fixed.

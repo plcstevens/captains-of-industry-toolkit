@@ -146,7 +146,7 @@ keeps working.
 7. Test in a browser on the same PC:
       http://127.0.0.1:3073/coi/v1/hello
    Expected reply:
-      {"mod":"CoiBridge","version":"0.6.3","gameApi":"v1"}
+      {"mod":"CoiBridge","version":"0.6.6","gameApi":"v1"}
 
 ROUTES (all GET, all read-only)
    /coi/v1/hello            liveness probe
@@ -175,8 +175,9 @@ TROUBLESHOOTING
   nesting (Mods\CoiBridge\manifest.json — NOT
   Mods\CoiBridge\CoiBridge\manifest.json), that mods are enabled, and
   that you restarted the game after installing.
-- A data route returns {"error":"bridgeError",...}: tell Claudius which
-  route. The detail is in the game log at
+- A data route returns {"error":"bridgeError",...}: note which
+  route and report it on the mod's Hub page. The detail is in the
+  game log at
   %APPDATA%\Captain of Industry\Logs — search for "CoiBridge:" lines.
   "CoiBridge: BridgeRoutes constructed (M2 managers injected)" in the
   log means the mod loaded correctly.

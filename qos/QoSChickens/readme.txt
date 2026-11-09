@@ -1,6 +1,6 @@
 QoS Chickens v0.1.2 — animal farm distribution for the QoS suite.
 Author: Lewis Cameron. For Captain of Industry v0.8.8 (Update 4.3).
-Requires: QoSCore >= 0.1.0 (install it first, or use the combined
+Requires: QoSCore >= 0.2.0 (install it first, or use the combined
 QoS suite pack, which contains both folders).
 
 VERSION 0.1.2 — SAVE FIX (read this if you had 0.1.1)

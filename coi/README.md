@@ -7,7 +7,7 @@ on the game PC next to the game. It reads the game's web API
 stores snapshots/trends in SQLite, and can run game commands for you
 through a prepare → confirm → audit flow. The CLI subcommands are a
 debug shell around the same engine; `saveinfo` is an offline `.save`
-inspector. Built per `../SPEC.md`; running the companion on a
+inspector. Built per `../dev/SPEC.md`; running the companion on a
 different machine than the game is covered in `../REMOTE-ACCESS.md`.
 
 ## Run it (Windows)
