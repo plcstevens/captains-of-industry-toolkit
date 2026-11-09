@@ -74,7 +74,7 @@ jobs:
             superintendent.exe.sha256
       - name: Attach to the release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             superintendent.exe
@@ -105,7 +105,7 @@ jobs:
             superintendent-linux.sha256
       - name: Attach to the release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             superintendent-linux
@@ -139,7 +139,7 @@ jobs:
             superintendent-macos.sha256
       - name: Attach to the release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             superintendent-macos
