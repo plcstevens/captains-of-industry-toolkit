@@ -1,17 +1,21 @@
 # Dependabot (Design V3 round, 2026-11-09): the dependency surface
 # is deliberately tiny (Rust: serde_json, flate2, rusqlite, sha2,
-# getrandom, libc; the C# mods have no third-party deps). Weekly
-# checks are plenty; group minor/patch bumps to keep PR noise down.
+# getrandom, libc; the C# mods have no third-party deps). Monthly
+# checks (retuned from weekly 2026-11-09, Philip's call: the weekly
+# cadence produced a 7-PR pile on day one; monthly keeps the
+# surface current without the noise — security alerts and the
+# Monday cargo-audit watch cover vulnerabilities in between).
+# Group minor/patch bumps to keep PR noise down.
 version: 2
 updates:
   - package-ecosystem: "cargo"
     directory: "/coi"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"

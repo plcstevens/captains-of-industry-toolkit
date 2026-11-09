@@ -2373,3 +2373,75 @@ semantics and pinned).
 - **Rule going forward**: a shipped check may derive its paths
   from the repo (`$HERE`, `__file__`) or take them as arguments —
   never from the machine it happens to be written on.
+
+## Addendum XXVIII — Dependabot cargo majors migrated; cadence retuned to monthly (2026-11-09)
+
+- **What landed** (the four open Cargo Dependabot PRs, migrated
+  locally as one round and pushed direct to main; PRs #4–#7
+  closed as superseded by the migration commit): flate2
+  1.1.10 → 1.1.11 (PR #4, patch), getrandom 0.3.4 → 0.4.3
+  (PR #5), sha2 0.10.9 → 0.11.1 (PR #7; digest 0.10.7 → 0.11.3
+  under it), rusqlite 0.32.1 → 0.41.1 (PR #6; libsqlite3-sys
+  0.30.1 → 0.39.1, bundled SQLite 3.46.0 → 3.54.1).
+- **Code adaptations: none.** All four bumps compiled with zero
+  source changes. The surfaces that were expected to break did
+  not: `getrandom::fill` (the single call site, token
+  generation in serve.rs) is unchanged in 0.4; the `Digest`
+  calls sha2 uses (`Sha256::new` / `update` / `finalize`, in
+  designate.rs and serve.rs) are unchanged in digest 0.11; and
+  the rusqlite surface store.rs uses (`Connection`, `params!`,
+  `OptionalExtension`, batch + row access) survived nine minor
+  releases intact. `cargo fmt --check` clean, clippy
+  `-D warnings` clean.
+- **Sealed-job hash vectors — verified byte-identical** on the
+  Rust leg under sha2 0.11.1: the unit vectors pinned in the
+  source all pass — v1 `c84de603…b465`
+  (`serve::tests::job_canonical_vector`), v2-add
+  `0d0c8633…0bce` and v2-remove `0d76cc24…05f9`
+  (`designate::tests::canonical_*_vector_matches_published_hash`).
+  The designate page check additionally re-verifies the sealed
+  job hash in Python and passes, so the 0.11 output is proven
+  against an independent implementation, not only its own
+  vectors. No payload or canonicalisation was touched — only
+  the library version moved.
+- **Upgrade-over-real-db smoke (rusqlite 0.41.1)**: a copy of
+  a real database written by the old build (2026-11-02,
+  `PRAGMA user_version` 0, 1 game, 1 snapshot, 17 issues, 288
+  product-history rows, 111 product-stat rows) was opened by
+  the new debug binary against the stub game. The app's own
+  schema chain ran exactly as designed (user_version 0 → 4,
+  v2/v3/v4 tables created), every pre-existing row survived
+  untouched, `PRAGMA integrity_check` was ok before and
+  after, the snapshot POST was correctly answered "that game
+  tick is already stored" (the stored snapshot is the same
+  Dragon Isle tick the stub serves — dedupe by game+tick
+  working against real stored data), and the in-UI shutdown
+  closed cleanly with exit 0.
+- **Full standard check sequence green** on the migrated
+  tree: cargo test 60/60, canon drift, plan parity,
+  serializer pairs, QoS guards 216/216, repo structure, mod
+  packages, place/designate/log page checks, badge on both
+  captures, audit-fail-loud, shutdown.
+- **Build-environment note (VM-local, not a migration
+  blocker)**: the first rusqlite build failed with "No space
+  left on device" — the bundled amalgamation grew
+  (SQLite 3.54's `sqlite3.c` is ~9.5 MB) and the C compiler's
+  assembler temp overflowed this VM's 512 MB `/tmp` tmpfs,
+  which was 99% full at the time. Builds here now run with
+  `TMPDIR` pointed at the home mount. The Actions runners
+  have no such constraint; nothing in the repo changed for
+  this.
+- **Artefacts restaged**: `dist/superintendent.exe` and the
+  weekend bundle now carry the post-migration Windows build
+  (6,742,758 B, sha256 `39bd3827…ebe0`; it grew ~130 KB on the
+  larger SQLite 3.54 amalgamation), and `dist/superintendent-linux`
+  was rebuilt to match (5,568,464 B, sha256 `c62b6c9b…38a1`).
+  BUNDLE-README updated. So the local install artefacts match
+  the source that will be tagged for v0.1.0.
+- **Dependabot cadence retuned weekly → monthly** (Philip's
+  call): the weekly cadence produced a 7-PR pile on day one.
+  `.github/dependabot.yml` now schedules both ecosystems
+  (cargo, github-actions) monthly; grouping, directories and
+  everything else unchanged. Security alerts and the Monday
+  cargo-audit watch still cover vulnerabilities between
+  monthly runs.
