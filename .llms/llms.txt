@@ -1,0 +1,51 @@
+# Superintendent toolkit — agent index
+
+This folder holds the material written FOR agents (LLMs) working
+on or through this toolkit. Everything else an agent needs is
+indexed here, never duplicated: dual-facing sources stay in docs/
+and are linked.
+
+## Read in this order
+
+1. [BEHAVIOURS.md](BEHAVIOURS.md) — how an agent should behave when
+   operating this toolkit on a player's behalf: the observe → plan
+   → act → verify loop, the §12 prepare → confirm → audit rule for
+   anything that mutates the game, and the standing policies
+   (priority groups, mod behaviour extraction).
+2. [SANDBOX-PROTOCOLS.md](SANDBOX-PROTOCOLS.md) — the protocols
+   for testing anything unproven (new command channels, risky
+   flows) on throwaway sandbox saves only, with the game-id abort
+   guards. Read before attempting any capability the website does
+   not already expose.
+3. [canon-for-agents.md](canon-for-agents.md) — GENERATED rendering
+   of the canon (every threshold and reasoning rule, with status
+   and provenance). Cite canon ids; the source is
+   [docs/canon/](../docs/canon/README.md).
+
+## By task
+
+- **Playing a run** — BEHAVIOURS.md first, then the canon rendering
+  for the thresholds behind any suggestion you surface, then the
+  plan format (below) for the run's active plan.
+- **Auditing guidance** — the canon source in
+  [docs/canon/](../docs/canon/) is the truth; the drift check
+  (`tools/check_canon.py`) proves the code still agrees with it.
+  Player-facing guide sources: [docs/guides-research.md](../docs/guides-research.md),
+  [docs/guides-earthworks.md](../docs/guides-earthworks.md).
+- **Extending the canon** — edit the YAML families in
+  [docs/canon/](../docs/canon/), regenerate with
+  `tools/canon_to_json.py` (refreshes both `docs/canon/canon.json`
+  and this folder's agent rendering), and keep
+  `tools/check_canon.py` green.
+- **Authoring or checking a plan** —
+  [docs/GAME-PLAN-FORMAT.md](../docs/GAME-PLAN-FORMAT.md) is the
+  format contract; plans live in [plans/](../plans/).
+
+## The set
+
+Agent-facing documents in this folder (the structure linter holds
+this list to exactly these):
+
+- [BEHAVIOURS.md](BEHAVIOURS.md)
+- [SANDBOX-PROTOCOLS.md](SANDBOX-PROTOCOLS.md)
+- [canon-for-agents.md](canon-for-agents.md) (generated)

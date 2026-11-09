@@ -1,0 +1,32 @@
+# Ruff configuration for the toolkit's Python (tools/ + plan engine).
+# Adopted in the Design V3 lint round (2026-11-09). The rule set is
+# deliberately the meaningful core — correctness, imports, modern
+# syntax, simplification — not the full stylistic catalogue: this is
+# a docs-and-tools repo, and the noisy families (C4 collection-call
+# style, PERF micro-optimisation, printf-vs-format taste) produced
+# findings without signal. Line length is 100: the check tools carry
+# long literal strings (capture payloads, expected UI text) that
+# read better unbroken; the formatter wraps what it can.
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    # Long literal lines in check tools are deliberate (payloads,
+    # expected strings); the formatter still wraps code.
+    "E501",
+    # Two check tools catch broad Exception on purpose: a drift
+    # check must report ANY canon/code mismatch as a failure line,
+    # not crash with a traceback. Both print the exception.
+    "BLE001",
+    # RUF001-003: ambiguous-unicode in STRINGS. The check tools and
+    # generators print deliberate typography (— · ✓ ✗ →) for the
+    # same player-facing readability the website uses; confusable
+    # characters in identifiers would matter, in display strings
+    # they do not.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]

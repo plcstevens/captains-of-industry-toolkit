@@ -37,7 +37,7 @@ world-map navigation — is appended as one JSON line to:
 
   %APPDATA%\Captain of Industry\QoS\events-v1.jsonl
 
-The CoI Companion website imports this feed into its store and
+The Superintendent website imports this feed into its store and
 shows it on its Log page, next to the commands applied through
 the website itself: one chronological replay of everything the
 toolkit did. Recording covers ACTIONS ONLY (never diagnostics or

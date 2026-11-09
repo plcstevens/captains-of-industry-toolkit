@@ -14,7 +14,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-COI="${1:-$HOME/workspace/coi-companion/coi/target/debug/coi}"
+COI="${1:-$HOME/workspace/coi-companion/coi/target/debug/superintendent}"
 PORT="${PORT:-8487}"
 STUB_PORT="${STUB_PORT:-3999}"
 WORK="$(mktemp -d)"
@@ -22,18 +22,18 @@ trap 'kill ${SRV:-} ${STUB:-} 2>/dev/null || true; rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/appdata"
 
 python3 "$HERE/stub_game_server.py" --port "$STUB_PORT" \
-  --capture "$HERE/../live-synthetic-v064" >"$WORK/stub.log" 2>&1 &
+  --capture "$HERE/../dev/captures/live-synthetic-v065" >"$WORK/stub.log" 2>&1 &
 STUB=$!
-for i in $(seq 1 50); do
-  curl -s -o /dev/null "http://127.0.0.1:$STUB_PORT/api/v1/game-info" && break || sleep 0.2
+for _ in $(seq 1 50); do
+  if curl -s -o /dev/null "http://127.0.0.1:$STUB_PORT/api/v1/game-info"; then break; fi; sleep 0.2
 done
 
 APPDATA="$WORK/appdata" "$COI" --db "$WORK/coi.db" \
   --game-url "http://127.0.0.1:$STUB_PORT" serve --port "$PORT" \
   >"$WORK/serve.log" 2>&1 &
 SRV=$!
-for i in $(seq 1 50); do
-  curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break || sleep 0.2
+for _ in $(seq 1 50); do
+  if curl -s -o /dev/null "http://127.0.0.1:$PORT/"; then break; fi; sleep 0.2
 done
 
 get() { curl -s "http://127.0.0.1:$PORT$1"; }
@@ -67,7 +67,7 @@ DONE="$(curl -s -X POST "http://127.0.0.1:$PORT/place/confirm" \
 grep -q 'Job written' <<<"$DONE" || fail 'confirm did not write the job'
 
 JOBS_DIR="$WORK/appdata/Captain of Industry/QoS/jobs"
-COUNT="$(ls "$JOBS_DIR"/*.json 2>/dev/null | wc -l)"
+JOB_FILES=("$JOBS_DIR"/*.json); COUNT="${#JOB_FILES[@]}"
 [ "$COUNT" = "1" ] || fail "expected exactly 1 job file, found $COUNT"
 JOB_FILE="$(ls "$JOBS_DIR"/*.json)"
 
@@ -114,7 +114,7 @@ PY
 REPLAY="$(curl -s -X POST "http://127.0.0.1:$PORT/place/confirm" \
   --data "csrf=$CSRF&token=$TOKEN")"
 grep -q 'Confirmation expired' <<<"$REPLAY" || fail 'token replay was not refused'
-COUNT="$(ls "$JOBS_DIR"/*.json | wc -l)"
+JOB_FILES=("$JOBS_DIR"/*.json); COUNT="${#JOB_FILES[@]}"
 [ "$COUNT" = "1" ] || fail 'replay wrote another job file'
 
 LOGPAGE="$(get '/log')"

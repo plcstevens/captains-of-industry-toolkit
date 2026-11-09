@@ -1,4 +1,4 @@
-CoI Bridge v0.6.6 — read-only web API bridge for the CoI Companion tool.
+CoI Bridge v0.6.6 — read-only web API bridge for the Superintendent tool.
 Author: Lewis Cameron. For Captain of Industry v0.8.8 (Update 4.3).
 
 INSTALL (prebuilt — no building needed)

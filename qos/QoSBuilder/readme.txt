@@ -1,4 +1,5 @@
 QoS Builder — companion placement + designation jobs (v0.2.0)
+Author: Lewis Cameron. For Captain of Industry v0.8.8 (Update 4.3).
 Requires: QoSCore >= 0.2.0 (install QoSCore first; this mod
 ships as its own zip, not inside the suite pack).
 
@@ -125,7 +126,7 @@ DEFAULTS (change them in Settings -> QoS Builder)
 ACTIVITY RECORD
 Every claimed, scheduled and refused job is recorded to the QoS
 activity feed (%APPDATA%\Captain of Industry\QoS\events-v1.jsonl)
-by QoSCore, and shows on the CoI Companion website's Log page.
+by QoSCore, and shows on the Superintendent website's Log page.
 Controlled by QoSCore's activity_log_enabled setting (default
 on).
 

@@ -1,4 +1,4 @@
-# CoiBridge — CoI Companion bridge mod
+# CoiBridge — Superintendent bridge mod
 
 A tiny, **read-only** mod for Captain of Industry v0.8.8 (Update 4.3) that adds
 `/coi/v1/*` JSON routes to the game's built-in web server, for use by the

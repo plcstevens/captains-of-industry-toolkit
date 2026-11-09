@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview — CoI Companion (design mock)</title>
+<style>
+:root{
+  --bg-0:#0b0e14; --bg-1:#10141d; --surface:#151a26; --surface-2:#1b2130; --surface-3:#232b3e;
+  --border:#263048; --border-strong:#37466a; --border-subtle:#1a2132;
+  --text-1:#e9edf6; --text-2:#a9b3c7; --text-3:#6d7990; --text-disabled:#49536a;
+  --accent:#5b9dff; --accent-strong:#3b78e0; --accent-soft:rgba(91,157,255,.13); --on-accent:#fff;
+  --ok:#4cc38a; --ok-soft:rgba(76,195,138,.13);
+  --starved:#e8933c; --starved-soft:rgba(232,147,60,.14);
+  --blocked:#e5534b; --blocked-soft:rgba(229,83,75,.13);
+  --paused:#8494ab; --paused-soft:rgba(132,148,171,.14);
+  --warning:#e5c33b; --warning-soft:rgba(229,195,59,.12);
+  --critical:#f85149; --critical-soft:rgba(248,81,73,.12);
+  --info:#5b9dff; --info-soft:rgba(91,157,255,.13);
+  --unverified:#a371f7; --unverified-soft:rgba(163,113,247,.12);
+  --chart-grid:#232c42; --chart-track:#232b3e;
+  --font-ui:system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+  --r-sm:6px; --r-md:10px; --r-lg:14px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-0);color:var(--text-1);font:14px/1.5 var(--font-ui)}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.mono{font-family:var(--font-mono);font-size:12.5px}
+.num{font-variant-numeric:tabular-nums;text-align:right}
+.u{color:var(--text-3);font-size:12px}
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+aside{background:var(--bg-1);border-right:1px solid var(--border-subtle);padding:16px 12px;display:flex;flex-direction:column;gap:16px}
+.brand{font-weight:700;font-size:16px;padding:0 8px}
+.brand .ver{color:var(--text-3);font-size:12px;font-weight:400;margin-top:2px}
+.statusbox{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px}
+.statusbox .date{font-size:15px;font-weight:650}
+.statusbox .meta{color:var(--text-2);font-size:12px;margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+nav .group{color:var(--text-3);font-size:12px;letter-spacing:.02em;padding:10px 8px 4px}
+.navitem{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r-sm);color:var(--text-2);margin-bottom:2px}
+.navitem:hover{background:var(--surface-2);text-decoration:none}
+.navitem.active{background:var(--accent-soft);color:var(--text-1);font-weight:600;box-shadow:inset 2px 0 0 var(--accent)}
+.navitem .count{margin-left:auto}
+.sidefoot{margin-top:auto;border-top:1px solid var(--border-subtle);padding:10px 8px 0;color:var(--text-2);font-size:13px}
+main{padding:24px;max-width:1280px;width:100%}
+.eyebrow{color:var(--text-3);font-size:12px;letter-spacing:.02em}
+.pagehead{display:flex;align-items:flex-end;gap:16px;margin-bottom:20px}
+.pagehead h1{font-size:22px;line-height:28px;margin:2px 0 4px;font-weight:650}
+.pagehead .summary{color:var(--text-2)}
+.pagehead .actions{margin-left:auto}
+/* ---------- components ---------- */
+.btn{background:var(--accent-strong);color:var(--on-accent);border:1px solid transparent;border-radius:var(--r-sm);padding:6px 14px;font-size:14px;cursor:pointer;display:inline-block}
+.btn:hover{background:#4a86ec;text-decoration:none}
+.btn--secondary{background:var(--surface-2);border-color:var(--border-strong);color:var(--text-1)}
+.btn--secondary:hover{background:var(--surface-3)}
+.btn--ghost{background:transparent;color:var(--text-2)}
+.btn--sm{padding:4px 10px;font-size:13px}
+.btn:disabled{background:var(--surface-3);color:var(--text-disabled);cursor:not-allowed}
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.badge--ok{background:var(--ok-soft);color:var(--ok)}
+.badge--starved{background:var(--starved-soft);color:var(--starved)}
+.badge--blocked{background:var(--blocked-soft);color:var(--blocked)}
+.badge--paused{background:var(--paused-soft);color:var(--paused)}
+.badge--warning{background:var(--warning-soft);color:var(--warning)}
+.badge--critical{background:var(--critical-soft);color:var(--critical)}
+.badge--info{background:var(--info-soft);color:var(--info)}
+.badge--unverified{background:transparent;color:var(--unverified);border:1px dashed var(--unverified)}
+.badge--solid-paused{background:var(--paused);color:#0b0e14}
+.badge--solid-ok{background:var(--ok);color:#0b0e14}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;margin-bottom:16px}
+.card h2{font-size:15px;line-height:20px;font-weight:650;margin:0 0 10px}
+.card .cardhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.card .cardhead h2{margin:0}.card .cardhead .right{margin-left:auto}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px}
+.stat .label{color:var(--text-2);font-size:12px;letter-spacing:.02em}
+.stat .value{font-size:24px;line-height:28px;font-weight:650;font-variant-numeric:tabular-nums;margin:2px 0}
+.stat .ctx{color:var(--text-2);font-size:12px}
+.stat--critical{border-color:var(--critical)}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.cols2{grid-template-columns:1fr}.shell{grid-template-columns:1fr}aside{flex-direction:row;flex-wrap:wrap;align-items:center}nav{display:flex;overflow-x:auto}.sidefoot{margin:0;border:0}}
+.issue{background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px}
+.issue--fn{box-shadow:inset 2px 0 0 var(--critical)} .issue--fl{box-shadow:inset 2px 0 0 var(--warning)}
+.issue--wa{box-shadow:inset 2px 0 0 var(--info)} .issue--ig{box-shadow:inset 2px 0 0 var(--paused)}
+.issue .p{font-weight:600}.issue .t{color:var(--text-1)} .issue .e{color:var(--text-2);font-size:13px}
+.issue .f{color:var(--accent);font-size:13px}
+.quadhead{display:flex;gap:8px;align-items:center;margin:14px 0 8px}
+.quadhead:first-child{margin-top:0}
+table{border-collapse:collapse;width:100%}
+th,td{padding:6px 8px;border-bottom:1px solid var(--border-subtle);vertical-align:middle;text-align:left}
+th{background:var(--surface-2);color:var(--text-2);font-size:12px;font-weight:600}
+tbody tr:hover{background:var(--surface-2)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tablecard{padding:0;overflow:hidden}.tablecard table th:first-child,.tablecard table td:first-child{padding-left:16px}
+.tablecard table th:last-child,.tablecard table td:last-child{padding-right:16px}
+.fillbar{height:6px;background:var(--chart-track);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle}
+.fillbar>i{display:block;height:100%}
+.callout{border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px}
+.callout--warn{background:var(--warning-soft);border-color:var(--warning)}
+.stackbar{display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--chart-track)}
+.stackbar>i{display:block;height:100%}
+.caption{color:var(--text-2);font-size:12px;margin-top:6px}
+.shot{height:150px;border-radius:var(--r-md);background:linear-gradient(135deg,#1b2130,#232b3e);display:flex;align-items:center;justify-content:center;color:var(--text-3)}
+.kv{display:flex;gap:8px;flex-wrap:wrap;color:var(--text-2);font-size:13px}
+</style></head>
+<body>
+<div class="shell">
+<aside>
+  <div class="brand">🏛️ CoI Companion<div class="ver">coi 0.5.x · CoiBridge 0.6.4 · QoS suite 0.5.1</div></div>
+  <div class="statusbox">
+    <div class="date">27 Feb 0388</div>
+    <div class="meta"><span class="badge badge--solid-paused">PAUSED</span><span>speed 3×</span></div>
+    <div class="meta"><span class="mono">tick 2,787,522</span><span>· pop 2,320</span></div>
+  </div>
+  <nav>
+    <div class="group">MONITOR</div>
+    <a class="navitem active" href="#">Overview</a>
+    <a class="navitem" href="#">Issues <span class="count badge badge--critical">2 fix now</span></a>
+    <a class="navitem" href="#">Products</a>
+    <a class="navitem" href="#">Entities</a>
+    <div class="group">GAME</div>
+    <a class="navitem" href="#">Research</a>
+    <a class="navitem" href="#">Trade</a>
+    <a class="navitem" href="#">Plans</a>
+    <a class="navitem" href="#">Actions</a>
+    <div class="group">LIBRARY</div>
+    <a class="navitem" href="#">Guides</a>
+    <a class="navitem" href="#">Catalogue</a>
+    <div class="group">SYSTEM</div>
+    <a class="navitem" href="#">Snapshots</a>
+    <a class="navitem" href="#">Log</a>
+  </nav>
+  <div class="sidefoot">captain · <a href="#" style="color:var(--text-2)">Log out</a></div>
+</aside>
+<main>
+  <div class="pagehead">
+    <div>
+      <div class="eyebrow">MONITOR</div>
+      <h1>Overview</h1>
+      <div class="summary">The run at a glance — what needs attention, what happens next, and the products you pinned.</div>
+    </div>
+    <div class="actions"><button class="btn btn--secondary">Take snapshot</button></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="label">POPULATION</div><div class="value">2,320</div><div class="ctx">housing full · food ≈ 26 months</div></div>
+    <div class="stat"><div class="label">POWER BALANCE</div><div class="value">+1 <span class="u">kW</span></div><div class="ctx">22,667 generated · 22,666 consumed</div></div>
+    <div class="stat"><div class="label">MACHINES WORKING</div><div class="value">94 <span class="u">/ 223</span></div><div class="ctx"><span class="badge badge--starved">59 starved</span> <span class="badge badge--blocked">59 blocked</span></div></div>
+    <div class="stat stat--critical"><div class="label">FIX NOW</div><div class="value">2</div><div class="ctx">steel stalled · diesel deficit</div></div>
+  </div>
+
+  <div class="cols2">
+    <div>
+      <div class="card">
+        <div class="cardhead"><h2>What needs attention</h2><span class="right"><a href="#">All issues →</a></span></div>
+        <div class="quadhead"><span class="badge badge--critical">Fix now</span><span class="caption" style="margin:0">2</span></div>
+        <div class="issue issue--fn"><div class="p">Steel</div><div class="t"><a href="#">Production stalled — chain starved</a></div><div class="e">Produced 8 vs consumed 20 this month; iron stock nearly empty.</div><div class="f">Fix: restore iron ore supply to the smelters.</div></div>
+        <div class="issue issue--fn"><div class="p">Diesel</div><div class="t"><a href="#">Structural deficit at current rates</a></div><div class="e">Produced 84 vs consumed 161 this month — 112 of that is the hydrocracker reforming loop.</div><div class="f">Fix: decide whether DieselReforming is deliberate.</div></div>
+        <div class="quadhead"><span class="badge badge--warning">Fix later</span><span class="caption" style="margin:0">1</span></div>
+        <div class="issue issue--fl"><div class="p">Crude Oil</div><div class="t"><a href="#">Storage over capacity</a></div><div class="e">9,713 stored vs 9,000 capacity — output side is backing up.</div><div class="f">Fix: re-enable output on the crude tanks.</div></div>
+        <div class="quadhead"><span class="badge badge--info">Watch</span><span class="caption" style="margin:0">1</span></div>
+        <div class="issue issue--wa"><div class="p">Assembly (electrified) II</div><div class="t"><a href="#">27 machines starved of input</a></div><div class="e">Largest starved proto in the census this snapshot.</div><div class="f">Fix: check upstream electronics supply.</div></div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Machine states</h2><span class="right badge badge--paused">via CoiBridge</span></div>
+        <div class="stackbar"><i style="width:42.2%;background:var(--ok)"></i><i style="width:26.5%;background:var(--starved)"></i><i style="width:26.5%;background:var(--blocked)"></i><i style="width:4.9%;background:var(--paused)"></i></div>
+        <div class="caption">94 working (42%) · 59 starved (26%) · 59 blocked (26%) · 11 paused (5%) — of 223 machines, this snapshot.</div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="cardhead"><h2>Electric power</h2><span class="right badge badge--ok">balanced</span></div>
+        <div class="kv"><span>Generated <b style="color:var(--text-1)">22,667 kW</b></span><span>·</span><span>Consumed <b style="color:var(--text-1)">22,666 kW</b></span><span>·</span><span>Capacity <b style="color:var(--text-1)">38,000 kW</b></span></div>
+        <div style="margin-top:10px"><div class="caption" style="margin:0 0 4px">Generation vs capacity</div><span class="fillbar" style="width:100%"><i style="width:59.6%;background:var(--accent)"></i></span></div>
+        <div class="caption">16 generators · 1,206 consumers · headroom 15,334 kW — this tick, via CoiBridge.</div>
+        <div class="caption">Averages: produced ≈22,400 kW last month · consumed ≈22,300 kW last month <span class="badge badge--unverified">UNVERIFIED</span> bridge decoding not yet confirmed.</div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Outlook — at current rates</h2></div>
+        <table><tr><th>Product</th><th>Outlook</th><th class="num">Runway</th></tr>
+        <tr><td>Steel</td><td><span class="fillbar" style="width:110px"><i style="width:100%;background:var(--starved)"></i></span></td><td class="num">≈ 41.5 mo</td></tr>
+        <tr><td>Diesel</td><td><span class="fillbar" style="width:110px"><i style="width:100%;background:var(--starved)"></i></span></td><td class="num">≈ 109.6 mo</td></tr>
+        <tr><td>Crude Oil</td><td><span class="fillbar" style="width:110px"><i style="width:8%;background:var(--blocked)"></i></span></td><td class="num">full now</td></tr></table>
+        <div class="caption">Basis: blended this-month + last-month flows, cross-checked against the monthly quantity slope. Any build, pause or trade change moves these dates.</div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Game controls</h2></div>
+        <button class="btn">▶ Resume game</button>
+        <button class="btn btn--secondary">1×</button>
+        <button class="btn btn--secondary">2×</button>
+        <button class="btn" disabled title="Already at 3×">3× (current)</button>
+        <div class="caption">Every command goes through a confirmation page showing the exact JSON, and is written to the audit log.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card tablecard">
+    <div class="cardhead" style="padding:16px 16px 0"><h2>Pinned products</h2><span class="right"><a href="#">All products →</a></span></div>
+    <table><thead><tr><th>Product</th><th>Trend (8 mo)</th><th class="num">Quantity</th><th class="num">Stored / cap</th><th class="num">Prod TM/LM</th><th class="num">Cons TM/LM</th><th></th></tr></thead>
+    <tbody>
+    <tr><td><a href="#">Steel</a> <span class="badge badge--starved">stalled</span></td>
+      <td><svg width="96" height="28" viewBox="0 0 96 28"><polyline points="0,6 14,8 28,10 42,13 56,16 70,19 84,22 96,24" fill="none" stroke="var(--starved)" stroke-width="2"/><circle cx="96" cy="24" r="2.5" fill="var(--starved)"/></svg></td>
+      <td class="num">1,108</td><td class="num">1,108 / 2,400</td><td class="num">8 / 96</td><td class="num">20 / 88</td><td><button class="btn btn--secondary btn--sm">Unpin</button></td></tr>
+    <tr><td><a href="#">Diesel</a></td>
+      <td><svg width="96" height="28" viewBox="0 0 96 28"><polyline points="0,8 14,9 28,11 42,12 56,14 70,16 84,18 96,20" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="96" cy="20" r="2.5" fill="var(--accent)"/></svg></td>
+      <td class="num">5,992</td><td class="num">5,992 / 9,000</td><td class="num">84 / 210</td><td class="num">161 / 305</td><td><button class="btn btn--secondary btn--sm">Unpin</button></td></tr>
+    <tr><td><a href="#">Concrete Slab</a></td>
+      <td><svg width="96" height="28" viewBox="0 0 96 28"><polyline points="0,20 14,18 28,17 42,14 56,12 70,10 84,8 96,6" fill="none" stroke="var(--ok)" stroke-width="2"/><circle cx="96" cy="6" r="2.5" fill="var(--ok)"/></svg></td>
+      <td class="num">7,179</td><td class="num">7,179 / 9,600</td><td class="num">—</td><td class="num">—</td><td><button class="btn btn--secondary btn--sm">Unpin</button></td></tr>
+    <tr><td><a href="#">Coal</a> <span class="badge badge--info">import-fed</span></td>
+      <td><svg width="96" height="28" viewBox="0 0 96 28"><polyline points="0,14 14,13 28,14 42,13 56,14 70,13 84,14 96,13" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="96" cy="13" r="2.5" fill="var(--accent)"/></svg></td>
+      <td class="num">19,811</td><td class="num">19,811 / 24,000</td><td class="num">—</td><td class="num">—</td><td><button class="btn btn--secondary btn--sm">Unpin</button></td></tr>
+    <tr><td><a href="#">Construction Parts</a> <span class="badge badge--blocked">full</span></td>
+      <td><svg width="96" height="28" viewBox="0 0 96 28"><polyline points="0,10 14,8 28,7 42,6 56,5 70,5 84,4 96,4" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="96" cy="4" r="2.5" fill="var(--accent)"/></svg></td>
+      <td class="num">741</td><td class="num">741 / 741</td><td class="num">—</td><td class="num">—</td><td><button class="btn btn--secondary btn--sm">Unpin</button></td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="card"><div class="cardhead"><h2>Live screenshot</h2><span class="right caption" style="margin:0">refreshed on page load</span></div>
+  <div class="shot">/screenshot.jpg renders here in the real app</div></div>
+
+  <p class="caption">Design mock — static placeholder data shaped from the run's last live capture. Tokens and components per DESIGN.md.</p>
+</main>
+</div>
+</body></html>

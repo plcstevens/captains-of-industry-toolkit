@@ -1,0 +1,18 @@
+# yamllint for the plan YAMLs (plans/), the canon source
+# (docs/canon/) and CI glue. Relaxed where the files are data, not
+# config: long rule text is normal in canon entries and plan gates.
+extends: default
+rules:
+  # Plan and canon YAML carry long single-line prose scalars by
+  # design; wrapping them risks changing string content, and the
+  # rule buys nothing on data files.
+  line-length: disable
+  document-start: disable
+  # Canon flow mappings are aligned data tables (values padded to
+  # a column); the spacing rules fight that readability on purpose.
+  braces:
+    max-spaces-inside: 10
+  brackets:
+    max-spaces-inside: 10
+  truthy:
+    check-keys: false

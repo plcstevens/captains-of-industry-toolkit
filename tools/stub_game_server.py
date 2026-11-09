@@ -12,6 +12,10 @@ exercised end-to-end without a live game:
     /api/v1/products/stats            -> live/stats.json
     /api/v1/products/stats?pinned=..  -> live/pinned.json
     /api/v1/products/history          -> {"products":{}} (empty series)
+    /api/v1/products/sources?ids=..   -> <capture>/src-diesel.json /
+                                         src-steel.json when the fixture
+                                         exists; 404 for other products
+                                         (the game's untracked-flows case)
 
   CoiBridge routes:
     /coi/v1/hello                     -> <capture>/bridge-hello.json
@@ -29,7 +33,7 @@ looks to the companion: bridge_json() degrades to None).
 Usage:
     python3 stub_game_server.py [--port 3999] [--capture DIR]
 
---capture defaults to ../live-synthetic-v064 (the real 2026-11-02
+--capture defaults to ../dev/captures/live-synthetic-v065 (the synthetic
 capture plus the generated v0.6.4 machines payload). Point it at
 ../live for a pre-v0.6.4 bridge (no /coi/v1/machines file -> 404 ->
 the companion shows its "update the mod" degradation note).
@@ -40,7 +44,7 @@ import argparse
 import json
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -70,12 +74,23 @@ BRIDGE_ROUTES = {
     "/coi/v1/terrain/region": "bridge-region.json",
 }
 
-CAPTURE_DIR = os.path.join(ROOT, "live-synthetic-v064")
+CAPTURE_DIR = os.path.join(ROOT, "dev", "captures", "live-synthetic-v065")
 
 
 def load_json(path):
     with open(path, "rb") as f:
         return f.read()
+
+
+def game_file(name):
+    """Game-API payloads resolve capture-dir first, so a capture is
+    a self-contained fixture (a variant capture can override stats,
+    game-info, ...); ../live is the fallback for captures that only
+    carry bridge files."""
+    p = os.path.join(CAPTURE_DIR, name)
+    if os.path.exists(p):
+        return p
+    return os.path.join(ROOT, "live", name)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -94,11 +109,27 @@ class Handler(BaseHTTPRequestHandler):
         path, qs = u.path, parse_qs(u.query)
         try:
             if path == "/api/v1/products/stats" and qs.get("pinned") == ["true"]:
-                return self._send(200, load_json(os.path.join(ROOT, "live", "pinned.json")))
+                return self._send(200, load_json(game_file("pinned.json")))
             if path == "/api/v1/products/history":
                 return self._send(200, json.dumps({"products": {}}).encode())
+            if path == "/api/v1/products/sources":
+                # Canned per-product fixtures live in the capture dir
+                # (src-diesel.json / src-steel.json). Products without
+                # a fixture 404 — exactly what the real game does for
+                # products it doesn't track flows for, and what the
+                # product page's named-gap state renders for.
+                ids = (qs.get("ids") or [""])[0]
+                fixture = {
+                    "Product_Diesel": "src-diesel.json",
+                    "Product_Steel": "src-steel.json",
+                }.get(ids)
+                if fixture:
+                    f = os.path.join(CAPTURE_DIR, fixture)
+                    if os.path.exists(f):
+                        return self._send(200, load_json(f))
+                return self._send(404, b'{"error":"no sources for this product"}')
             if path in GAME_ROUTES:
-                return self._send(200, load_json(os.path.join(ROOT, "live", GAME_ROUTES[path])))
+                return self._send(200, load_json(game_file(GAME_ROUTES[path])))
             if path in BRIDGE_ROUTES:
                 f = os.path.join(CAPTURE_DIR, BRIDGE_ROUTES[path])
                 if not os.path.exists(f):
@@ -116,8 +147,9 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=3999)
-    ap.add_argument("--capture", default=CAPTURE_DIR,
-                    help="directory holding bridge-*.json capture files")
+    ap.add_argument(
+        "--capture", default=CAPTURE_DIR, help="directory holding bridge-*.json capture files"
+    )
     args = ap.parse_args()
     CAPTURE_DIR = args.capture
     print(f"stub game server on 127.0.0.1:{args.port}, bridge capture: {CAPTURE_DIR}")

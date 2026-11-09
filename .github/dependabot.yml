@@ -1,0 +1,17 @@
+# Dependabot (Design V3 round, 2026-11-09): the dependency surface
+# is deliberately tiny (Rust: serde_json, flate2, rusqlite, sha2,
+# getrandom, libc; the C# mods have no third-party deps). Weekly
+# checks are plenty; group minor/patch bumps to keep PR noise down.
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/coi"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

@@ -36,7 +36,7 @@ pub fn parse_proxy(raw: &str) -> ProxyCfg {
     match rest.rfind('@') {
         Some(at) => ProxyCfg {
             dial: rest[at + 1..].trim_end_matches('/').to_string(),
-            auth_b64: Some(base64_encode(rest[..at].as_bytes())),
+            auth_b64: Some(base64_encode(&rest.as_bytes()[..at])),
         },
         None => ProxyCfg {
             dial: rest.trim_end_matches('/').to_string(),
@@ -56,7 +56,10 @@ pub fn env_proxy() -> Option<ProxyCfg> {
         None => (String::new(), hp.clone()),
     };
     let rest = match rest.rfind(':') {
-        Some(idx) if rest[idx + 1..].chars().all(|c| c.is_ascii_digit()) && !rest[idx + 1..].is_empty() => {
+        Some(idx)
+            if rest[idx + 1..].chars().all(|c| c.is_ascii_digit())
+                && !rest[idx + 1..].is_empty() =>
+        {
             format!("{}:3130", &rest[..idx])
         }
         _ => format!("{rest}:3130"),
@@ -74,12 +77,24 @@ fn base64_encode(data: &[u8]) -> String {
     const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::new();
     for chunk in data.chunks(3) {
-        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
         let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
         out.push(T[(n >> 18) as usize & 63] as char);
         out.push(T[(n >> 12) as usize & 63] as char);
-        out.push(if chunk.len() > 1 { T[(n >> 6) as usize & 63] as char } else { '=' });
-        out.push(if chunk.len() > 2 { T[n as usize & 63] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            T[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            T[n as usize & 63] as char
+        } else {
+            '='
+        });
     }
     out
 }
@@ -176,7 +191,10 @@ impl Client {
                 }
                 let head = String::from_utf8_lossy(&buf).to_string();
                 if !head.contains(" 200") {
-                    return Err(format!("proxy CONNECT refused: {}", head.lines().next().unwrap_or("")));
+                    return Err(format!(
+                        "proxy CONNECT refused: {}",
+                        head.lines().next().unwrap_or("")
+                    ));
                 }
                 Ok(s)
             }
@@ -194,7 +212,9 @@ fn parse_response(raw: &[u8]) -> Result<Response, String> {
         .nth(1)
         .and_then(|s| s.parse().ok())
         .ok_or_else(|| format!("bad status line: {status_line}"))?;
-    let chunked = head.to_ascii_lowercase().contains("transfer-encoding: chunked");
+    let chunked = head
+        .to_ascii_lowercase()
+        .contains("transfer-encoding: chunked");
     let body = &raw[sep + 4..];
     let body = if chunked {
         dechunk(body)?
@@ -225,7 +245,5 @@ fn dechunk(mut data: &[u8]) -> Result<Vec<u8>, String> {
 }
 
 fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack
-        .windows(needle.len())
-        .position(|w| w == needle)
+    haystack.windows(needle.len()).position(|w| w == needle)
 }

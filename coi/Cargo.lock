@@ -52,18 +52,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
-name = "coi"
-version = "0.1.0"
-dependencies = [
- "flate2",
- "getrandom",
- "libc",
- "rusqlite",
- "serde_json",
- "sha2",
-]
-
-[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -328,6 +316,18 @@ name = "smallvec"
 version = "1.16.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0d5d4b1981b8bbbb7aed204cae5726d683d5d6ac7e74ec54122ea28f315e7c8"
+
+[[package]]
+name = "superintendent"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "getrandom",
+ "libc",
+ "rusqlite",
+ "serde_json",
+ "sha2",
+]
 
 [[package]]
 name = "syn"

@@ -1,0 +1,63 @@
+# Plans — the bundled plans' promises, and how the runner keeps them honest.
+
+- id: plans.gates-fresh-start
+  title: "The fresh-start plan's phase gates"
+  player: >
+    The bundled fresh-start plan advances in phases, and each phase ends at
+    a gate: a stock or flow your factory must actually reach before the
+    plan moves on. The headline gates: 100 iron banked before industry
+    expands, 200 coal before the power phase, 100 concrete slabs before the
+    big build-out, 300 diesel before trains, and three months of food on
+    hand before the plan calls the settlement secure.
+  rule: >
+    fresh-start-v1 exit gates (plans/fresh-start-v1.yaml): product.quantity
+    Product_Iron >= 100; Product_Coal >= 200; Product_ConcreteSlab >= 100;
+    Product_Diesel >= 300 (with diesel produced last month > 0);
+    product.net_flow Product_ConstructionParts (lastMonth) >= 0;
+    settlement.months_of_food >= 3 sustained for 1 month. Gates are checked
+    against observed state only — never against projections.
+  numbers:
+    - { name: iron_stock, value: 100, unit: units,
+        code: { file: plans/fresh-start-v1.yaml, contains: "product: Product_Iron, op: \">=\", value: 100" } }
+    - { name: coal_stock, value: 200, unit: units,
+        code: { file: plans/fresh-start-v1.yaml, contains: "product: Product_Coal, op: \">=\", value: 200" } }
+    - { name: concrete_stock, value: 100, unit: units,
+        code: { file: plans/fresh-start-v1.yaml, contains: "product: Product_ConcreteSlab, op: \">=\", value: 100" } }
+    - { name: diesel_stock, value: 300, unit: units,
+        code: { file: plans/fresh-start-v1.yaml, contains: "product: Product_Diesel, op: \">=\", value: 300" } }
+    - { name: months_of_food, value: 3, unit: months,
+        code: { file: plans/fresh-start-v1.yaml, contains: "settlement.months_of_food, op: \">=\", value: 3" } }
+  source: plan
+  status: wired
+
+- id: plans.food-floor
+  title: "Three months of food is the security line"
+  player: >
+    Across the plan — and in the companion's own balance checks — three
+    months of food in storage is the line between 'fed' and 'one bad
+    harvest from trouble'. Below one month, the plan treats food as an
+    emergency regardless of what phase you're in.
+  rule: >
+    settlement.months_of_food >= 3 := secure; < 2 triggers plan warnings;
+    < 1 is an emergency entry condition (fresh-start-v1 settlement guards).
+  numbers:
+    - { name: secure_months, value: 3, unit: months }
+    - { name: emergency_months, value: 1, unit: months }
+  source: plan
+  status: verified
+
+- id: plans.runner-holds
+  title: "The runner holds what it cannot prove"
+  player: >
+    When a plan step asks for research you already have, the runner doesn't
+    fail and doesn't fake it — it holds the step, says why, and moves on.
+    A plan run should read as a faithful rehearsal: what would happen, in
+    order, with the awkward steps named rather than skipped silently.
+  rule: >
+    Research orders whose node is already researched at prepare time are
+    HELD with the reason recorded (there is no idempotent research-start
+    command in the game). All other orders prepare normally; nothing is
+    applied without the §12 confirm step.
+  numbers: []
+  source: plan
+  status: verified

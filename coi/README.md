@@ -12,18 +12,18 @@ different machine than the game is covered in `../REMOTE-ACCESS.md`.
 
 ## Run it (Windows)
 
-1. Copy `coi.exe` anywhere (single file, ~4.9 MB, no installer, no
+1. Copy `superintendent.exe` anywhere (single file, ~4.9 MB, no installer, no
    runtime dependencies — SQLite and everything else is compiled in).
 2. In the game: load a save, open the console, run `web_api_start`.
-3. Double-click `coi.exe` — it starts the companion website and opens
-   http://127.0.0.1:8484/ in your browser. Keep the window it opens
+3. Double-click `superintendent.exe` — it starts the Superintendent website and opens
+   <http://127.0.0.1:8484/> in your browser. Keep the window it opens
    in open while you use it (Ctrl-C or closing it stops the website).
-   Terminal alternative: run `coi.exe serve` yourself and open the
+   Terminal alternative: run `superintendent.exe serve` yourself and open the
    same address by hand.
 4. No account, no password: the site just opens. It binds loopback
    only and checks the Host header on every request.
 
-If the companion is already running, double-clicking `coi.exe` again
+If Superintendent is already running, double-clicking `superintendent.exe` again
 does not start a second copy: it says the companion appears to be
 already running, opens the browser at the same address, and exits.
 

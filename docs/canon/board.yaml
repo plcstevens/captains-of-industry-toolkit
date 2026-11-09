@@ -1,0 +1,182 @@
+# The issues board — how findings are found and ordered.
+# Rendered by /why?topic=board and quoted on issue cards. Keep `player` text
+# in plain words; `rule` is the precise statement agents audit against.
+
+- id: board.quadrants
+  title: "The four quadrants"
+  player: >
+    Every finding lands in one of four groups. Fix now is important and
+    urgent — act today. Fix later is important but has time. Watch is urgent
+    but less central to keeping the factory alive. Ignore for now is neither,
+    and the board keeps it visible so nothing is hidden from you.
+  rule: >
+    Quadrant = f(importance, urgency) for every deficit-class finding:
+    importance HIGH + urgent -> Fix now; importance HIGH -> Fix later;
+    urgent -> Watch; otherwise Ignore for now. These four labels are THE
+    player vocabulary for severity (canon/README.md); agent-side severity
+    scales are never shown to players.
+  numbers: []
+  source: code
+  status: wired
+
+- id: board.importance
+  title: "What counts as important"
+  player: >
+    Some products matter more than others. Steel, diesel, coal and the other
+    backbone products are rated important; waste and fill products are rated
+    low; everything else sits in the middle. Importance is fixed by the
+    product, not by how much of it you happen to have.
+  rule: >
+    importance(product): HIGH (3) for the listed backbone products, LOW (1)
+    for the listed waste/fill products, otherwise 2. Matching is by substring
+    on the product id, evaluated in code order.
+  numbers:
+    - { name: high_count, value: 20, unit: products,
+        code: { file: coi/src/main.rs, extractor: importance_high } }
+    - { name: low_count, value: 11, unit: products,
+        code: { file: coi/src/main.rs, extractor: importance_low } }
+  source: code
+  status: wired
+
+- id: board.urgency
+  title: "What counts as urgent"
+  player: >
+    A finding is urgent when the stock on hand covers less than three months
+    of use. Three months is roughly one bad quarter — short enough that a
+    single breakdown or a missed delivery turns it into an outage.
+  rule: "urgent := cover_months < 3.0, where cover = quantity / last-month consumption."
+  numbers:
+    - { name: urgent_cover_months, value: 3.0, unit: months,
+        code: { file: coi/src/main.rs, contains: "cover < 3.0" } }
+  source: code
+  status: wired
+
+- id: board.stall-confirmation
+  title: "Stalled production"
+  player: >
+    A product is flagged as stalled when nothing was produced last month
+    while the factory kept consuming it — and production was also zero in at
+    least two of the last three finished months, so a one-month pause (a
+    rebuild, a stockpile target met) doesn't trigger it. The flag only fires
+    while the remaining stock lasts less than three years.
+  rule: >
+    stalled := produced(last month) == 0 AND consumed(last month) > 0 AND
+    NOT import-fed AND NOT seasonal AND cover < 36 months. Confirmed when
+    production was zero in >= 2 of the last 3 finished months; with no
+    monthly history yet, an unconfirmed stall is shown rather than hidden.
+  numbers:
+    - { name: cover_max_months, value: 36, unit: months,
+        code: { file: coi/src/main.rs, contains: "cover < 36.0" } }
+    - { name: confirm_zero_months, value: 2, unit: "of last 3 finished months",
+        code: { file: coi/src/main.rs, contains: "z >= 2" } }
+  source: code
+  status: wired
+
+- id: board.import-fed-products
+  title: "Products you import on purpose"
+  player: >
+    Some products are cheaper to import than to make, and a factory may
+    deliberately produce none of them. Those products are never flagged as
+    stalled — zero production is the plan, not a failure. Today the engine
+    applies this to coal only.
+  rule: >
+    The stall detector exempts import-fed products (import_fed). The current
+    implementation exempts exactly one product, coal, hardcoded — recorded
+    here as a known limitation, not hidden in a code comment. Making the
+    list configurable (per-run, in coi.toml) is a recorded follow-up for the
+    product owner; the exemption itself is deliberate and stays.
+  numbers: []
+  source: code
+  status: wired
+
+- id: board.deficit-horizon
+  title: "Running a deficit"
+  player: >
+    A product is flagged when you used more than you made last month and the
+    stock left covers less than two years at that rate. Two years sounds
+    generous, but production chains take months to expand — the flag is your
+    planning window, not a panic line.
+  rule: "deficit := net(last month) < 0 AND quantity > 0 AND NOT seasonal AND runway < 24 months."
+  numbers:
+    - { name: runway_max_months, value: 24, unit: months,
+        code: { file: coi/src/main.rs, contains: "months < 24.0" } }
+  source: code
+  status: wired
+
+- id: board.structural-horizon
+  title: "A slow structural deficit"
+  player: >
+    A second, slower alarm catches products that are bleeding gradually: a
+    deficit last month, a stock trend pointing down over the long window,
+    and less than ten years of cover. These are the deficits that feel fine
+    for a year and then aren't.
+  rule: >
+    structural := runway in [24, 120) months AND long-window trend declining
+    AND net(this month) < 0 AND NOT seasonal. Quadrant: Fix later if
+    importance HIGH, else Watch.
+  numbers:
+    - { name: runway_max_months, value: 120, unit: months,
+        code: { file: coi/src/main.rs, contains: "months < 120.0" } }
+  source: code
+  status: wired
+
+- id: board.seasonal-window
+  title: "Seasonal products"
+  player: >
+    Crops produce in bursts and sit idle between harvests, so a zero month
+    is normal for them. A product counts as seasonal when at least half its
+    finished months produced nothing but its peak month clearly outproduces
+    its average use. Seasonal products are judged on their long-window
+    balance instead of last month's.
+  rule: >
+    is_seasonal := >= 4 finished months AND >= half of them zero-production
+    AND total production > 0 AND peak month >= max(mean consumption, 1) AND
+    peak >= 2x max(mean production, 1). Fallback without history: produced
+    last year > 0 with this and last month both zero. Seasonal deficit :=
+    long-window net < 0 AND runway < 36 months -> Fix later (HIGH) or Watch.
+  numbers:
+    - { name: seasonal_runway_max_months, value: 36, unit: months,
+        code: { file: coi/src/main.rs, contains: "if months < 36.0" } }
+    - { name: min_finished_months, value: 4, unit: months }
+    - { name: peak_vs_mean_factor, value: 2, unit: "x" }
+  source: code
+  status: wired
+
+- id: board.storage-full
+  title: "Storage full — a finding, not a warning colour"
+  player: >
+    When a storage is completely full and the product is still being made,
+    that's a finding: production behind it will jam. A full storage whose
+    product is no longer made or used is different — it reads as a filled
+    buffer and lands in Ignore for now. Separately, storage bars turn amber
+    at 90% full: that's an early flag on the Entities page, deliberately
+    below the finding line, so you can see a fill coming before it jams
+    anything.
+  rule: >
+    Finding (storage-full) := stored >= capacity AND capacity >= 200 AND the
+    product is still produced. Parked variant := full AND no production and
+    no draw -> Ignore for now, explained as a filled buffer / war chest.
+    Flag (Entities) := stored >= 90% of capacity. The 90% flag and the 100%
+    finding are different things on purpose: flag vs finding.
+  numbers:
+    - { name: finding_fill, value: 100, unit: percent,
+        code: { file: coi/src/main.rs, contains: "stored >= cap" } }
+    - { name: flag_fill, value: 90, unit: percent,
+        code: { file: coi/src/serve.rs, contains: ">= 90" } }
+    - { name: capacity_floor, value: 200, unit: units,
+        code: { file: coi/src/main.rs, contains: "cap >= 200 && stored >= cap" } }
+  source: code
+  status: wired
+
+- id: board.overcap
+  title: "Stored above capacity"
+  player: >
+    If the game reports more stored than a storage's nominal capacity —
+    mixed contents and rounding can do this — the board notes it under
+    Watch. It is a data-hygiene signal, not an emergency.
+  rule: "overcap := stored > capacity AND capacity >= 200 -> Watch."
+  numbers:
+    - { name: capacity_floor, value: 200, unit: units,
+        code: { file: coi/src/main.rs, contains: "cap >= 200 && stored > cap" } }
+  source: code
+  status: wired

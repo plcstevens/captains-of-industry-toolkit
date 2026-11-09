@@ -1,0 +1,232 @@
+{
+  "state": {
+    "date": "388-2-27",
+    "tick": 2787522,
+    "gameId": "5583213724730880438",
+    "paused": true,
+    "speed": 3,
+    "source": "live/ captures (2026-11-02) — verdicts are as of that snapshot, not live state"
+  },
+  "plans": [
+    {
+      "id": "fresh-start",
+      "title": "Fresh start — New Haven (normal, Update 4) to self-sufficiency + first rail",
+      "version": "1.2.0",
+      "game_version": "0.8.8",
+      "plan_status": "loop position: phase 2 of 8 — phase-1-scrap-starter [ACTIVE]",
+      "active_phase": "phase-1-scrap-starter",
+      "phases": [
+        {
+          "id": "phase-0-scout-bootstrap",
+          "name": "Scout & bootstrap",
+          "status": "COMPLETE"
+        },
+        {
+          "id": "phase-1-scrap-starter",
+          "name": "Scrap-fed starter cluster",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "phase-2-assembly-power-maintenance",
+          "name": "Assembly + power & maintenance stability",
+          "status": "NOT REACHED"
+        },
+        {
+          "id": "phase-3-mining-vehicles",
+          "name": "Mining & vehicles",
+          "status": "NOT REACHED"
+        },
+        {
+          "id": "phase-4-concrete-diesel-rubber",
+          "name": "Concrete, diesel & rubber",
+          "status": "NOT REACHED"
+        },
+        {
+          "id": "phase-5-copper-construction2-food",
+          "name": "Copper, Construction II & food security",
+          "status": "NOT REACHED"
+        },
+        {
+          "id": "phase-6-automation-expansion",
+          "name": "Automation & expansion districts",
+          "status": "NOT REACHED"
+        },
+        {
+          "id": "phase-7-rail-introduction",
+          "name": "Rail introduction (Trains Expansion DLC)",
+          "status": "NOT REACHED"
+        }
+      ],
+      "orders": [
+        {
+          "id": "p1-research-construction",
+          "do": "ResearchStartCmd",
+          "status_head": "HELD",
+          "held_reasons": [
+            "§4.5 placeholder id in args — manual-only until a human sources the id"
+          ],
+          "note": "Research order #1 (research-order.md): unlocks assemblies, Construction Parts I, Mechanical Parts, Electronics I. Display name 'Construction' is U4-verified (research-tree.md) and the tree calls it a starting tech — it may already be complete at t0, in which case this order is skipped by its verify. No exact id exists in the extracted id list, hence the placeholder: this order is manual-only until the id is sourced.",
+          "concrete_args": {
+            "nodeId": {
+              "placeholder": "Research<Construction>",
+              "display_name": "Construction",
+              "status": "unsourced-id",
+              "candidates": [
+                "ResearchCp1Production — sole candidate (research_ids.txt line 42; Goal_ResearchCp1Production sits among the earliest goal strings). 'Cp1' plausibly = 'Construction Parts 1', matching this node's first unlock, but NO project source maps research ids to display names (checked research-order.md, research-tree.md, the planner dataset, API/bridge captures), so identity is unproven — do NOT assume it is this node. See the plan-level assumption 're-investigated 2026-11-03' for the full reasoning."
+              ],
+              "confirm": "Read the node id off the in-game research screen / companion research page before first use."
+            }
+          },
+          "selector_args": {}
+        },
+        {
+          "id": "p1-research-queue-first15",
+          "do": "manual-step",
+          "status_head": "WOULD PRESENT",
+          "held_reasons": [],
+          "note": "",
+          "concrete_args": {},
+          "selector_args": {}
+        },
+        {
+          "id": "p1-build-starter-cluster",
+          "do": "place-blueprint",
+          "status_head": "WOULD PRESENT",
+          "held_reasons": [],
+          "note": "Degrades to a manual build from layout-policy.md's temporary list: first scrap smelter (1 blast furnace + 2 casters on scrap), wood-burning coal maker, diesel generator placed on the OUTPUT side of fuel storage, two research labs. Starter cluster is disposable — build cheap, near the comms station/docks, never anchor a permanent build here.",
+          "concrete_args": {},
+          "selector_args": {},
+          "blueprint_ref": "starter-cluster/scrap-smelter-1furnace-2caster-plus-coal-maker",
+          "asset_status": "not-yet-authored"
+        },
+        {
+          "id": "p1-tree-clearing-and-dumping",
+          "do": "manual-step",
+          "status_head": "WOULD PRESENT",
+          "held_reasons": [],
+          "note": "",
+          "concrete_args": {},
+          "selector_args": {}
+        },
+        {
+          "id": "p1-resume-time",
+          "do": "GameSpeedChangeCmd",
+          "status_head": "WOULD PREPARE",
+          "held_reasons": [],
+          "note": "Scout is done: run at speed 1 while the starter cluster goes up (a human unpauses — SetSimPauseStateCmd {isPaused: false} — as the companion order to this one; both are verified sim-control commands, confirm class in this plan).",
+          "concrete_args": {
+            "newSpeedMultiplier": 1
+          },
+          "selector_args": {}
+        },
+        {
+          "id": "p1-research-power-maintenance-early-flag",
+          "do": "observe-only",
+          "status_head": "WOULD PRESENT",
+          "held_reasons": [],
+          "note": "",
+          "concrete_args": {},
+          "selector_args": {}
+        }
+      ]
+    },
+    {
+      "id": "dragon-isle-continuation",
+      "title": "Dragon Isle continuation — stop the bleeding, then the relocation plan (Expanding run)",
+      "version": "1.1.0",
+      "game_version": "0.8.7d",
+      "plan_status": "loop position: phase 2 of 8 — phase-1-war-chest-spine [ACTIVE]",
+      "active_phase": "phase-1-war-chest-spine",
+      "phases": [
+        {
+          "id": "phase-0-stop-the-bleeding",
+          "name": "Stop the bleeding — steel stall + diesel loop",
+          "status": "COMPLETE"
+        },
+        {
+          "id": "phase-1-war-chest-spine",
+          "name": "War chest + spine skeleton (relocation Phase 0)",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "phase-2-concrete-scale-up",
+          "name": "Concrete scale-up (relocation Phase 1)",
+          "status": "NOT REACHED"
+        },
+        {
+          "id": "phase-3-iron-mines-ore-shuttle",
+          "name": "New iron mines + ore shuttle (relocation Phase 2)",
+          "status": "NOT REACHED"
+        },
+        {
+          "id": "phase-4-big-steel-cutover",
+          "name": "Big steel plant + cutover trial (relocation Phase 3)",
+          "status": "NOT REACHED"
+        },
+        {
+          "id": "phase-5-fertilizer-then-farms",
+          "name": "Fertilizer chain, THEN farm district (relocation Phase 4)",
+          "status": "NOT REACHED"
+        },
+        {
+          "id": "phase-6-housing3-waves",
+          "name": "Settlement solidification — Housing III waves (relocation Phase 5)",
+          "status": "NOT REACHED"
+        },
+        {
+          "id": "phase-7-mega-vehicles-starter-cleared",
+          "name": "Mega Vehicles + starter-space cleanup (relocation Phase 6)",
+          "status": "NOT REACHED"
+        }
+      ],
+      "orders": [
+        {
+          "id": "p1-war-chest-audit",
+          "do": "observe-only",
+          "status_head": "WOULD PRESENT",
+          "held_reasons": [],
+          "note": "",
+          "concrete_args": {},
+          "selector_args": {}
+        },
+        {
+          "id": "p1-formalise-spine",
+          "do": "place-blueprint",
+          "status_head": "WOULD PRESENT",
+          "held_reasons": [],
+          "note": "Degrades to a manual build: formalise the N-S spine in the west coastal plain (trunk + parallel rail gap), sidings and junction stubs for districts 1-5, NO industry on the trunk, districts set back behind the gap (Dragon Isle layout doctrine + relocation §2/§6 audit: stations on sidings never the through route, no reversing through junctions, crossings out of no-stop zones).",
+          "concrete_args": {},
+          "selector_args": {},
+          "blueprint_ref": "spine/north-south-trunk-with-district-sidings",
+          "asset_status": "not-yet-authored"
+        },
+        {
+          "id": "p1-central-fuel-station",
+          "do": "manual-step",
+          "status_head": "WOULD PRESENT",
+          "held_reasons": [],
+          "note": "",
+          "concrete_args": {},
+          "selector_args": {}
+        },
+        {
+          "id": "p1-steel-buffer-keep-full",
+          "do": "StorageSetSliderStepCmd",
+          "status_head": "WOULD PREPARE",
+          "held_reasons": [],
+          "note": "Set the steel buffer's import slider to full (step 10 = 100%; slider steps are Percent/10000 per the v0.6.1 recon). Wired command — first live use is human-confirmed. Before/after slider values ARE readable once bridge v0.6.1+ is installed (format G7 resolved: storage rows carry importStep), so the executor verifies by re-reading the storages route, not by this predicate list.",
+          "concrete_args": {
+            "importStep": 10
+          },
+          "selector_args": {
+            "storageId": {
+              "proto": "StorageUnitT2",
+              "product": "Product_Steel",
+              "match": "first"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

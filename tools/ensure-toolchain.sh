@@ -22,7 +22,7 @@ fail=0
 if [ ! -x "$TC/bin/cargo" ]; then
   echo "MISSING: rust toolchain at $TC"
   fail=1
-elif ! ls "$TC/lib/rustlib/" 2>/dev/null | grep -q x86_64-pc-windows-gnu; then
+elif [ ! -d "$TC/lib/rustlib/x86_64-pc-windows-gnu" ]; then
   echo "MISSING: x86_64-pc-windows-gnu std in rustlib"
   fail=1
 fi

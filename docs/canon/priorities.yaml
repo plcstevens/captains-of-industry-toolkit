@@ -1,0 +1,93 @@
+# Priorities — the game's internal scale, the manual groups, the actuator.
+
+- id: priorities.scale
+  title: "The priority scale"
+  player: >
+    Every machine and storage has a priority that decides who gets served
+    first when trucks, belts or power run short. The game's internal scale
+    runs 0 to 14 and lower is served sooner: 0 is highest, 8 is high, 9 is
+    the default almost everything ships with. The game shows the same
+    numbers shifted by one (1–15).
+  rule: >
+    Internal scale 0..14, lower = served sooner. Named points: HIGHEST = 0,
+    HIGH = 8, DEFAULT = 9 (the game's GeneralPriorities table, verified by
+    recon and recorded in the QoS actuator's source notes). The companion
+    displays and writes internal values; the game's own UI displays
+    internal + 1.
+  numbers:
+    - { name: highest, value: 0, unit: priority,
+        code: { file: qos/QoSPriorityActuator/PriorityActuatorService.cs, contains: "(GeneralPriorities: HIGHEST_PRIORITY 0, HIGH 8, DEFAULT 9," } }
+    - { name: high, value: 8, unit: priority,
+        code: { file: qos/QoSPriorityActuator/PriorityActuatorService.cs, contains: "(GeneralPriorities: HIGHEST_PRIORITY 0, HIGH 8, DEFAULT 9," } }
+    - { name: default, value: 9, unit: priority,
+        code: { file: qos/QoSPriorityActuator/PriorityActuatorService.cs, contains: "(GeneralPriorities: HIGHEST_PRIORITY 0, HIGH 8, DEFAULT 9," } }
+    - { name: scale_max, value: 14, unit: priority }
+  source: code
+  status: wired
+
+- id: priorities.manual-groups
+  title: "The four manual groups (a house convention)"
+  player: >
+    If you use the QoS manual-group buttons, storages and machines are
+    sorted into four groups — General, Import, Export, Generator — with
+    sensible starting priorities. These numbers are this toolkit's
+    convention, not the game's: the game ships no groups at all. Generators
+    get fed by marking their fuel storage Import; there is deliberately no
+    separate generator-machine group.
+  rule: >
+    Group defaults (internal): General 9, Import 8, Export 8, Generator 9.
+    Applying a group writes BOTH the global priority and the per-machine /
+    per-storage priority (the game's per-entity value only takes effect
+    when it differs from the global one for its class). Status note: the
+    groups are a documented convention (BEHAVIOURS, the QoS policy doc);
+    they are applied through the QoS tooling, not a website control.
+  numbers:
+    - { name: general, value: 9, unit: priority }
+    - { name: import, value: 8, unit: priority }
+    - { name: export, value: 8, unit: priority }
+    - { name: generator, value: 9, unit: priority }
+  source: docs
+  status: verified
+
+- id: priorities.actuator
+  title: "The QoS actuator's rules (if you enable it)"
+  player: >
+    The optional QoS Priority Actuator nudges starved machines up the queue
+    automatically — slowly and reversibly. A machine must be starved three
+    days running before its first nudge; it can be nudged at most two steps
+    from its normal priority; and anything you set yourself is never
+    touched. It ships switched off.
+  rule: >
+    Actuator (ships disabled): after persistence_days = 3 consecutive
+    starved daily passes, step priority -1 (toward higher precedence), at
+    most max_nudge_steps = 2 steps below the prototype default; cooldown
+    2 days between nudges of the same machine; at most 10 actions per
+    in-game day; restores step back toward the default while the machine
+    works, only for values the actuator itself could have set. BLOCKED
+    machines are never priority problems and are never nudged; PARKED
+    machines are never touched.
+  numbers:
+    - { name: persistence_days, value: 3, unit: days,
+        code: { file: qos/QoSPriorityActuator/PriorityActuatorService.cs, contains: "GetInt(\"persistence_days\", 3)" } }
+    - { name: max_nudge_steps, value: 2, unit: steps,
+        code: { file: qos/QoSPriorityActuator/PriorityActuatorService.cs, contains: "GetInt(\"max_nudge_steps\", 2)" } }
+    - { name: cooldown_days, value: 2, unit: days,
+        code: { file: qos/QoSPriorityActuator/PriorityActuatorService.cs, contains: "GetInt(\"cooldown_days\", 2)" } }
+    - { name: max_actions_per_day, value: 10, unit: actions,
+        code: { file: qos/QoSPriorityActuator/PriorityActuatorService.cs, contains: "GetInt(\"max_actions_per_day\", 10)" } }
+  source: code
+  status: wired
+
+- id: priorities.groups-xor-actuator
+  title: "Manual groups or the actuator — never both on one field"
+  player: >
+    Pick one system per storage field or machine group: the manual groups
+    (you set it, it stays) or the actuator (it adjusts within its band).
+    Running both on the same entities means they fight — each reads the
+    other's change as a reason to change it back.
+  rule: >
+    Per entity field, exactly one of {manual groups, QoS actuator} may own
+    priorities. Mixed ownership is a configuration error, not a strategy.
+  numbers: []
+  source: docs
+  status: verified

@@ -16,7 +16,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-COI="${1:-$HOME/workspace/coi-companion/coi/target/debug/coi}"
+COI="${1:-$HOME/workspace/coi-companion/coi/target/debug/superintendent}"
 PORT="${PORT:-8488}"
 STUB_PORT="${STUB_PORT:-3998}"
 WORK="$(mktemp -d)"
@@ -24,10 +24,10 @@ trap 'kill ${SRV:-} ${STUB:-} 2>/dev/null || true; rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/appdata"
 
 python3 "$HERE/stub_game_server.py" --port "$STUB_PORT" \
-  --capture "$HERE/../${CAPTURE:-live-synthetic-v065}" >"$WORK/stub.log" 2>&1 &
+  --capture "$HERE/../${CAPTURE:-dev/captures/live-synthetic-v065}" >"$WORK/stub.log" 2>&1 &
 STUB=$!
-for i in $(seq 1 50); do
-  curl -s -o /dev/null "http://127.0.0.1:$STUB_PORT/api/v1/game-info" && break || sleep 0.2
+for _ in $(seq 1 50); do
+  if curl -s -o /dev/null "http://127.0.0.1:$STUB_PORT/api/v1/game-info"; then break; fi; sleep 0.2
 done
 
 APPDATA="$WORK/appdata" "$COI" --db "$WORK/coi.db" \
@@ -36,8 +36,8 @@ APPDATA="$WORK/appdata" "$COI" --db "$WORK/coi.db" \
 SRV=$!
 # Wait on the endpoint itself: polling a page would feed the
 # badge cache and spoil the cold-cache assertion below.
-for i in $(seq 1 50); do
-  curl -s -o /dev/null "http://127.0.0.1:$PORT/api/v1/must-fix-count" && break || sleep 0.2
+for _ in $(seq 1 50); do
+  if curl -s -o /dev/null "http://127.0.0.1:$PORT/api/v1/must-fix-count"; then break; fi; sleep 0.2
 done
 
 fail() { echo "FAIL: $1"; exit 1; }

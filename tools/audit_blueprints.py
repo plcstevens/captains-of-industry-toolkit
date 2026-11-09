@@ -54,6 +54,7 @@ Usage: python3 tools/audit_blueprints.py [plan.yaml ...]
 Defaults to both plans in plans/ and the pack at
 <workspace>/coi-blueprint-pack (sibling of this repo).
 """
+
 import argparse
 import json
 import pathlib
@@ -135,14 +136,16 @@ def extract_refs(node, plan_name, order_id=None, out=None):
     if isinstance(node, dict):
         current_id = node.get("id", order_id)
         if "blueprint_ref" in node:
-            out.append({
-                "plan": plan_name,
-                "order_id": current_id,
-                "blueprint_ref": node.get("blueprint_ref"),
-                "asset_status": node.get("asset_status"),
-                "pack_slug": node.get("pack_slug"),
-                "pack_slug_overlay": node.get("pack_slug_overlay"),
-            })
+            out.append(
+                {
+                    "plan": plan_name,
+                    "order_id": current_id,
+                    "blueprint_ref": node.get("blueprint_ref"),
+                    "asset_status": node.get("asset_status"),
+                    "pack_slug": node.get("pack_slug"),
+                    "pack_slug_overlay": node.get("pack_slug_overlay"),
+                }
+            )
         for value in node.values():
             extract_refs(value, plan_name, current_id, out)
     elif isinstance(node, list):
@@ -164,8 +167,7 @@ def verdict_for(ref_entry, pack_ids):
             note += " (" + ", ".join(sorted(pack_ids[slug])) + ")"
             return "AUTHORED", note
         bad = slug if slug not in pack_ids else overlay
-        return ("MISSING-UNDECLARED",
-                f"asset_status authored but pack_slug {bad} not in pack")
+        return ("MISSING-UNDECLARED", f"asset_status authored but pack_slug {bad} not in pack")
     declared = ref_entry["asset_status"] == "not-yet-authored"
     if isinstance(ref, str) and ref in pack_ids:
         note = "exact match: " + ", ".join(sorted(pack_ids[ref]))
@@ -174,8 +176,11 @@ def verdict_for(ref_entry, pack_ids):
         return "FOUND", note
     leaf = ref.rsplit("/", 1)[-1] if isinstance(ref, str) else ""
     if leaf and leaf in pack_ids:
-        note = (f"candidate mapping -> {leaf} ("
-                + ", ".join(sorted(pack_ids[leaf])) + "); needs human confirm")
+        note = (
+            f"candidate mapping -> {leaf} ("
+            + ", ".join(sorted(pack_ids[leaf]))
+            + "); needs human confirm"
+        )
         if declared:
             note += "; also declared not-yet-authored"
         return "FOUND-BY-LEAF", note
@@ -186,10 +191,18 @@ def verdict_for(ref_entry, pack_ids):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("plans", nargs="*", type=pathlib.Path,
-                        help="plan YAML files (default: both plans in plans/)")
-    parser.add_argument("--pack-dir", type=pathlib.Path, default=DEFAULT_PACK,
-                        help=f"blueprint pack directory (default: {DEFAULT_PACK})")
+    parser.add_argument(
+        "plans",
+        nargs="*",
+        type=pathlib.Path,
+        help="plan YAML files (default: both plans in plans/)",
+    )
+    parser.add_argument(
+        "--pack-dir",
+        type=pathlib.Path,
+        default=DEFAULT_PACK,
+        help=f"blueprint pack directory (default: {DEFAULT_PACK})",
+    )
     args = parser.parse_args(argv)
 
     plans = args.plans or DEFAULT_PLANS
@@ -214,14 +227,17 @@ def main(argv=None):
         return 0
 
     headers = ("PLAN", "ORDER", "BLUEPRINT_REF", "ASSET_STATUS", "VERDICT", "NOTE")
-    cells = [(
-        e["plan"],
-        str(e["order_id"]),
-        str(e["blueprint_ref"]),
-        str(e["asset_status"] or "-"),
-        verdict,
-        note,
-    ) for e, verdict, note in rows]
+    cells = [
+        (
+            e["plan"],
+            str(e["order_id"]),
+            str(e["blueprint_ref"]),
+            str(e["asset_status"] or "-"),
+            verdict,
+            note,
+        )
+        for e, verdict, note in rows
+    ]
     widths = [max(len(headers[i]), *(len(r[i]) for r in cells)) for i in range(6)]
 
     def fmt(row):
@@ -243,8 +259,10 @@ def main(argv=None):
 
     bad = counts.get("MISSING-UNDECLARED", 0)
     if bad:
-        print(f"\nFAIL: {bad} MISSING-UNDECLARED ref(s) — plans point at "
-              "blueprints that do not exist and are not declared missing.")
+        print(
+            f"\nFAIL: {bad} MISSING-UNDECLARED ref(s) — plans point at "
+            "blueprints that do not exist and are not declared missing."
+        )
         return 1
     print("\nOK: no MISSING-UNDECLARED refs.")
     return 0

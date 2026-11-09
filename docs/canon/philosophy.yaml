@@ -1,0 +1,164 @@
+# Play philosophy — judgement rules that sit above the detectors, plus the
+# deliberate non-adoptions. These entries reconcile the agent's strategy
+# notes with the player-facing board: one system, two altitudes.
+
+- id: philosophy.triage-order
+  title: "The order to fix things in"
+  player: >
+    When everything is on fire, work this order: food, water and power
+    first — a settlement without them unwinds in days. Then fuel and
+    maintenance, the slow stranglers. Then whatever the board ranks Fix now.
+    Expansion comes last: a bigger factory with a broken backbone dies
+    faster, not slower.
+  rule: >
+    Agent triage legs map onto the board, they do not compete with it:
+    SURVIVE (food/water/power deficits) -> board Fix now on those products;
+    STRANGLERS (diesel incl. reforming draw, maintenance, power capacity)
+    -> Fix now / Fix later plus forecasts; SLOPES -> the 120-month slope
+    and structural entries. The board quadrant is what the player sees;
+    the triage leg explains why a class of finding outranks another.
+  numbers: []
+  source: mixed
+  status: verified
+
+- id: philosophy.death-spiral
+  title: "The death spiral: fuel, maintenance, power"
+  player: >
+    Factories rarely die of one failure. They die of the triangle: fuel
+    runs short, so machines stop; maintenance lapses, so machines break;
+    power dips, so everything slows — and each leg makes the other two
+    worse. The board watches the fuel leg directly. The maintenance leg
+    has no product to watch, so it is covered by the Maintenance guide and
+    by watching your depots' output, not by a board finding.
+  rule: >
+    The engine detects fuel/product legs (board + forecasts). There is
+    deliberately NO maintenance detector: maintenance has no stockpile
+    product to trend. The gap is documented here and in the Maintenance
+    guide rather than papered over with a proxy metric.
+  numbers: []
+  source: mixed
+  status: verified
+
+- id: philosophy.maintenance-floor
+  title: "Maintenance below 75% starts breaking machines"
+  player: >
+    Machines wear out. A machine's maintenance level falls when its depot
+    can't keep up, and below 75% breakdowns begin; at zero maintenance a
+    machine breaks down roughly every other month. There is no board
+    finding for this — check your depots when breakdowns start clustering.
+  rule: >
+    Breakdown risk begins below 75% maintenance and rises as it falls
+    (~50% monthly breakdown chance at 0%). The three maintenance tiers are
+    not interchangeable — a depot only repairs its own tier. Figures from
+    the game's data; player chapter = the Maintenance guide.
+  numbers:
+    - { name: breakdown_threshold, value: 75, unit: percent }
+    - { name: breakdown_chance_at_zero, value: 50, unit: "percent per month" }
+  source: docs
+  status: verified
+
+- id: philosophy.section12
+  title: "Nothing changes without prepare, confirm, audit"
+  player: >
+    The companion never changes your game silently. Every change is first
+    prepared — you see the exact command and what it will do — then
+    confirmed by you, then written to the audit log with the game's own
+    answer. One command family, the raw game console, is excluded entirely:
+    it can do anything, so the companion won't touch it at any setting.
+  rule: >
+    §12 invariant: prepare -> confirm -> apply -> audit-log, for every
+    mutating route, no exceptions in v3. Command catalogue posture at ship
+    time: 15 verified live / 224 wired-but-unverified / 1 excluded
+    (GameConsoleCmd, policy exclusion).
+  numbers:
+    - { name: verified_commands, value: 15, unit: commands }
+    - { name: excluded_commands, value: 1, unit: commands }
+  source: code
+  status: verified
+
+- id: philosophy.research-queue
+  title: "Research queue discipline"
+  player: >
+    Research is a queue, not a shopping list. Keep it short and ordered:
+    unlocks that unblock construction first, capacity second, luxuries
+    last. Two traps the game sets: some nodes look queued but aren't
+    (always check the actual queue), and starting a node you can't feed
+    yet just parks your labs. The Research guide carries the worked
+    starter order.
+  rule: >
+    Queue discipline: prefer research that removes a current blocker;
+    defer nodes whose inputs the factory cannot yet supply. The site's
+    Research page shows researched/current/queued from the bridge only —
+    there is no snapshot fallback for research state.
+  numbers: []
+  source: docs
+  status: verified
+
+- id: philosophy.steel-sizing
+  title: "Sizing steel: the 24-per-minute rule of thumb"
+  player: >
+    When the board suggests expanding steel, it uses a rule of thumb: one
+    blast-furnace + caster line makes about 24 steel per minute. Treat it
+    as a sizing hint for 'how many lines do I add', not a promise — your
+    mileage varies with ore quality and uptime.
+  rule: >
+    The steel expansion hint in issue copy assumes ~24 steel/min per
+    furnace+caster line. Status: HEURISTIC — inherited from layout
+    practice; no assembly-verified ratio has been recorded for it yet.
+    Recorded here so the number has a stated provenance (it previously
+    existed only inside fix-hint text).
+  numbers:
+    - { name: steel_per_line_per_min, value: 24, unit: "steel/min" }
+  source: code
+  status: heuristic
+
+- id: philosophy.coal-buffer
+  title: "The coal buffer: two hours of draw"
+  player: >
+    If you import coal, keep a buffer: the board's coal advice assumes an
+    import buffer of at least 120 minutes of your power plant's draw, so a
+    late ship is an inconvenience, not a blackout. Like the steel rule,
+    this is a practice heuristic — tune it to your ship schedule.
+  rule: >
+    Coal import buffer >= 120 minutes of draw at plant scale (issue-copy
+    heuristic, previously unsourced inside fix-hint text; recorded here
+    with its status). Related: forecasts exclude coal from the slope
+    outlook because buffer-managed products follow delivery rhythm, not
+    trend.
+  numbers:
+    - { name: buffer_minutes, value: 120, unit: minutes }
+  source: code
+  status: heuristic
+
+- id: philosophy.unma-not-adopted
+  title: "One severity vocabulary, deliberately"
+  player: >
+    You may see other tools grade problems on their own scales. This
+    companion uses exactly one: the four quadrants. A single vocabulary
+    means a finding means the same thing on every page, in every guide,
+    and in the plan runner's reports.
+  rule: >
+    DELIBERATE NON-ADOPTION: the four-level advisory severity scale used in
+    the hosting agent's internal UNMA audit (CRITICAL/HIGH/MEDIUM/LOW) is
+    not a canon input and is never rendered to players. The board
+    quadrants (board.quadrants) are the only severity vocabulary.
+  numbers: []
+  source: mixed
+  status: deliberate-none
+
+- id: philosophy.guide-gaps-closed
+  title: "Coverage: maintenance, research, earthworks"
+  player: >
+    Three topics the reasoning depends on now have player chapters:
+    maintenance (the death spiral's invisible leg), research discipline,
+    and earthworks. They live under Learn the game alongside the other
+    guides.
+  rule: >
+    Closes the v3 audit's coverage gap (no Maintenance guide; the research
+    and earthworks guide documents existed in the repo but were never
+    rendered into the site). Canon entries philosophy.maintenance-floor
+    and philosophy.research-queue are the auditable cores of those
+    chapters.
+  numbers: []
+  source: mixed
+  status: verified

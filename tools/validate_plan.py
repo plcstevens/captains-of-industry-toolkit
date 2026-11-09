@@ -20,6 +20,7 @@ Usage: python3 tools/validate_plan.py [plan.yaml ...]
 Defaults to both plans in plans/.
 Exit code 0 = zero errors (warnings allowed), 1 = errors found.
 """
+
 import json
 import pathlib
 import sys
@@ -35,38 +36,63 @@ ORDER_KINDS = {"place-blueprint", "manual-step", "observe-only", "wait"}
 
 # Format §4.1 leaf metrics + §4.1(b) time predicates.
 CLOSED_METRICS = {
-    "product.quantity", "product.stored", "product.storage_capacity",
-    "product.produced", "product.consumed", "product.net_flow",
-    "product.unlocked", "product.pinned",
-    "game.paused", "game.speed", "game.date",
-    "settlement.population", "settlement.housing_capacity",
-    "settlement.free_housing", "settlement.homeless",
-    "settlement.months_of_food", "settlement.starving",
-    "research.current", "research.current_progress_pct",
-    "research.queue_contains", "research.queue_length",
-    "research.researched_count", "research.has_active_lab",
+    "product.quantity",
+    "product.stored",
+    "product.storage_capacity",
+    "product.produced",
+    "product.consumed",
+    "product.net_flow",
+    "product.unlocked",
+    "product.pinned",
+    "game.paused",
+    "game.speed",
+    "game.date",
+    "settlement.population",
+    "settlement.housing_capacity",
+    "settlement.free_housing",
+    "settlement.homeless",
+    "settlement.months_of_food",
+    "settlement.starving",
+    "research.current",
+    "research.current_progress_pct",
+    "research.queue_contains",
+    "research.queue_length",
+    "research.researched_count",
+    "research.has_active_lab",
     "research.completed",
-    "census.proto_count", "census.machine_state_count",
-    "census.machine_state_share", "census.transports_fully_connected_ratio",
-    "storage.percent_full", "storage.logistics_in_disabled",
+    "census.proto_count",
+    "census.machine_state_count",
+    "census.machine_state_share",
+    "census.transports_fully_connected_ratio",
+    "storage.percent_full",
+    "storage.logistics_in_disabled",
     "storage.logistics_out_disabled",
     "trains.line_count",
-    "contracts.active_count", "loans.active_count", "edicts.enabled",
-    "time.months_elapsed", "time.in_phase_months",
+    "contracts.active_count",
+    "loans.active_count",
+    "edicts.enabled",
+    "time.months_elapsed",
+    "time.in_phase_months",
 }
 # v0.6.2 power route fields (format §11 G2 RESOLVED). Not in §4.1 yet:
 # a plan using one must flag the predicate (bridge-v0.6.2-field /
 # executor-support-pending); the executor treats it as UNEVALUABLE
 # until companion predicate support lands — never as true/false.
 EXTENSION_METRICS = {
-    "power.balance_kw", "power.generated_kw", "power.consumed_kw",
-    "power.demanded_kw", "power.generation_capacity_kw",
+    "power.balance_kw",
+    "power.generated_kw",
+    "power.consumed_kw",
+    "power.demanded_kw",
+    "power.generation_capacity_kw",
 }
 
 CONSTRUCTION_CMDS = {
-    "CreateStaticEntityCmd", "FinishBuildOfStaticEntityCmd",
-    "CreateTrainTrackEntityWithDirectionCmd", "CreateNewTrainLineCmd",
-    "CreateNewTrainNetworkCmd", "AddVehicleToBuildQueueCmd",
+    "CreateStaticEntityCmd",
+    "FinishBuildOfStaticEntityCmd",
+    "CreateTrainTrackEntityWithDirectionCmd",
+    "CreateNewTrainLineCmd",
+    "CreateNewTrainNetworkCmd",
+    "AddVehicleToBuildQueueCmd",
 }
 
 
@@ -130,8 +156,7 @@ class Checker:
         if metric in EXTENSION_METRICS:
             flags = pred.get("flags") or []
             if "bridge-v0.6.2-field" not in flags:
-                self.err(where, f"extension metric {metric} used without "
-                                "bridge-v0.6.2-field flag")
+                self.err(where, f"extension metric {metric} used without bridge-v0.6.2-field flag")
         if metric == "research.current":
             val = pred.get("value")
             if isinstance(val, str) and val.startswith("Research"):
@@ -143,13 +168,15 @@ class Checker:
                 self.placeholders += 1
                 self.warnings.append(
                     f"{where}: placeholder research id "
-                    f"{ref.get('placeholder')!r} ({ref.get('display_name')})")
+                    f"{ref.get('placeholder')!r} ({ref.get('display_name')})"
+                )
             return
         if isinstance(ref, str):
             self.distinct_research.add(ref)
             if ref not in self.research_ids:
-                self.err(where, f"research id {ref!r} not in research_ids.txt "
-                                "and not a §4.5 placeholder")
+                self.err(
+                    where, f"research id {ref!r} not in research_ids.txt and not a §4.5 placeholder"
+                )
 
     def check_product(self, pid, where):
         if pid.startswith("Product_"):
@@ -176,8 +203,11 @@ class Checker:
         arg_names = set(args.keys())
         param_sets = self.commands[do]
         if param_sets and not any(arg_names <= ps for ps in param_sets):
-            self.err(where, f"{do}: arg names {sorted(arg_names)} match no "
-                            f"constructor schema {sorted(map(sorted, param_sets))}")
+            self.err(
+                where,
+                f"{do}: arg names {sorted(arg_names)} match no "
+                f"constructor schema {sorted(map(sorted, param_sets))}",
+            )
         if do in CONSTRUCTION_CMDS and not order.get("requires_sandbox_validation"):
             # §6.1 requires the flag, but an order already made manual-only
             # by a §4.5 placeholder arg (executor MUST refuse to auto-apply
@@ -186,7 +216,8 @@ class Checker:
             # strict enforcement. Report as a warning, never silently.
             self.warnings.append(
                 f"{where}: {do}: construction-family order missing "
-                "requires_sandbox_validation: true (§6.1) — lint advisory")
+                "requires_sandbox_validation: true (§6.1) — lint advisory"
+            )
         # research command arg
         node = args.get("nodeId")
         if node is not None:
@@ -222,11 +253,14 @@ def validate(path, commands, products, research_ids):
     if "GameConsoleCmd" not in banned:
         chk.err("globals", "GameConsoleCmd not in globals.banned_commands")
     print(f"  phases: {len(phases)}")
-    print(f"  command orders: {chk.command_orders} "
-          f"({len(chk.distinct_commands)} distinct commands: "
-          f"{sorted(chk.distinct_commands)})")
-    print(f"  distinct research ids: {len(chk.distinct_research)} "
-          f"({sorted(chk.distinct_research)})")
+    print(
+        f"  command orders: {chk.command_orders} "
+        f"({len(chk.distinct_commands)} distinct commands: "
+        f"{sorted(chk.distinct_commands)})"
+    )
+    print(
+        f"  distinct research ids: {len(chk.distinct_research)} ({sorted(chk.distinct_research)})"
+    )
     print(f"  placeholder research ids: {chk.placeholders}")
     print(f"  distinct product ids: {len(chk.distinct_products)}")
     print(f"  uncertainty flags carried: {chk.flag_count}")
@@ -241,8 +275,7 @@ def validate(path, commands, products, research_ids):
 def main():
     commands = load_catalogue()
     products = load_products()
-    research_ids = {ln.strip() for ln in RESEARCH_IDS.read_text().splitlines()
-                    if ln.strip()}
+    research_ids = {ln.strip() for ln in RESEARCH_IDS.read_text().splitlines() if ln.strip()}
     paths = [pathlib.Path(p) for p in sys.argv[1:]] or [
         ROOT / "plans" / "fresh-start-v1.yaml",
         ROOT / "plans" / "dragon-isle-continuation-v1.yaml",

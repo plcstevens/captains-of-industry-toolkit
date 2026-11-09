@@ -1,8 +1,8 @@
 [package]
-name = "coi"
+name = "superintendent"
 version = "0.1.0"
 edition = "2021"
-description = "Companion CLI for Captain of Industry — reads the game's web API, snapshots, triage reports."
+description = "Superintendent — the companion website for Captain of Industry: live triage board, snapshots, and a prepare-confirm-audit command flow over the game's web API."
 license = "MIT"
 
 [dependencies]

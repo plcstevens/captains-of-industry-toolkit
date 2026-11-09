@@ -12,3 +12,4 @@ live-synthetic-*/
 *.dll
 *.zip
 *.save
+.ruff_cache/

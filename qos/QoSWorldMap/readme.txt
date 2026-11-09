@@ -77,7 +77,7 @@ DEFAULTS (change them in Settings -> QoS World Map)
 ACTIVITY RECORD
 Every navigation this mod performs is recorded to the QoS activity feed
 (%APPDATA%\Captain of Industry\QoS\events-v1.jsonl) by QoSCore,
-and shows on the CoI Companion website's Log page. Controlled by
+and shows on the Superintendent website's Log page. Controlled by
 QoSCore's activity_log_enabled setting (default on).
 
 REMOVAL SAFETY

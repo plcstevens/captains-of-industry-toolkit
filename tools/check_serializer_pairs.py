@@ -36,19 +36,22 @@ discovered subscriber satisfies the rule; 1 = at least one failure;
 2 = usage/discovery error (e.g. no subscribers found at all — the
 net must never silently pass on an empty scan).
 """
+
 import json
 import pathlib
 import re
 import sys
 
-SKIP_DIRS = {"obj", "bin", "stage", "stage-builder", "target",
-             "__pycache__", ".git"}
+SKIP_DIRS = {"obj", "bin", "stage", "stage-builder", "target", "__pycache__", ".git"}
 
 ADD_THIS = re.compile(r"\.Add\(\s*this\s*,")
 CLASS_DECL = re.compile(
     r"^(\s*)(?:public|internal|private|protected)?\s*"
     r"(?:sealed\s+|abstract\s+|static\s+|partial\s+)*class\s+(\w+)",
-    re.M)
+    re.M,
+)
+
+
 def has_attribute(window):
     """True if [ManuallyWrittenSerialization] appears as a real
     attribute line in `window` — not merely mentioned in a comment
@@ -83,8 +86,7 @@ def discover(root):
             # helper classes (RecoveryMark, Observation) declared
             # inside them before the subscription line must not steal
             # the attribution.
-            classes = [(m.start(), m.group(2), len(m.group(1)))
-                       for m in CLASS_DECL.finditer(text)]
+            classes = [(m.start(), m.group(2), len(m.group(1))) for m in CLASS_DECL.finditer(text)]
             for pos in subs:
                 preceding = [c for c in classes if c[0] < pos]
                 if not preceding:
@@ -102,27 +104,26 @@ def check_class(root, path, cls, class_off):
     text = path.read_text(encoding="utf-8", errors="replace")
     rel = path.relative_to(root)
     if cls is None:
-        return [f"{rel}: `.Add(this, ...)` subscription found but no "
-                f"enclosing class declaration could be identified"]
+        return [
+            f"{rel}: `.Add(this, ...)` subscription found but no "
+            f"enclosing class declaration could be identified"
+        ]
     # The attribute must sit in the block immediately preceding
     # THIS class declaration (it is 2 lines above in all four
     # services today; 500 chars is a generous but safe window that
     # cannot borrow a previous class's attribute).
-    window = text[max(0, class_off - 500):class_off]
+    window = text[max(0, class_off - 500) : class_off]
     if not has_attribute(window):
         fails.append(
             f"{rel}: class {cls} subscribes with .Add(this, ...) but "
-            f"has no [ManuallyWrittenSerialization] attribute")
-    if not re.search(r"public\s+static\s+void\s+Serialize\s*\(\s*"
-                     + re.escape(cls) + r"\b", text):
-        fails.append(
-            f"{rel}: class {cls} lacks `public static void "
-            f"Serialize({cls}, BlobWriter)`")
-    if not re.search(r"public\s+static\s+" + re.escape(cls) +
-                     r"\s+Deserialize\s*\(\s*BlobReader", text):
-        fails.append(
-            f"{rel}: class {cls} lacks `public static {cls} "
-            f"Deserialize(BlobReader)`")
+            f"has no [ManuallyWrittenSerialization] attribute"
+        )
+    if not re.search(r"public\s+static\s+void\s+Serialize\s*\(\s*" + re.escape(cls) + r"\b", text):
+        fails.append(f"{rel}: class {cls} lacks `public static void Serialize({cls}, BlobWriter)`")
+    if not re.search(
+        r"public\s+static\s+" + re.escape(cls) + r"\s+Deserialize\s*\(\s*BlobReader", text
+    ):
+        fails.append(f"{rel}: class {cls} lacks `public static {cls} Deserialize(BlobReader)`")
     # Manifest flag: nearest manifest.json walking up from the file.
     manifest = None
     for parent in path.parents:
@@ -133,31 +134,37 @@ def check_class(root, path, cls, class_off):
         if parent == root:
             break
     if manifest is None:
-        fails.append(f"{rel}: class {cls} — no manifest.json found "
-                     f"walking up; cannot verify can_remove flag")
+        fails.append(
+            f"{rel}: class {cls} — no manifest.json found walking up; cannot verify can_remove flag"
+        )
     else:
         try:
             data = json.loads(manifest.read_text(encoding="utf-8"))
-        except Exception as exc:  # noqa: BLE001 — lint must report, not crash
+        except Exception as exc:
             fails.append(f"{manifest.relative_to(root)}: unreadable ({exc})")
             return fails
         if data.get("can_remove_from_saved_game") is not False:
             fails.append(
                 f"{manifest.relative_to(root)}: {cls} subscribes to a "
                 f"saveable event, so can_remove_from_saved_game must be "
-                f"false (found {data.get('can_remove_from_saved_game')!r})")
+                f"false (found {data.get('can_remove_from_saved_game')!r})"
+            )
     return fails
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    root = (pathlib.Path(argv[0]).resolve() if argv
-            else pathlib.Path(__file__).resolve().parent.parent)
+    root = (
+        pathlib.Path(argv[0]).resolve() if argv else pathlib.Path(__file__).resolve().parent.parent
+    )
     subs = discover(root)
     if not subs:
-        print("serializer-lint: ERROR — no `.Add(this, ...)` subscribers "
-              "discovered under qos/ or bridge/; the scan itself is "
-              "suspect, refusing to pass an empty net", file=sys.stderr)
+        print(
+            "serializer-lint: ERROR — no `.Add(this, ...)` subscribers "
+            "discovered under qos/ or bridge/; the scan itself is "
+            "suspect, refusing to pass an empty net",
+            file=sys.stderr,
+        )
         return 2
     all_fails = []
     for path, cls, off in subs:
@@ -170,14 +177,18 @@ def main(argv=None):
         print("\nserializer-lint: FAILURES:", file=sys.stderr)
         for f in all_fails:
             print(f"  - {f}", file=sys.stderr)
-        print("A subscribing service without the sanctioned serializer "
-              "pair makes the game fail to save (suite 0.5.0). See "
-              "QUALITY-AUDIT.md item 1 / bridge-dev skill.",
-              file=sys.stderr)
+        print(
+            "A subscribing service without the sanctioned serializer "
+            "pair makes the game fail to save (suite 0.5.0). See "
+            "QUALITY-AUDIT.md item 1 / bridge-dev skill.",
+            file=sys.stderr,
+        )
         return 1
-    print(f"serializer-lint: PASS — {len(subs)} subscribing service(s), "
-          "all carry [ManuallyWrittenSerialization] + the Serialize/"
-          "Deserialize pair + manifest can_remove_from_saved_game:false")
+    print(
+        f"serializer-lint: PASS — {len(subs)} subscribing service(s), "
+        "all carry [ManuallyWrittenSerialization] + the Serialize/"
+        "Deserialize pair + manifest can_remove_from_saved_game:false"
+    )
     return 0
 
 

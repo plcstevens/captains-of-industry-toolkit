@@ -1,0 +1,119 @@
+# Machine productivity — verdicts from snapshot history, not from one glance.
+
+- id: productivity.working-share
+  title: "When a machine type counts as unproductive"
+  player: >
+    The companion watches each type of machine across your snapshots. A type
+    is flagged when the evidence says its machines spend under half their
+    observed time actually working — and 'severe' when it's under a quarter.
+    It never judges from a single look: the verdict needs the statistics to
+    be confident, which is why new factories show 'not enough data' instead
+    of verdicts.
+  rule: >
+    Working share per machine prototype over the trailing 30 days of
+    snapshots, Wilson 95% confidence interval. FIRE := CI upper < 0.50 AND
+    point estimate < 0.45. SEVERE := point < 0.25 AND CI upper < 0.35.
+    CLEAR := CI lower > 0.60. A borderline verdict must repeat in the
+    second half of the window (second-half CI upper < 0.55) before it is
+    confirmed.
+  numbers:
+    - { name: fire_ci_upper, value: 0.50, unit: share,
+        code: { file: coi/src/productivity.rs, contains: "fire_ci_upper: 0.50" } }
+    - { name: fire_point, value: 0.45, unit: share,
+        code: { file: coi/src/productivity.rs, contains: "fire_point: 0.45" } }
+    - { name: severe_point, value: 0.25, unit: share,
+        code: { file: coi/src/productivity.rs, contains: "severe_point: 0.25" } }
+    - { name: severe_ci_upper, value: 0.35, unit: share,
+        code: { file: coi/src/productivity.rs, contains: "severe_ci_upper: 0.35" } }
+    - { name: clear_ci_lower, value: 0.60, unit: share,
+        code: { file: coi/src/productivity.rs, contains: "clear_ci_lower: 0.60" } }
+    - { name: confirm_second_half_ci_upper, value: 0.55, unit: share,
+        code: { file: coi/src/productivity.rs, contains: "confirm_second_half_ci_upper: 0.55" } }
+    - { name: window_days, value: 30, unit: days }
+  source: code
+  status: wired
+
+- id: productivity.causes
+  title: "Why it's idle matters more than that it's idle"
+  player: >
+    An idle machine is a symptom. The board names the cause when one
+    dominates: starved (no inputs — look upstream), blocked (output can't
+    leave — look downstream), parked (deliberately paused — not a problem),
+    or mixed. A type whose machines are mostly parked is never flagged:
+    paused on purpose is a decision, not a failure.
+  rule: >
+    Cause shares over non-working observations: starved >= 0.30 ->
+    INPUT-STARVED; blocked >= 0.30 -> OUTPUT-BLOCKED; parked >= 0.50 ->
+    PARKED (suppresses the alert entirely); mixed >= 0.20 -> MIXED; else
+    OTHER. Verdicts aggregate >= 80% of a prototype's instances (population
+    share) with at least 3 instances before firing.
+  numbers:
+    - { name: parked_share, value: 0.50, unit: share,
+        code: { file: coi/src/productivity.rs, contains: "parked_share: 0.50" } }
+    - { name: starved_share, value: 0.30, unit: share,
+        code: { file: coi/src/productivity.rs, contains: "starved_share: 0.30" } }
+    - { name: blocked_share, value: 0.30, unit: share,
+        code: { file: coi/src/productivity.rs, contains: "blocked_share: 0.30" } }
+    - { name: mixed_share, value: 0.20, unit: share,
+        code: { file: coi/src/productivity.rs, contains: "mixed_share: 0.20" } }
+    - { name: min_instances, value: 3, unit: machines,
+        code: { file: coi/src/productivity.rs, contains: "min_instances: 3" } }
+    - { name: population_share, value: 0.80, unit: share,
+        code: { file: coi/src/productivity.rs, contains: "population_share: 0.80" } }
+  source: code
+  status: wired
+
+- id: productivity.evidence-classes
+  title: "Measured, estimated, or not enough data"
+  player: >
+    Every verdict carries an evidence class. Measured means dense snapshots
+    across most of a month. Estimated means sparser coverage — directionally
+    trustworthy, not exact. Anything thinner shows as insufficient and
+    produces no verdict at all. Taking snapshots regularly is what upgrades
+    your evidence.
+  rule: >
+    MEASURED := >= 96 samples AND span >= 27 days AND max gap <= 3 days.
+    ESTIMATED := >= 30 samples AND span >= 24 days AND max gap <= 7 days.
+    Otherwise INSUFFICIENT (no verdict). A second, stricter bar applies
+    before a low-working-share verdict fires on estimated evidence alone.
+  numbers:
+    - { name: measured_min_samples, value: 96, unit: samples,
+        code: { file: coi/src/productivity.rs, contains: "measured_min_samples: 96" } }
+    - { name: estimated_min_samples, value: 30, unit: samples,
+        code: { file: coi/src/productivity.rs, contains: "estimated_min_samples: 30" } }
+    - { name: measured_span_days, value: 27, unit: days,
+        code: { file: coi/src/productivity.rs, contains: "measured_span_days: 27" } }
+    - { name: estimated_span_days, value: 24, unit: days,
+        code: { file: coi/src/productivity.rs, contains: "estimated_span_days: 24" } }
+  source: code
+  status: wired
+
+- id: productivity.ramping
+  title: "New machines get time to ramp"
+  player: >
+    A machine type that's growing fast is forgiven its early low numbers —
+    new machines spend their first days being built, connected and fed.
+    Rapid growth (half again as many machines as the window started with)
+    marks the type as ramping, and the board says so instead of flagging it.
+  rule: "ramping := instance count grew by factor >= 1.5 across the window."
+  numbers:
+    - { name: ramp_growth, value: 1.5, unit: "x",
+        code: { file: coi/src/productivity.rs, contains: "ramp_growth: 1.5" } }
+  source: code
+  status: wired
+
+- id: productivity.configurable
+  title: "These thresholds are defaults, and they're yours"
+  player: >
+    Every number on this page is a default. You can tune them in the
+    [productivity] section of coi.toml — stricter if you snapshot often,
+    looser if you play in bursts. The Why pages always show the values
+    actually in effect for your install, not just the defaults written here.
+  rule: >
+    Thresholds load from coi.toml [productivity], falling back to the
+    defaults in this file. Renderings of these rules must read the effective
+    values live (the Why page does); the numbers here are the shipped
+    defaults that check_canon.py pins to the code defaults.
+  numbers: []
+  source: code
+  status: wired

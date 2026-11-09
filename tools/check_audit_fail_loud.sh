@@ -7,21 +7,21 @@
 # tools/check_place_page.sh + check_log_page.sh.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-COI="${1:-$HERE/coi/target/debug/coi}"
+COI="${1:-$HERE/coi/target/debug/superintendent}"
 PORT="${PORT:-8490}"; STUB_PORT="${STUB_PORT:-3997}"
 WORK="$(mktemp -d)"
 trap 'kill ${SRV:-} ${STUB:-} 2>/dev/null || true; chmod -R u+w "$WORK" 2>/dev/null; rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/appdata"
 
 python3 "$HERE/tools/stub_game_server.py" --port "$STUB_PORT" \
-  --capture "$HERE/live-synthetic-v064" >"$WORK/stub.log" 2>&1 &
+  --capture "$HERE/dev/captures/live-synthetic-v065" >"$WORK/stub.log" 2>&1 &
 STUB=$!
-for i in $(seq 1 50); do curl -s -o /dev/null "http://127.0.0.1:$STUB_PORT/api/v1/game-info" && break || sleep 0.2; done
+for _ in $(seq 1 50); do if curl -s -o /dev/null "http://127.0.0.1:$STUB_PORT/api/v1/game-info"; then break; fi; sleep 0.2; done
 
 APPDATA="$WORK/appdata" "$COI" --db "$WORK/coi.db" \
   --game-url "http://127.0.0.1:$STUB_PORT" serve --port "$PORT" >"$WORK/serve.log" 2>&1 &
 SRV=$!
-for i in $(seq 1 50); do curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break || sleep 0.2; done
+for _ in $(seq 1 50); do if curl -s -o /dev/null "http://127.0.0.1:$PORT/"; then break; fi; sleep 0.2; done
 get() { curl -s "http://127.0.0.1:$PORT$1"; }
 csrf() { get "$1" | grep -o 'name="csrf" value="[^"]*"' | awk 'NR==1' | sed 's/.*value="//; s/"//'; }
 fail() { echo "DRILL FAIL: $1"; exit 1; }

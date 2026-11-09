@@ -1,0 +1,79 @@
+# Forecasts — every horizon the engine uses, stated together in one place.
+# (They previously appeared one at a time, in different sentences, and the
+# CLI summary contradicted two of them. This file is the reconciliation.)
+
+- id: forecasts.runway-blend
+  title: "Runway: when a stock runs out"
+  player: >
+    Each product with a negative recent balance gets a runway: how many
+    months the current stock lasts if the recent blend of this month and
+    last month continues. Runways under three years are listed.
+  rule: "runway := quantity / -net where net blends this-month and last-month net (mean of the two); listed when net < 0 AND runway < 36 months."
+  numbers:
+    - { name: horizon_months, value: 36, unit: months,
+        code: { file: coi/src/main.rs, contains: "months < 36.0" } }
+  source: code
+  status: wired
+
+- id: forecasts.fill
+  title: "Fill: when a storage fills up"
+  player: >
+    The mirror image: a product being made faster than it's used gets a
+    fill time for its storage. Fills under a year are listed — a year is
+    enough lead time to expand storage or throttle production.
+  rule: "fill := headroom / net for capacity >= 200; listed when net > 0 AND months-to-full < 12."
+  numbers:
+    - { name: horizon_months, value: 12, unit: months,
+        code: { file: coi/src/main.rs, contains: "months < 12.0" } }
+    - { name: capacity_floor, value: 200, unit: units,
+        code: { file: coi/src/main.rs, contains: "cap >= 200 && stored < cap" } }
+  source: code
+  status: wired
+
+- id: forecasts.slope
+  title: "Slope outlook for key products"
+  player: >
+    For the most important products there's a second, longer view: if the
+    stock's recent trend continues, when does it run out — out to ten years.
+    This is the early-warning line for slow declines that the 3-year runway
+    can't see yet.
+  rule: >
+    Slope runway := least-squares trend of quantity over history, evaluated
+    for importance-HIGH products only; listed when the projected runway is
+    < 120 months. Excludes coal (buffer semantics differ — see
+    philosophy.coal-buffer) and seasonal products (own rule).
+  numbers:
+    - { name: horizon_months, value: 120, unit: months,
+        code: { file: coi/src/main.rs, contains: "months < 120.0 && imp == 3" } }
+  source: code
+  status: wired
+
+- id: forecasts.seasonal
+  title: "Seasonal runway"
+  player: >
+    Seasonal products get their runway from the long window — last year's
+    balance — out to ten years, because month-to-month numbers swing with
+    the harvest cycle.
+  rule: "seasonal runway := quantity / -(long-window monthly net); listed when < 120 months."
+  numbers:
+    - { name: horizon_months, value: 120, unit: months,
+        code: { file: coi/src/main.rs, contains: "if months < 120.0 {" } }
+  source: code
+  status: wired
+
+- id: forecasts.horizons-together
+  title: "All the horizons, in one place"
+  player: >
+    The engine watches five clocks: urgent findings under 3 months, deficit
+    flags under 24 months, runways and seasonal deficits under 36 months,
+    fills under 12 months, and slow structural or trend declines under 120
+    months. Shorter clock, louder alarm.
+  rule: >
+    Horizon register: urgent 3 / fill 12 / deficit 24 / runway 36 /
+    seasonal-deficit 36 / structural 120 / slope 120 / seasonal-runway 120
+    (months). The CLI forecast summary prints this same register; the two
+    must not diverge (previously the summary line omitted the 120-month
+    paths — reconciled in v3).
+  numbers: []
+  source: code
+  status: wired

@@ -1,0 +1,62 @@
+# Pre-commit wiring for the toolkit's lint stack (Design V3 round,
+# 2026-11-09). Install once per clone:  pip install pre-commit &&
+# pre-commit install.  Every hook mirrors a CI lint job in
+# dev/RELEASE-WORKFLOW-DRAFT.md; the behavioural check scripts
+# (tools/check_*.sh, check_canon.py, check_repo_structure.py) stay
+# a manual/CI step — they boot servers and don't belong in a
+# commit hook.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.md$'
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+  - repo: local
+    hooks:
+      - id: rustfmt
+        name: rustfmt
+        entry: cargo fmt --check --manifest-path coi/Cargo.toml
+        language: system
+        files: '\.rs$'
+        pass_filenames: false
+      - id: clippy
+        name: clippy
+        entry: cargo clippy --manifest-path coi/Cargo.toml -- -D warnings
+        language: system
+        files: '\.rs$'
+        pass_filenames: false
+      - id: ruff-check
+        name: ruff check
+        entry: ruff check
+        language: system
+        files: '\.py$'
+      - id: ruff-format
+        name: ruff format
+        entry: ruff format --check
+        language: system
+        files: '\.py$'
+      - id: shellcheck
+        name: shellcheck
+        entry: shellcheck
+        language: system
+        files: '\.sh$'
+      - id: markdownlint
+        name: markdownlint
+        entry: markdownlint
+        language: system
+        files: '\.md$'
+      - id: yamllint
+        name: yamllint
+        entry: yamllint -c .yamllint.yml
+        language: system
+        files: '\.(yml|yaml)$'
+      - id: mod-packages
+        name: mod package lint
+        entry: python3 tools/lint_mod_packages.py
+        language: system
+        files: '(manifest\.json|readme\.txt)$'
+        pass_filenames: false

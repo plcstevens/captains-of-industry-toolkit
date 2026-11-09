@@ -23,6 +23,7 @@ Usage:
 Defaults to both plans in plans/. Prints one line per conversion.
 Exit code 0 on success, 1 on any parse/IO error.
 """
+
 import datetime
 import json
 import pathlib
@@ -54,13 +55,19 @@ def convert(path):
         print(f"ERROR: {path}: missing top-level plan/phases", file=sys.stderr)
         return 1
     out = path.with_suffix(".json")
-    text = json.dumps(normalize(doc), indent=2, sort_keys=True,
-                      ensure_ascii=False, default=json_default) + "\n"
+    text = (
+        json.dumps(
+            normalize(doc), indent=2, sort_keys=True, ensure_ascii=False, default=json_default
+        )
+        + "\n"
+    )
     out.write_text(text)
     meta = doc["plan"] or {}
-    print(f"{path.name} -> {out.name} "
-          f"(plan {meta.get('id', '?')} v{meta.get('version', '?')}, "
-          f"{len(doc['phases'])} phases, {len(text)} bytes)")
+    print(
+        f"{path.name} -> {out.name} "
+        f"(plan {meta.get('id', '?')} v{meta.get('version', '?')}, "
+        f"{len(doc['phases'])} phases, {len(text)} bytes)"
+    )
     return 0
 
 

@@ -48,8 +48,8 @@ Three equivalent ways, highest precedence last: `coi.toml`, env, CLI.
 **CLI flags:**
 
 ```sh
-coi --game-url http://<game-pc-name>:3073 --host-header localhost:3073 status
-coi --game-url http://<game-pc-name>:3073 --host-header localhost:3073 serve
+superintendent --game-url http://<game-pc-name>:3073 --host-header localhost:3073 status
+superintendent --game-url http://<game-pc-name>:3073 --host-header localhost:3073 serve
 ```
 
 **Environment:** `COI_GAME_URL`, `COI_HOST_HEADER`, `COI_PROXY`.

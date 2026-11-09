@@ -2,7 +2,7 @@
 # Scratch check for the Designate flow (SPEC Addendum XX,
 # DESIGNATION-DESIGN-NOTE stage 4). Serves the companion against
 # the stub game with the v0.6.5/0.6.6 synthetic capture
-# (live-synthetic-v065: bridge serves /coi/v1/terrain/region and
+# (dev/captures/live-synthetic-v065: bridge serves /coi/v1/terrain/region and
 # /coi/v1/designations in the 0.6.6 shape) and APPDATA pointed
 # at a scratch dir, then:
 #   1. /designate lists the live designations (proto strings +
@@ -23,7 +23,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-COI="${1:-$HOME/workspace/coi-companion/coi/target/debug/coi}"
+COI="${1:-$HOME/workspace/coi-companion/coi/target/debug/superintendent}"
 PORT="${PORT:-8488}"
 STUB_PORT="${STUB_PORT:-3998}"
 WORK="$(mktemp -d)"
@@ -31,18 +31,18 @@ trap 'kill ${SRV:-} ${STUB:-} 2>/dev/null || true; rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/appdata"
 
 python3 "$HERE/stub_game_server.py" --port "$STUB_PORT" \
-  --capture "$HERE/../live-synthetic-v065" >"$WORK/stub.log" 2>&1 &
+  --capture "$HERE/../dev/captures/live-synthetic-v065" >"$WORK/stub.log" 2>&1 &
 STUB=$!
-for i in $(seq 1 50); do
-  curl -s -o /dev/null "http://127.0.0.1:$STUB_PORT/api/v1/game-info" && break || sleep 0.2
+for _ in $(seq 1 50); do
+  if curl -s -o /dev/null "http://127.0.0.1:$STUB_PORT/api/v1/game-info"; then break; fi; sleep 0.2
 done
 
 APPDATA="$WORK/appdata" "$COI" --db "$WORK/coi.db" \
   --game-url "http://127.0.0.1:$STUB_PORT" serve --port "$PORT" \
   >"$WORK/serve.log" 2>&1 &
 SRV=$!
-for i in $(seq 1 50); do
-  curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break || sleep 0.2
+for _ in $(seq 1 50); do
+  if curl -s -o /dev/null "http://127.0.0.1:$PORT/"; then break; fi; sleep 0.2
 done
 
 get() { curl -s "http://127.0.0.1:$PORT$1"; }
@@ -83,7 +83,7 @@ grep -q 'Designation job written' <<<"$DONE" || fail 'confirm did not write the 
 grep -q 'verdict pending' <<<"$DONE" || fail 'outcome page lacks the honest verdict-pending panel (stub never applies jobs)'
 
 JOBS_DIR="$WORK/appdata/Captain of Industry/QoS/jobs"
-COUNT="$(ls "$JOBS_DIR"/*.json 2>/dev/null | wc -l)"
+JOB_FILES=("$JOBS_DIR"/*.json); COUNT="${#JOB_FILES[@]}"
 [ "$COUNT" = "1" ] || fail "expected exactly 1 job file, found $COUNT"
 
 python3 - "$JOBS_DIR" "$SHA_SHOWN" <<'PY'
@@ -136,7 +136,7 @@ PY
 REPLAY="$(curl -s -X POST "http://127.0.0.1:$PORT/designate/confirm" \
   --data "csrf=$CSRF&token=$TOKEN")"
 grep -q 'Confirmation expired' <<<"$REPLAY" || fail 'token replay was not refused'
-COUNT="$(ls "$JOBS_DIR"/*.json | wc -l)"
+JOB_FILES=("$JOBS_DIR"/*.json); COUNT="${#JOB_FILES[@]}"
 [ "$COUNT" = "1" ] || fail 'replay wrote another job file'
 
 # The Designate page now carries the latest-job verdict panel.
@@ -158,7 +158,7 @@ RTOKEN="$(grep -o 'name="token" value="[^"]*"' <<<"$RCONFIRM" | awk 'NR==1' | se
 RDONE="$(curl -s -X POST "http://127.0.0.1:$PORT/designate/confirm" \
   --data "csrf=$CSRF&token=$RTOKEN")"
 grep -q 'Designation job written' <<<"$RDONE" || fail 'remove confirm did not write the job'
-COUNT="$(ls "$JOBS_DIR"/*.json | wc -l)"
+JOB_FILES=("$JOBS_DIR"/*.json); COUNT="${#JOB_FILES[@]}"
 [ "$COUNT" = "2" ] || fail "expected 2 job files after remove confirm, found $COUNT"
 
 python3 - "$JOBS_DIR" <<'PY'
@@ -211,7 +211,7 @@ CODE="$(curl -s -o "$WORK/down2.html" -w '%{http_code}' \
   "http://127.0.0.1:$PORT/designate")"
 [ "$CODE" = "200" ] || fail "/designate with game down returned $CODE, expected 200-with-notice"
 grep -q 'Game unreachable' "$WORK/down2.html" || fail '/designate degraded notice missing'
-COUNT="$(ls "$JOBS_DIR"/*.json | wc -l)"
+JOB_FILES=("$JOBS_DIR"/*.json); COUNT="${#JOB_FILES[@]}"
 [ "$COUNT" = "2" ] || fail 'game-down prepare wrote a job file'
 
 echo "DESIGNATE PAGE CHECK PASS"

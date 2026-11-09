@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """gen_verdicts.py — bake plan dry-run verdicts for the website /plans page.
 
-Round 4 (2026-11-03): serve.rs embeds plans/verdicts.json (produced
+Round 4 (2026-11-03): historically embedded plans/verdicts.json (produced
 here) alongside the canonical plan JSONs, so the single-file exe can
 render each plan's latest dry-run verdicts with NO runtime file
 dependencies. Verdicts are computed with the reference evaluator's own
@@ -11,7 +11,7 @@ same held-reason rules as its render_order), against the captures in
 live/. Re-run this whenever the plans or the captures change, then
 rebuild the exe.
 
-Output shape (plans/verdicts.json):
+Output shape (plans/dev/verdicts.json):
   { "state": {date, tick, gameId, paused, speed},
     "plans": [ { id, title, version, game_version, plan_status,
                  active_phase (id or null),
@@ -26,6 +26,7 @@ page renders them as labelled inputs; nothing auto-resolves them).
 
 Read-only over local files, like everything in the plan toolchain.
 """
+
 import json
 import pathlib
 import sys
@@ -51,11 +52,9 @@ def held_reasons(order, st, gate_status):
         if pre_res.value != pc.TRUE:
             reasons.append(f"preconditions {pre_res.value}: {pre_res.evidence}")
     if pc._contains_placeholder(order.get("args")):
-        reasons.append("§4.5 placeholder id in args — manual-only "
-                       "until a human sources the id")
+        reasons.append("§4.5 placeholder id in args — manual-only until a human sources the id")
     if order.get("requires_sandbox_validation"):
-        reasons.append("requires_sandbox_validation — manual-only on a "
-                       "real save (§6.1/G3)")
+        reasons.append("requires_sandbox_validation — manual-only on a real save (§6.1/G3)")
     if order.get("enabled") == "on-fallback":
         reasons.append("enabled: on-fallback — not due in normal flow")
     return reasons
@@ -91,8 +90,10 @@ def plan_verdicts(doc, st):
     else:
         active = phases[current]
         active_id = active.get("id")
-        plan_status = (f"loop position: phase {current + 1} of {len(phases)} "
-                       f"— {active_id} [{statuses[current]}]")
+        plan_status = (
+            f"loop position: phase {current + 1} of {len(phases)} "
+            f"— {active_id} [{statuses[current]}]"
+        )
         orders = []
         for order in active.get("orders") or []:
             do = order.get("do", "<no-do>")
@@ -131,8 +132,7 @@ def plan_verdicts(doc, st):
         "plan_status": plan_status,
         "active_phase": active_id,
         "phases": [
-            {"id": ph.get("id"), "name": ph.get("name"),
-             "status": statuses[i]}
+            {"id": ph.get("id"), "name": ph.get("name"), "status": statuses[i]}
             for i, ph in enumerate(phases)
         ],
         "orders": orders,
@@ -144,11 +144,13 @@ def main():
     gi = st.game_info
     out = {
         "state": {
-            "date": gi.get("date"), "tick": gi.get("tick"),
-            "gameId": gi.get("gameId"), "paused": gi.get("isPaused"),
+            "date": gi.get("date"),
+            "tick": gi.get("tick"),
+            "gameId": gi.get("gameId"),
+            "paused": gi.get("isPaused"),
             "speed": gi.get("speed"),
             "source": "live/ captures (2026-11-02) — verdicts are as of "
-                      "that snapshot, not live state",
+            "that snapshot, not live state",
         },
         "plans": [],
     }
@@ -156,7 +158,7 @@ def main():
         doc = pc.yaml.safe_load(path.read_text())
         out["plans"].append(plan_verdicts(doc, st))
         print(f"{path.name}: {out['plans'][-1]['plan_status']}")
-    dest = ROOT / "plans" / "verdicts.json"
+    dest = ROOT / "plans" / "dev" / "verdicts.json"
     dest.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n")
     print(f"wrote {dest} ({dest.stat().st_size} bytes)")
     return 0

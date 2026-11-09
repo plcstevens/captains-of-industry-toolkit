@@ -176,11 +176,19 @@ pub fn cmd(cfg: &Config, args: &[String]) -> i32 {
         "region" | "estimate" => {
             let nums: Option<Vec<f64>> = args
                 .get(1..)
-                .map(|rest| rest.iter().map(|s| s.parse::<f64>()).collect::<Result<_, _>>().ok())
+                .map(|rest| {
+                    rest.iter()
+                        .map(|s| s.parse::<f64>())
+                        .collect::<Result<_, _>>()
+                        .ok()
+                })
                 .unwrap_or(None);
             let want = if sub == "region" { 4 } else { 5 };
             let Some(nums) = nums.filter(|n| n.len() == want) else {
-                eprintln!("usage: coi terrain {sub} X0 Y0 X1 Y1{}", if sub == "estimate" { " TARGET" } else { "" });
+                eprintln!(
+                    "usage: coi terrain {sub} X0 Y0 X1 Y1{}",
+                    if sub == "estimate" { " TARGET" } else { "" }
+                );
                 return 2;
             };
             let path = format!(
@@ -195,7 +203,9 @@ pub fn cmd(cfg: &Config, args: &[String]) -> i32 {
                 }
             };
             let Some(region) = region_from_json(&v) else {
-                eprintln!("terrain {sub}: bridge returned no usable region (CoiBridge 0.6.5+ required)");
+                eprintln!(
+                    "terrain {sub}: bridge returned no usable region (CoiBridge 0.6.5+ required)"
+                );
                 return 1;
             };
             if sub == "region" {
@@ -209,7 +219,9 @@ pub fn cmd(cfg: &Config, args: &[String]) -> i32 {
             0
         }
         _ => {
-            eprintln!("usage: coi terrain deposits | region X0 Y0 X1 Y1 | estimate X0 Y0 X1 Y1 TARGET");
+            eprintln!(
+                "usage: coi terrain deposits | region X0 Y0 X1 Y1 | estimate X0 Y0 X1 Y1 TARGET"
+            );
             2
         }
     }

@@ -8,7 +8,7 @@
 # the Log page never fetches live state.
 set -euo pipefail
 
-COI="${1:-$HOME/workspace/coi-companion/coi/target/debug/coi}"
+COI="${1:-$HOME/workspace/coi-companion/coi/target/debug/superintendent}"
 PORT="${PORT:-8486}"
 WORK="$(mktemp -d)"
 trap 'kill ${SRV:-} 2>/dev/null || true; rm -rf "$WORK"' EXIT
@@ -31,8 +31,8 @@ JSONL
 # 3. Serve (no login — the site is loopback-only, DESIGN V2).
 COI_QOS_EVENTS_PATH="$WORK/events.jsonl" "$COI" --db "$WORK/coi.db" serve --port "$PORT" >"$WORK/serve.log" 2>&1 &
 SRV=$!
-for i in $(seq 1 50); do
-  curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break || sleep 0.2
+for _ in $(seq 1 50); do
+  if curl -s -o /dev/null "http://127.0.0.1:$PORT/"; then break; fi; sleep 0.2
 done
 
 get() { curl -s "http://127.0.0.1:$PORT$1"; }

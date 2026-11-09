@@ -69,19 +69,22 @@ def load_json(path):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     root = pathlib.Path(__file__).resolve().parent.parent
-    ap.add_argument("--snapshot", default=str(
-        root / "snapshots" / "5583213724730880438-388-2-27-2787522.json"))
+    ap.add_argument(
+        "--snapshot", default=str(root / "snapshots" / "5583213724730880438-388-2-27-2787522.json")
+    )
     ap.add_argument("--live-dir", default=str(root / "live"))
     ap.add_argument("--out-dir", default=str(root / "history-states"))
-    ap.add_argument("--cross-check", default=None,
-                    help="hist-keys.json probe file (default: <live-dir>/hist-keys.json if present)")
+    ap.add_argument(
+        "--cross-check",
+        default=None,
+        help="hist-keys.json probe file (default: <live-dir>/hist-keys.json if present)",
+    )
     args = ap.parse_args()
 
     snap_path = pathlib.Path(args.snapshot)
     live = pathlib.Path(args.live_dir)
     out = pathlib.Path(args.out_dir)
-    cross_path = pathlib.Path(args.cross_check) if args.cross_check \
-        else live / "hist-keys.json"
+    cross_path = pathlib.Path(args.cross_check) if args.cross_check else live / "hist-keys.json"
 
     snap = load_json(snap_path)
     hist = snap["history"]
@@ -123,8 +126,10 @@ def main():
             ident["thisMonth"] += 1
         if s["produced"][-2] == ls["produced"][1] and s["consumed"][-2] == ls["consumed"][1]:
             ident["lastMonth"] += 1
-        if (s["produced"][-2] + s["produced"][-1] == ls["produced"][2]
-                and s["consumed"][-2] + s["consumed"][-1] == ls["consumed"][2]):
+        if (
+            s["produced"][-2] + s["produced"][-1] == ls["produced"][2]
+            and s["consumed"][-2] + s["consumed"][-1] == ls["consumed"][2]
+        ):
             ident["thisYear"] += 1
         if s["quantity"][-1] == ls["quantity"]:
             ident["quantity"] += 1
@@ -148,12 +153,16 @@ def main():
                 continue
             for key in ("produced", "consumed", "quantity"):
                 tail_series += 1
-                if sv[key][len(sv[key]) - len(hv[key]):] == hv[key]:
+                if sv[key][len(sv[key]) - len(hv[key]) :] == hv[key]:
                     tail_ok += 1
-        cross = {"file": str(cross_path), "start": hk["start"],
-                 "points": len(next(iter(hk["products"].values()))["quantity"]),
-                 "tail_ok": tail_ok, "tail_series": tail_series,
-                 "start_month": (hy, hm)}
+        cross = {
+            "file": str(cross_path),
+            "start": hk["start"],
+            "points": len(next(iter(hk["products"].values()))["quantity"]),
+            "tail_ok": tail_ok,
+            "tail_series": tail_series,
+            "start_month": (hy, hm),
+        }
         if tail_ok != tail_series:
             errors.append(f"cross-check tail equality holds for {tail_ok}/{tail_series} series")
         expect_start = add_months(sy, sm, n - cross["points"])
@@ -163,8 +172,7 @@ def main():
     if errors:
         for e in errors:
             print(f"PREMISE FAILURE: {e}", file=sys.stderr)
-        print("refusing to build states on a broken alignment premise",
-              file=sys.stderr)
+        print("refusing to build states on a broken alignment premise", file=sys.stderr)
         return 1
 
     # Conservation diagnostic (reported, not gated): how well quantity
@@ -193,9 +201,13 @@ def main():
 
     catalogue_src = live / "products.json"
     pinned_src = live / "pinned.json"
-    bridge_names = ["bridge-status.json", "bridge-research.json",
-                    "bridge-census.json", "bridge-storages.json",
-                    "bridge-trains.json"]
+    bridge_names = [
+        "bridge-status.json",
+        "bridge-research.json",
+        "bridge-census.json",
+        "bridge-storages.json",
+        "bridge-trains.json",
+    ]
 
     state_rows = []
     for i, (my, mm) in enumerate(months):
@@ -210,9 +222,14 @@ def main():
         else:
             date = f"{my}-{mm}-30"
             tick = real_tick - (real_abs - abs_day(my, mm, 30)) * TICKS_PER_DAY
-            gi = {"date": date, "tick": tick,
-                  "isPaused": live_game["isPaused"], "speed": live_game["speed"],
-                  "gameId": live_game["gameId"], "sessionId": live_game["sessionId"]}
+            gi = {
+                "date": date,
+                "tick": tick,
+                "isPaused": live_game["isPaused"],
+                "speed": live_game["speed"],
+                "gameId": live_game["gameId"],
+                "sessionId": live_game["sessionId"],
+            }
         (d / "game-info.json").write_text(json.dumps(gi, indent=1) + "\n")
 
         products = {}
@@ -224,11 +241,14 @@ def main():
             else:
                 prod = [s["produced"][i], s["produced"][i - 1]]
                 cons = [s["consumed"][i], s["consumed"][i - 1]]
-            products[pid] = {"quantity": s["quantity"][i],
-                             "stored": None, "storageCapacity": None,
-                             "produced": prod, "consumed": cons}
-        stats = {"date": date, "tick": tick, "products": products,
-                 "unknownIds": []}
+            products[pid] = {
+                "quantity": s["quantity"][i],
+                "stored": None,
+                "storageCapacity": None,
+                "produced": prod,
+                "consumed": cons,
+            }
+        stats = {"date": date, "tick": tick, "products": products, "unknownIds": []}
         (d / "stats.json").write_text(json.dumps(stats, indent=1) + "\n")
 
         shutil.copy(catalogue_src, d / "products.json")
@@ -242,7 +262,8 @@ def main():
     rows_md = "\n".join(
         f"| {i + 1} | `{dn}/` | {my}-{mm} | {dt} | {tk} |"
         f" {'genuine live capture (verbatim)' if last else 'derived'} |"
-        for i, (dn, dt, tk, my, mm, last) in enumerate(state_rows))
+        for i, (dn, dt, tk, my, mm, last) in enumerate(state_rows)
+    )
     cross_md = ""
     if cross:
         cross_md = (
@@ -253,7 +274,8 @@ def main():
             f"series). The probe's start month is exactly the snapshot's start "
             f"month + {n - cross['points']}, i.e. the snapshot holds one more, "
             f"earlier month — the offset-by-one is a window difference, not a "
-            f"data disagreement.\n")
+            f"data disagreement.\n"
+        )
     readme = f"""# history-states — product-history adapted into a §4.3.1 state sequence
 
 GENERATED by `tools/history_to_states.py` — do not edit by hand; re-run
@@ -264,10 +286,10 @@ the stated month-ends except the final state (see below).
 
 - History payload: `{snap_path}` — its `history` block is the game's
   `/api/v1/products/history` response (resolution `month`, count 8) for
-  the {total} pinned products, fetched at in-game {game['date']} (tick
-  {real_tick}), `history.start` = {hist['start']}.
+  the {total} pinned products, fetched at in-game {game["date"]} (tick
+  {real_tick}), `history.start` = {hist["start"]}.
 - Catalogue / pinned / final-month game-info + bridge files:
-  `{live}/` captures of the same moment ({live_game['date']}).
+  `{live}/` captures of the same moment ({live_game["date"]}).
 - Cross-check probe: `live/hist-keys.json` (see alignment evidence).
 
 ## Month alignment — decision and evidence
@@ -287,13 +309,13 @@ points are finished months. Evidence, strongest first:
    products, on both produced and consumed**: history[-1] ==
    stats[thisMonth], history[-2] == stats[lastMonth], and
    history[-2] + history[-1] == stats[thisYear]. The stats windows are
-   defined relative to the capture date {game['date']}, so history[-2]
+   defined relative to the capture date {game["date"]}, so history[-2]
    and history[-1] are pinned to {months[-2][0]}-{months[-2][1]:02d} and
    {gy}-{gm:02d} respectively — no other consecutive-month assignment
    satisfies all three identities.
 2. **Start fields.** Counting back at monthly resolution from point 7
    lands point 0 on {months[0][0]}-{months[0][1]:02d} — exactly the month
-   of the payload's own `history.start` ({hist['start']}).
+   of the payload's own `history.start` ({hist["start"]}).
 {cross_md}3. **Fetch normalisation.** `fetch_live` (coi/src/main.rs) documents
    the raw endpoint returning count+1 points (leading point = state at
    the window start) and drains to the trailing 8 before storing. The
@@ -301,7 +323,7 @@ points are finished months. Evidence, strongest first:
    with the pre-window state point — consistent with identities (1)
    pinning the tail, and with (2).
 4. **Quantity tail.** history quantity[-1] == live stats quantity for
-   {ident['quantity']}/{total} products: the last quantity point is the
+   {ident["quantity"]}/{total} products: the last quantity point is the
    capture-moment stock.
 
 Quantity boundary caveat (bounded, disclosed): for finished months the
@@ -323,11 +345,11 @@ month's net flow and is NOT corrected by inventing numbers.
   month (day 30; CoI months have 30 days). `tick` = derived by
   anchoring the documented rate of {TICKS_PER_DAY} ticks/day
   (GAME-PLAN-FORMAT.md §4.3.1) to the real capture: tick(state) =
-  {real_tick} − (A({game['date']}) − A(state date)) × {TICKS_PER_DAY},
+  {real_tick} − (A({game["date"]}) − A(state date)) × {TICKS_PER_DAY},
   where A is the engines' absolute-day index ((Y−1)×12 + (M−1))×30 +
   (D−1). Consecutive states are exactly 30 days / {30 * TICKS_PER_DAY}
   ticks apart, except the last interval ({months[-2][0]}-{months[-2][1]:02d}-30 →
-  {game['date']}, {real_abs - abs_day(months[-2][0], months[-2][1], 30)} days),
+  {game["date"]}, {real_abs - abs_day(months[-2][0], months[-2][1], 30)} days),
   which is the real capture date. NOTE: the API tick's epoch is not
   the calendar epoch — the real tick {real_tick} cannot be reproduced
   from the date alone under any day-rate anchored at year 1 — so
@@ -342,7 +364,7 @@ month's net flow and is NOT corrected by inventing numbers.
   series point. `produced`/`consumed` = SHORT arrays holding exactly
   the windows the payload proves for that state: [0] = that month's
   flow, [1] = the previous month's flow. Month 1 has NO [1] (the
-  window starts at {hist['start']}; the month before it is not in any
+  window starts at {hist["start"]}; the month before it is not in any
   capture) — its array has length 1. Slots [2..4]
   (thisYear/lastYear/lifetime) are NOT derivable from an 8-month
   window and are left absent: both engines read a missing flow index
@@ -358,7 +380,7 @@ month's net flow and is NOT corrected by inventing numbers.
   read only `products`).
 - `products.json` + `pinned.json` — verbatim copies of the live
   captures in EVERY state. CAVEAT: the catalogue and pinned set are
-  the {game['date']} ones projected back over the whole window;
+  the {game["date"]} ones projected back over the whole window;
   `product.unlocked` / `product.pinned` predicates therefore read
   today's catalogue at every month. (The pinned set is exactly the
   history product set, so pinned membership is at least
@@ -393,7 +415,7 @@ month's net flow and is NOT corrected by inventing numbers.
     (out / "README.md").write_text(readme)
 
     print(f"built {n} states under {out}")
-    for dn, dt, tk, my, mm, last in state_rows:
+    for dn, dt, tk, _my, _mm, last in state_rows:
         print(f"  {dn}  date {dt}  tick {tk}" + ("  [genuine final capture]" if last else ""))
     print(f"alignment identities vs live stats: {ident} over {total} products")
     if cross:

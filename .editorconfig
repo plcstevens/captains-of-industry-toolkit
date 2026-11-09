@@ -1,0 +1,27 @@
+# Editor defaults for the toolkit repo (Design V3 lint round).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Formatters own these file types; keep editors from fighting them.
+[*.rs]
+indent_style = space
+indent_size = 4
+
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+[*.{yml,yaml,json,toml}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+# Wrapped prose is deliberate in the docs; don't reflow or strip
+# the two-space line breaks some files use.
+trim_trailing_whitespace = false

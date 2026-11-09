@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <AssemblyName>probe</AssemblyName>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Mafi"><HintPath>../../../refs/Mafi.dll</HintPath></Reference>
+    <Reference Include="Mafi.Base"><HintPath>../../../refs/Mafi.Base.dll</HintPath></Reference>
+    <Reference Include="Mafi.Core"><HintPath>../../../refs/Mafi.Core.dll</HintPath></Reference>
+    <Reference Include="Mafi.Unity"><HintPath>../../../refs/Mafi.Unity.dll</HintPath></Reference>
+    <Reference Include="Mafi.UnityCore"><HintPath>../../../refs/Mafi.UnityCore.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

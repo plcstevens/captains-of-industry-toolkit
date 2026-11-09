@@ -1,0 +1,98 @@
+# Earthworks — how Designate reads the land and judges deposits.
+
+- id: earthworks.cells-and-steps
+  title: "Designation cells and the one-step rule"
+  player: >
+    Mining and dumping designations live on a fixed grid of 4x4-tile cells
+    that never moves. Neighbouring cells can differ in height by at most one
+    tile — dig or dump one step at a time and the land stays stable; ask
+    for a cliff and the game will refuse cells or collapse them.
+  rule: >
+    Designations snap to a global 4x4-tile cell grid. Adjacent cell heights
+    differ by 0 or +/-1 tile. Heightmaps sampled per tile from the bridge
+    are exact (CoiBridge 0.6.5+); verdicts after applying a job are exact
+    per-cell read-backs (0.6.6+).
+  numbers:
+    - { name: cell_size, value: 4, unit: tiles }
+    - { name: max_neighbour_step, value: 1, unit: tiles }
+  source: code
+  status: verified
+
+- id: earthworks.spike-filter
+  title: "The spike filter"
+  player: >
+    Real terrain has survey noise. Before judging a deposit, the planner
+    ignores any single tile whose rock top sits far below all eight of its
+    neighbours — a lone pit is a data spike, not a digging plan. 'Far' means
+    more than 4 tiles below the neighbours' middle value.
+  rule: >
+    A centre cell is a spike when its bedrock-top height is more than 4.0
+    tiles below the median of its 8 neighbours' bedrock tops, with all 8
+    neighbours present. Pinned definition (used everywhere in this canon):
+    for an even count, the median is the mean of the two middle values.
+  numbers:
+    - { name: spike_residual, value: 4.0, unit: tiles,
+        code: { file: coi/src/designate.rs, contains: "SPIKE_ALLOWED_BEDROCK_RESIDUAL: f64 = 4.0" } }
+    - { name: spike_neighbours, value: 8, unit: neighbours,
+        code: { file: coi/src/designate.rs, contains: "SPIKE_MIN_BEDROCK_NEIGHBOURS: usize = 8" } }
+  source: code
+  status: wired
+
+- id: earthworks.purity-gates
+  title: "How pure is pure enough — the L0–L4 gates"
+  player: >
+    When the planner extends a mine, it grades candidate ground in five
+    purity levels. L1 is 'mostly the right rock near the top', L4 is a
+    strict standard: thick ore, dense at the bottom, in a large connected
+    seam. Looser gates dig sooner with more waste rock mixed in; stricter
+    gates wait for better ground.
+  rule: >
+    Purity gates (min ore height in tiles / min bottom-layer density /
+    min component size in cells): L0 0 / 0 / 0 (permissive), L1 0.25 /
+    0.05 / 2, L2 0.75 / 0.20 / 6, L3 2.0 / 0.50 / 20, L4 3.0 / 0.75 / 40.
+    The component floor height is a percentile depth into the seam;
+    strength 5 reads the median depth.
+  numbers:
+    - { name: l1_min_ore_height, value: 0.25, unit: tiles,
+        code: { file: coi/src/designate.rs, contains: "min_ore_height: 0.25" } }
+    - { name: l2_min_ore_height, value: 0.75, unit: tiles,
+        code: { file: coi/src/designate.rs, contains: "min_ore_height: 0.75" } }
+    - { name: l3_min_ore_height, value: 2.0, unit: tiles,
+        code: { file: coi/src/designate.rs, contains: "min_ore_height: 2.0" } }
+    - { name: l4_min_ore_height, value: 3.0, unit: tiles,
+        code: { file: coi/src/designate.rs, contains: "min_ore_height: 3.0" } }
+    - { name: l4_component, value: 40, unit: cells,
+        code: { file: coi/src/designate.rs, contains: "min_component_size: 40" } }
+  source: code
+  status: wired
+
+- id: earthworks.smoothing
+  title: "Smoothing and deepen-only"
+  player: >
+    The pit planner smooths a dig plan so no step asks for more than the
+    one-tile neighbour rule allows, and it only ever digs deeper — it never
+    raises a floor you've already dug. What you excavated stays excavated.
+  rule: >
+    Plans clamp inter-cell height differences to MaxHeightDiff = 1 tile,
+    applied deepen-only: planned floors never exceed the current terrain.
+  numbers:
+    - { name: max_height_diff, value: 1, unit: tiles }
+  source: code
+  status: verified
+
+- id: earthworks.collapse-bands
+  title: "How dumped material settles"
+  player: >
+    Dumped material doesn't stack vertically — each material settles at its
+    own slope. Loose fill spreads wide (roughly 2 tiles out for every 5 up);
+    rock holds a steeper face. The earthworks guide carries the full table;
+    plan dumps with the spread in mind or the pile walks into your roads.
+  rule: >
+    Retaining-wall-free collapse rates (horizontal per vertical), from the
+    game's assemblies: landfill 0.4–1.5 band by material — Dirt 0.4,
+    Sand/Gravel/Compost 0.5, Rock/Slag/ore 0.6–0.8, molten and liquid fills
+    higher. Ocean dumping tops out at height 0. The guide's table is the
+    player rendering; this entry pins the shape of the rule.
+  numbers: []
+  source: docs
+  status: verified

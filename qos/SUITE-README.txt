@@ -73,7 +73,7 @@ file:
 
   %APPDATA%\Captain of Industry\QoS\events-v1.jsonl
 
-The CoI Companion website imports that feed and shows it on its
+The Superintendent website imports that feed and shows it on its
 Log page, next to the commands applied through the website
 itself and the snapshots taken there: one chronological replay
 of everything the toolkit did. Recording is on by default and
@@ -89,7 +89,7 @@ depending on QoSCore, never on each other.
 
 NOT IN THIS PACK: QoSBuilder ships as its own zip
 (QoSBuilder-mod-<version>.zip), because it is the suite's
-executor for the CoI Companion website rather than a
+executor for the Superintendent website rather than a
 standalone feature: it runs confirmed job files from the
 website — blueprint placements, and since QoSBuilder 0.2.0
 also terrain designation plans (schema 2). Install it

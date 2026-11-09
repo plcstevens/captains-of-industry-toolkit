@@ -52,10 +52,12 @@ Intent: Pause, look, verify the plan's hypotheses against the actual save, pin t
 **Entry gate: TRUE** — empty gate — enters immediately (§7)
 
 **Exit gate: TRUE**
+
 - **TRUE** — `settlement.population() > 0` — population = 132 (bridge-status.json)
 - **TRUE** — `settlement.free_housing() >= 0` — freeHousingCapacity = 92 (bridge-status.json)
 
 Checks (evaluated against current state):
+
 - `p0-diesel-assumption` (critical, action=pause-and-report): **FALSE** — not firing — Product_Diesel.quantity = 220
 
 Fallbacks: {"on_gate_stall": "pause-and-report", "stall_after": {"months": 1}}
@@ -65,14 +67,17 @@ Fallbacks: {"on_gate_stall": "pause-and-report", "stall_after": {"months": 1}}
 Intent: Consume the comms-station scrap pile in a DISPOSABLE starter cluster: scrap smelter (1 blast furnace + 2 casters), wood-burning coal maker, diesel generator, two research labs, tree-clearing designations, controlled ocean dumping. Start the research queue. Nothing built here is permanent (layout policy).
 
 **Entry gate: TRUE**
+
 - **TRUE** — `product.quantity(product=Product_IronScrap) > 0` — Product_IronScrap.quantity = 730
 
 **Exit gate: TRUE**
+
 - **TRUE** — `product.quantity(product=Product_Iron) >= 100` — Product_Iron.quantity = 534
 - **TRUE** — `research.has_active_lab() == True` — hasActiveLab = True
 - **TRUE** — `any(research.current() != 'none'; research.queue_length() > 0)` — [TRUE] research.current = ResearchCp2; [FALSE] len(queue) = 0 []
 
 Checks (evaluated against current state):
+
 - `p1-scrap-runway` (warning, action=pause-and-report): **FALSE** — not firing — Product_IronScrap.quantity = 730
 - `p1-diesel-floor` (critical, action=crisis-protocol): **FALSE** — not firing — Product_Diesel.quantity = 220
 
@@ -83,16 +88,19 @@ Fallbacks: {"on_gate_stall": "pause-and-report", "stall_after": {"months": 2}, "
 Intent: Construction researched → ~4 manual assemblies near the smelter (construction parts priority 1, then mechanical parts, then electronics), maintenance depot online, one farm near the settlement. This is the power+maintenance stability phase: maintenance must never stall from here on.
 
 **Entry gate: UNEVALUABLE**
+
 - **UNEVALUABLE** — `research.completed(node=<placeholder Research<Construction>>) == True (implicit)` — node is a §4.5 placeholder (Research<Construction>) — manual-only, never auto-evaluated
 - **TRUE** — `product.quantity(product=Product_Iron) >= 100` — Product_Iron.quantity = 534
 
 **Exit gate: UNEVALUABLE**
+
 - **TRUE** — `research.completed(node=ResearchPowerAndMaintenance) == True (implicit)` — ResearchPowerAndMaintenance in researched list = True
 - **TRUE** — `census.proto_count(proto=MaintenanceDepotT1) >= 1` — byProto[MaintenanceDepotT1] = 1 (absent proto counts 0)
 - **UNEVALUABLE** — `all(any(product.produced(product=Product_ConstructionParts, window=lastMonth) > 0; product.consumed(product=Product_ConstructionParts, window=lastMonth) > 0); product.net_flow(product=Product_ConstructionParts, window=lastMonth) >= 0)  for: {'months': 1}` — [TRUE] [TRUE] Product_ConstructionParts produced[lastMonth] = 62; [TRUE] Product_ConstructionParts consumed[lastMonth] = 58; [TRUE] Product_ConstructionParts window=lastMonth: produced 62 - consumed 58 = net 4 [for: {'months': 1} — instantaneous value is TRUE but duration is UNEVALUABLE from a single snapshot: no executor evaluation history in the captures]
 - **TRUE** — `product.quantity(product=Product_MechanicalParts) > 0` — Product_MechanicalParts.quantity = 23
 
 Checks (evaluated against current state):
+
 - `p2-construction-parts-starvation` (warning, action=pause-and-report): **FALSE** — not firing — [FALSE] Product_ConstructionParts.quantity = 51; [FALSE] Product_ConstructionParts window=thisMonth: produced 33 - consumed 31 = net 2
 - `p2-maintenance-proxy` (critical, action=crisis-protocol): **FALSE** — not firing — all machine protos: NotEnoughInput 1/15 = 0.067
 - `p2-diesel-floor` (critical, action=crisis-protocol): **FALSE** — not firing — Product_Diesel.quantity = 220
@@ -104,16 +112,19 @@ Fallbacks: {"on_gate_stall": "pause-and-report", "stall_after": {"months": 2}, "
 Intent: Vehicles & Mining ends reliance on the scrap pile: coal mine first (retiring the coal maker smoothly), then iron mine + ore smelter anchoring the PERMANENT smelting district, truck fleet grown aggressively for the long iron haul.
 
 **Entry gate: TRUE**
+
 - **TRUE** — `research.completed(node=ResearchPowerAndMaintenance) == True (implicit)` — ResearchPowerAndMaintenance in researched list = True
 - **TRUE** — `all(any(product.produced(product=Product_ConstructionParts, window=lastMonth) > 0; product.consumed(product=Product_ConstructionParts, window=lastMonth) > 0); product.net_flow(product=Product_ConstructionParts, window=lastMonth) >= 0)` — [TRUE] [TRUE] Product_ConstructionParts produced[lastMonth] = 62; [TRUE] Product_ConstructionParts consumed[lastMonth] = 58; [TRUE] Product_ConstructionParts window=lastMonth: produced 62 - consumed 58 = net 4
 
 **Exit gate: TRUE**
+
 - **TRUE** — `research.completed(node=ResearchVehicleAndMining) == True (implicit)` — ResearchVehicleAndMining in researched list = True
 - **TRUE** — `product.quantity(product=Product_Coal) >= 200` — Product_Coal.quantity = 604
 - **TRUE** — `all(any(product.produced(product=Product_IronOre, window=lastMonth) > 0; product.consumed(product=Product_IronOre, window=lastMonth) > 0); product.net_flow(product=Product_IronOre, window=lastMonth) > 0)` — [TRUE] [TRUE] Product_IronOre produced[lastMonth] = 155; [TRUE] Product_IronOre consumed[lastMonth] = 126; [TRUE] Product_IronOre window=lastMonth: produced 155 - consumed 126 = net 29
 - **TRUE** — `all(any(product.produced(product=Product_Iron, window=lastMonth) > 0; product.consumed(product=Product_Iron, window=lastMonth) > 0); product.net_flow(product=Product_Iron, window=lastMonth) >= 0)` — [TRUE] [TRUE] Product_Iron produced[lastMonth] = 130; [TRUE] Product_Iron consumed[lastMonth] = 72; [TRUE] Product_Iron window=lastMonth: produced 130 - consumed 72 = net 58
 
 Checks (evaluated against current state):
+
 - `p3-beacon-housing-guard` (warning, action=pause-and-report): **FALSE** — not firing — freeHousingCapacity = 92 (bridge-status.json)
 - `p3-truck-congestion-signal` (warning, action=pause-and-report): **FALSE** — not firing — Product_IronOre window=thisMonth: produced 80 - consumed 65 = net 15
 - `p3-diesel-floor` (critical, action=crisis-protocol): **FALSE** — not firing — Product_Diesel.quantity = 220
@@ -125,16 +136,19 @@ Fallbacks: {"on_gate_stall": "pause-and-report", "stall_after": {"months": 2}, "
 Intent: The transitional industry phase: limestone mine + kiln for concrete, oil pumps + basic distiller + rubber maker at the oil patch. Rubber and copper cannot be postponed — this phase ends with a REAL diesel chain replacing the starting stock, and rubber flowing.
 
 **Entry gate: TRUE**
+
 - **TRUE** — `research.completed(node=ResearchVehicleAndMining) == True (implicit)` — ResearchVehicleAndMining in researched list = True
 - **TRUE** — `product.quantity(product=Product_Coal) >= 200` — Product_Coal.quantity = 604
 
 **Exit gate: FALSE**
+
 - **TRUE** — `product.quantity(product=Product_ConcreteSlab) >= 100` — Product_ConcreteSlab.quantity = 226
 - **TRUE** — `all(any(product.produced(product=Product_Diesel, window=lastMonth) > 0; product.consumed(product=Product_Diesel, window=lastMonth) > 0); product.net_flow(product=Product_Diesel, window=lastMonth) >= 0)` — [TRUE] [TRUE] Product_Diesel produced[lastMonth] = 110; [TRUE] Product_Diesel consumed[lastMonth] = 28; [TRUE] Product_Diesel window=lastMonth: produced 110 - consumed 28 = net 82
 - **TRUE** — `product.quantity(product=Product_Rubber) > 0` — Product_Rubber.quantity = 17
 - **FALSE** — `product.quantity(product=Product_Diesel) >= 300` — Product_Diesel.quantity = 220
 
 Checks (evaluated against current state):
+
 - `p4-diesel-net-flow` (warning, action=pause-and-report): **FALSE** — not firing — [TRUE] Product_Diesel produced[lifetime] = 235; [FALSE] Product_Diesel window=thisMonth: produced 70 - consumed 15 = net 55
 - `p4-rubber-deadline` (warning, action=pause-and-report): **FALSE** — not firing — [TRUE] ResearchBasicDiesel in researched list = True; [FALSE] Product_Rubber.quantity = 17
 
@@ -145,16 +159,19 @@ Fallbacks: {"on_gate_stall": "pause-and-report", "stall_after": {"months": 2}, "
 Intent: Spend the ship's copper wisely while the permanent copper district (mine + smelter + electrolysis, near power — it is thirsty for water and power) comes online BEFORE the ship stock runs out. Construction II unlocks electric assemblies and the permanent conveyor-ready assembly area. Food security is gated explicitly here: the farm base must carry the settlement with margin.
 
 **Entry gate: TRUE**
+
 - **TRUE** — `all(any(product.produced(product=Product_Diesel, window=lastMonth) > 0; product.consumed(product=Product_Diesel, window=lastMonth) > 0); product.net_flow(product=Product_Diesel, window=lastMonth) >= 0)` — [TRUE] [TRUE] Product_Diesel produced[lastMonth] = 110; [TRUE] Product_Diesel consumed[lastMonth] = 28; [TRUE] Product_Diesel window=lastMonth: produced 110 - consumed 28 = net 82
 - **TRUE** — `product.quantity(product=Product_Rubber) > 0` — Product_Rubber.quantity = 17
 
 **Exit gate: FALSE**
+
 - **TRUE** — `research.completed(node=ResearchCopperRefinement) == True (implicit)` — ResearchCopperRefinement in researched list = True
 - **FALSE** — `all(any(product.produced(product=Product_Copper, window=lastMonth) > 0; product.consumed(product=Product_Copper, window=lastMonth) > 0); product.net_flow(product=Product_Copper, window=lastMonth) >= 0)` — [TRUE] [FALSE] Product_Copper produced[lastMonth] = 0; [TRUE] Product_Copper consumed[lastMonth] = 6; [FALSE] Product_Copper window=lastMonth: produced 0 - consumed 6 = net -6
 - **UNEVALUABLE** — `settlement.months_of_food() >= 3  for: {'months': 1}` — monthsOfFood = 4 (bridge-status.json) [for: {'months': 1} — instantaneous value is TRUE but duration is UNEVALUABLE from a single snapshot: no executor evaluation history in the captures]
 - **TRUE** — `settlement.starving() == False` — arePeopleStarving = False (bridge-status.json)
 
 Checks (evaluated against current state):
+
 - `p5-ship-copper-runway` (critical, action=pause-and-report): **FALSE** — not firing — [FALSE] Product_Copper.quantity = 255; [FALSE] Product_CopperOre window=thisMonth: produced 22 - consumed 18 = net 4
 - `p5-food-floor` (critical, action=pause-and-report): **FALSE** — not firing — monthsOfFood = 4 (bridge-status.json)
 - `p5-power-proxy` (warning, action=pause-and-report): **FALSE** — not firing — all machine protos: NotEnoughInput 1/15 = 0.067
@@ -166,10 +183,12 @@ Fallbacks: {"on_gate_stall": "pause-and-report", "stall_after": {"months": 2}, "
 Intent: Conveyor Belts kill the truck chaos: electric assemblies, belt-fed lines, unit storages with keep-full import rules — one dedicated line per product, no sushi belts. Ship repaired, groundwater and fuel station round out the first-15. Districts from the layout policy become the map's permanent shape.
 
 **Entry gate: TRUE**
+
 - **TRUE** — `research.completed(node=ResearchCopperRefinement) == True (implicit)` — ResearchCopperRefinement in researched list = True
 - **TRUE** — `settlement.months_of_food() >= 3` — monthsOfFood = 4 (bridge-status.json)
 
 **Exit gate: FALSE**
+
 - **FALSE** — `research.completed(node=ResearchConveyorBelts) == True (implicit)` — ResearchConveyorBelts in researched list = False
 - **FALSE** — `research.completed(node=ResearchShipDockRepair) == True (implicit)` — ResearchShipDockRepair in researched list = False
 - **FALSE** — `research.completed(node=ResearchFuelStation) == True (implicit)` — ResearchFuelStation in researched list = False
@@ -177,6 +196,7 @@ Intent: Conveyor Belts kill the truck chaos: electric assemblies, belt-fed lines
 - **TRUE** — `census.transports_fully_connected_ratio() >= 0.95` — fullyConnected 11/11 = 1.0000
 
 Checks (evaluated against current state):
+
 - `p6-transport-connectivity` (warning, action=pause-and-report): **FALSE** — not firing — fullyConnected 11/11 = 1.0000
 - `p6-diesel-floor` (critical, action=crisis-protocol): **FALSE** — not firing — Product_Diesel.quantity = 220
 
@@ -187,17 +207,20 @@ Fallbacks: {"on_gate_stall": "pause-and-report", "stall_after": {"months": 2}, "
 Intent: First rail, honestly scoped: the starter skill hands rail off to the coi-trains sibling skill and notes the in-game train tutorials are new in Update 4 — use them. This phase stands up ONE network and ONE line on the longest truck haul (iron), built by hand, with the command-channel train primitives kept sandbox-only until their semantics are validated (format G3/G10).
 
 **Entry gate: FALSE**
+
 - **FALSE** — `research.completed(node=ResearchFuelStation) == True (implicit)` — ResearchFuelStation in researched list = False
 - **UNEVALUABLE** — `all(any(product.produced(product=Product_ConstructionParts2, window=lastMonth) > 0; product.consumed(product=Product_ConstructionParts2, window=lastMonth) > 0); product.net_flow(product=Product_ConstructionParts2, window=lastMonth) >= 0)` — [UNEVALUABLE] [UNEVALUABLE] Product_ConstructionParts2 not in stats.json products (selector matched zero rows); [UNEVALUABLE] Product_ConstructionParts2 not in stats.json products (selector matched zero rows); [UNEVALUABLE] Product_ConstructionParts2 not in stats.json products (selector matched zero rows)
 - **TRUE** — `settlement.months_of_food() >= 3` — monthsOfFood = 4 (bridge-status.json)
 
 **Exit gate: FALSE**
+
 - **FALSE** — `research.completed(node=ResearchTrains) == True (implicit)` — ResearchTrains in researched list = False
 - **FALSE** — `trains.line_count() >= 1` — len(bridge-trains lines) = 0
 - **TRUE** — `all(any(product.produced(product=Product_IronOre, window=lastMonth) > 0; product.consumed(product=Product_IronOre, window=lastMonth) > 0); product.net_flow(product=Product_IronOre, window=lastMonth) > 0)` — [TRUE] [TRUE] Product_IronOre produced[lastMonth] = 155; [TRUE] Product_IronOre consumed[lastMonth] = 126; [TRUE] Product_IronOre window=lastMonth: produced 155 - consumed 126 = net 29
 - **TRUE** — `settlement.months_of_food() >= 3` — monthsOfFood = 4 (bridge-status.json)
 
 Checks (evaluated against current state):
+
 - `p7-rail-not-starving-the-base` (warning, action=pause-and-report): **FALSE** — not firing — Product_Iron window=thisMonth: produced 68 - consumed 38 = net 30
 
 Fallbacks: {"on_gate_stall": "skip-phase", "stall_after": {"months": 3}, "on_check_fail": "pause-and-report"}

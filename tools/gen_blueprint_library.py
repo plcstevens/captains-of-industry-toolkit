@@ -19,6 +19,7 @@ cannot describe honestly. Item counts are the DECODED counts (the
 pack manifest's entity_count values disagree with the strings in
 both directions; the decoded count is what a placement would send).
 """
+
 import json
 import sys
 from pathlib import Path
@@ -63,19 +64,20 @@ def main() -> int:
                 kinds["trees" if "Tree" in proto else "buildings"] += 1
             else:
                 kinds["other"] += 1
-        entries.append({
-            "slug": slug,
-            "name": meta.get("name") or man.get("name") or slug,
-            "module": meta.get("module") or man.get("module") or "",
-            "layer": meta.get("layer") or man.get("layer") or "",
-            "version": meta.get("version") or man.get("version") or 0,
-            "research_gate": meta.get("research_gate")
-                or man.get("research_gate") or "",
-            "item_count": len(decoded["entities"]),
-            "kinds": kinds,
-            "protos": dict(sorted(protos.items())),
-            "string": string,
-        })
+        entries.append(
+            {
+                "slug": slug,
+                "name": meta.get("name") or man.get("name") or slug,
+                "module": meta.get("module") or man.get("module") or "",
+                "layer": meta.get("layer") or man.get("layer") or "",
+                "version": meta.get("version") or man.get("version") or 0,
+                "research_gate": meta.get("research_gate") or man.get("research_gate") or "",
+                "item_count": len(decoded["entities"]),
+                "kinds": kinds,
+                "protos": dict(sorted(protos.items())),
+                "string": string,
+            }
+        )
     entries.sort(key=lambda e: e["slug"])
     doc = {
         "generated_by": "tools/gen_blueprint_library.py",
