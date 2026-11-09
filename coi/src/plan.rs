@@ -1,5 +1,5 @@
 //! `coi plan-check` — DRY-RUN plan evaluator for CoI game plans
-//! (GAME-PLAN-FORMAT.md v1), the Rust port of the reference
+//! (docs/GAME-PLAN-FORMAT.md v1), the Rust port of the reference
 //! implementation `tools/plan_check.py` (Round 3). The Python tool
 //! remains the verified reference: this port reproduces its
 //! three-valued gate semantics (§4.4 TRUE / FALSE / UNEVALUABLE),
@@ -293,8 +293,13 @@ fn compare(actual: &Value, op: &str, expected: &Value) -> Result<bool, String> {
     }
     // Ordering comparisons.
     if let (Value::Number(x), Value::Number(y)) = (actual, expected) {
-        let ord = num_cmp(x, y)
-            .ok_or_else(|| format!("cannot compare {} {op} {}", fmt_repr(actual), fmt_repr(expected)))?;
+        let ord = num_cmp(x, y).ok_or_else(|| {
+            format!(
+                "cannot compare {} {op} {}",
+                fmt_repr(actual),
+                fmt_repr(expected)
+            )
+        })?;
         return Ok(match op {
             "<" => ord == std::cmp::Ordering::Less,
             "<=" => ord != std::cmp::Ordering::Greater,
@@ -341,7 +346,10 @@ fn node_name(node: Option<&Value>) -> (Option<String>, Option<String>) {
             if let Some(p) = m.get("placeholder") {
                 (None, Some(fmt_val(p)))
             } else {
-                (None, Some(serde_json::to_string(&Value::Object(m.clone())).unwrap_or_default()))
+                (
+                    None,
+                    Some(serde_json::to_string(&Value::Object(m.clone())).unwrap_or_default()),
+                )
             }
         }
         Some(Value::String(s)) => (Some(s.clone()), None),
@@ -411,24 +419,16 @@ fn eval_leaf(pred: &Map<String, Value>, st: &State) -> Res {
     if metric.starts_with("product.") {
         let pid = match pred.get("product") {
             Some(Value::String(s)) => s.clone(),
-            _ => {
-                return Res::uneval(format!(
-                    "{metric}: product selector missing/not a string"
-                ))
-            }
+            _ => return Res::uneval(format!("{metric}: product selector missing/not a string")),
         };
         if metric == "product.unlocked" {
             let row = match st.catalogue.get(&pid) {
                 Some(r) => r,
-                None => {
-                    return Res::uneval(format!("{pid} not in products.json catalogue"))
-                }
+                None => return Res::uneval(format!("{pid} not in products.json catalogue")),
             };
             let actual = match row.get("isUnlocked") {
                 Some(v) => v.clone(),
-                None => {
-                    return Res::uneval(format!("{pid} has no isUnlocked in catalogue"))
-                }
+                None => return Res::uneval(format!("{pid} has no isUnlocked in catalogue")),
             };
             let ev = format!("{pid}.isUnlocked = {} (products.json)", fmt_val(&actual));
             return cmp_res(&actual, op, &expected, ev);
@@ -654,7 +654,10 @@ fn eval_leaf(pred: &Map<String, Value>, st: &State) -> Res {
             }
         };
         let actual = list.iter().any(|n| n.as_str() == Some(node.as_str()));
-        let ev = format!("{node} in researched list = {}", fmt_val(&Value::Bool(actual)));
+        let ev = format!(
+            "{node} in researched list = {}",
+            fmt_val(&Value::Bool(actual))
+        );
         return bool_res(actual, op, &expected, ev);
     }
     if metric == "research.current" {
@@ -742,7 +745,10 @@ fn eval_leaf(pred: &Map<String, Value>, st: &State) -> Res {
             _ => return Res::uneval("bridge-census.json has no byProto".into()),
         };
         let actual = by.get(proto).and_then(as_f64).unwrap_or(0.0);
-        let ev = format!("byProto[{proto}] = {} (absent proto counts 0)", fmt_f64(actual));
+        let ev = format!(
+            "byProto[{proto}] = {} (absent proto counts 0)",
+            fmt_f64(actual)
+        );
         return cmp_res(&serde_json::json!(actual), op, &expected, ev);
     }
     if metric == "census.machine_state_count" || metric == "census.machine_state_share" {
@@ -879,12 +885,7 @@ fn eval_leaf(pred: &Map<String, Value>, st: &State) -> Res {
             .find(|r| r.get("id").map(|i| py_eq(i, &sid)).unwrap_or(false));
         let row = match row {
             Some(r) => r,
-            None => {
-                return Res::uneval(format!(
-                    "no storage row with id {}",
-                    fmt_repr(&sid)
-                ))
-            }
+            None => return Res::uneval(format!("no storage row with id {}", fmt_repr(&sid))),
         };
         let field_name = if metric.ends_with("in_disabled") {
             "logisticsInDisabled"
@@ -917,7 +918,9 @@ fn eval_leaf(pred: &Map<String, Value>, st: &State) -> Res {
             "{metric}: no power capture exists — the captures predate CoiBridge v0.6.2's /coi/v1/power route (format G2); field {metric} is absent from every capture file"
         ));
     }
-    if metric.starts_with("contracts.") || metric.starts_with("loans.") || metric.starts_with("edicts.")
+    if metric.starts_with("contracts.")
+        || metric.starts_with("loans.")
+        || metric.starts_with("edicts.")
     {
         return Res::uneval(format!("{metric}: no v0.6 trade capture in live/"));
     }
@@ -931,10 +934,7 @@ fn eval_leaf(pred: &Map<String, Value>, st: &State) -> Res {
     ))
 }
 
-fn storage_rows<'a>(
-    pred: &Map<String, Value>,
-    st: &'a State,
-) -> Result<Vec<&'a Value>, String> {
+fn storage_rows<'a>(pred: &Map<String, Value>, st: &'a State) -> Result<Vec<&'a Value>, String> {
     if let Some(sid) = pred.get("storage_id") {
         return Ok(st
             .storages
@@ -1029,19 +1029,13 @@ fn duration_kind(dur: &Value) -> Option<&'static str> {
 fn eval_core(core: &Map<String, Value>, st: &State, seq: Option<&[State]>) -> Res {
     if let Some(all) = core.get("all") {
         let subs: Vec<Res> = match all {
-            Value::Array(items) => items
-                .iter()
-                .map(|p| eval_predicate(p, st, seq))
-                .collect(),
+            Value::Array(items) => items.iter().map(|p| eval_predicate(p, st, seq)).collect(),
             _ => Vec::new(),
         };
         combine_all(&subs)
     } else if let Some(any) = core.get("any") {
         let subs: Vec<Res> = match any {
-            Value::Array(items) => items
-                .iter()
-                .map(|p| eval_predicate(p, st, seq))
-                .collect(),
+            Value::Array(items) => items.iter().map(|p| eval_predicate(p, st, seq)).collect(),
             _ => Vec::new(),
         };
         combine_any(&subs)
@@ -1076,10 +1070,7 @@ fn eval_duration_seq(core: &Map<String, Value>, dur: &Value, seq: &[State]) -> R
         }
     }
     if kind == "months" {
-        let months = dur
-            .get("months")
-            .and_then(as_f64)
-            .unwrap_or(0.0);
+        let months = dur.get("months").and_then(as_f64).unwrap_or(0.0);
         let boundary = days[days.len() - 1] as f64 - 30.0 * months;
         let mut anchor: Option<usize> = None;
         for (i, d) in days.iter().enumerate() {
@@ -1202,12 +1193,7 @@ fn eval_duration_seq(core: &Map<String, Value>, dur: &Value, seq: &[State]) -> R
 fn eval_predicate(pred: &Value, st: &State, seq: Option<&[State]>) -> Res {
     let obj = match pred.as_object() {
         Some(o) => o,
-        None => {
-            return Res::uneval(format!(
-                "predicate is not a mapping: {}",
-                fmt_repr(pred)
-            ))
-        }
+        None => return Res::uneval(format!("predicate is not a mapping: {}", fmt_repr(pred))),
     };
     let duration = obj.get("for").cloned();
     let mut core = obj.clone();
@@ -1248,18 +1234,17 @@ fn eval_predicate(pred: &Value, st: &State, seq: Option<&[State]>) -> Res {
 
 /// A gate field is a list read as an implicit all: (§4.2). Returns the
 /// combined result plus the per-predicate results.
-fn eval_gate(
-    gate: Option<&Value>,
-    st: &State,
-    seq: Option<&[State]>,
-) -> (Res, Vec<(Value, Res)>) {
+fn eval_gate(gate: Option<&Value>, st: &State, seq: Option<&[State]>) -> (Res, Vec<(Value, Res)>) {
     let items: &[Value] = match gate {
         Some(Value::Array(a)) => a,
         _ => &[],
     };
     if items.is_empty() {
         return (
-            Res::new(Tri::True, "empty gate — enters immediately (§7)".to_string()),
+            Res::new(
+                Tri::True,
+                "empty gate — enters immediately (§7)".to_string(),
+            ),
             Vec::new(),
         );
     }
@@ -1322,7 +1307,15 @@ fn render_predicate(pred: &Value) -> String {
             .map(fmt_val)
             .unwrap_or_else(|| "?".to_string());
         let mut sel: Vec<String> = Vec::new();
-        for key in ["product", "proto", "state", "window", "node", "storage_id", "edict"] {
+        for key in [
+            "product",
+            "proto",
+            "state",
+            "window",
+            "node",
+            "storage_id",
+            "edict",
+        ] {
             if let Some(v) = obj.get(key) {
                 if let Some(m) = v.as_object() {
                     if let Some(ph) = m.get("placeholder") {
@@ -1334,7 +1327,10 @@ fn render_predicate(pred: &Value) -> String {
             }
         }
         if obj.contains_key("value") || obj.contains_key("op") {
-            let op = obj.get("op").map(fmt_val).unwrap_or_else(|| "==".to_string());
+            let op = obj
+                .get("op")
+                .map(fmt_val)
+                .unwrap_or_else(|| "==".to_string());
             let val = obj.get("value").cloned().unwrap_or(Value::Null);
             format!("{metric}({}) {op} {}", sel.join(", "), fmt_repr(&val))
         } else {
@@ -1349,10 +1345,7 @@ fn render_predicate(pred: &Value) -> String {
 
 fn contains_placeholder(node: &Value) -> bool {
     match node {
-        Value::Object(m) => {
-            m.contains_key("placeholder")
-                || m.values().any(contains_placeholder)
-        }
+        Value::Object(m) => m.contains_key("placeholder") || m.values().any(contains_placeholder),
         Value::Array(a) => a.iter().any(contains_placeholder),
         _ => false,
     }
@@ -1360,7 +1353,12 @@ fn contains_placeholder(node: &Value) -> bool {
 
 const NON_COMMAND_KINDS: [&str; 4] = ["place-blueprint", "manual-step", "observe-only", "wait"];
 
-fn render_order(order: &Value, st: &State, gate_status: &str, seq: Option<&[State]>) -> Vec<String> {
+fn render_order(
+    order: &Value,
+    st: &State,
+    gate_status: &str,
+    seq: Option<&[State]>,
+) -> Vec<String> {
     let oid = order
         .get("id")
         .map(fmt_val)
@@ -1400,9 +1398,7 @@ fn render_order(order: &Value, st: &State, gate_status: &str, seq: Option<&[Stat
         .and_then(|v| v.as_bool())
         .unwrap_or(false)
     {
-        held.push(
-            "requires_sandbox_validation — manual-only on a real save (§6.1/G3)".to_string(),
-        );
+        held.push("requires_sandbox_validation — manual-only on a real save (§6.1/G3)".to_string());
     }
     if order.get("enabled").and_then(|v| v.as_str()) == Some("on-fallback") {
         held.push("enabled: on-fallback — not due in normal flow".to_string());
@@ -1413,8 +1409,14 @@ fn render_order(order: &Value, st: &State, gate_status: &str, seq: Option<&[Stat
             "place-blueprint" => {
                 let mut s = format!(
                     "place-blueprint `{}` district={}",
-                    order.get("blueprint_ref").map(fmt_val).unwrap_or_else(|| "?".into()),
-                    order.get("district").map(fmt_val).unwrap_or_else(|| "?".into())
+                    order
+                        .get("blueprint_ref")
+                        .map(fmt_val)
+                        .unwrap_or_else(|| "?".into()),
+                    order
+                        .get("district")
+                        .map(fmt_val)
+                        .unwrap_or_else(|| "?".into())
                 );
                 if let Some(c) = order.get("count") {
                     s += &format!(" count={}", fmt_val(c));
@@ -1432,10 +1434,16 @@ fn render_order(order: &Value, st: &State, gate_status: &str, seq: Option<&[Stat
                 "observe-only: {}",
                 order.get("observe").map(fmt_val).unwrap_or_default().trim()
             ),
-            _ => format!("wait until: {}", order.get("until").map(fmt_val).unwrap_or_default()),
+            _ => format!(
+                "wait until: {}",
+                order.get("until").map(fmt_val).unwrap_or_default()
+            ),
         }
     } else {
-        let args = order.get("args").cloned().unwrap_or(Value::Object(Map::new()));
+        let args = order
+            .get("args")
+            .cloned()
+            .unwrap_or(Value::Object(Map::new()));
         format!(
             "command `{do_}` args={}",
             serde_json::to_string(&args).unwrap_or_default()
@@ -1451,15 +1459,11 @@ fn render_order(order: &Value, st: &State, gate_status: &str, seq: Option<&[Stat
     lines.push(format!("- **{oid}** — {status}"));
     lines.push(format!("  - {rendered}"));
     if let Some(note) = order.get("note") {
-        lines.push(format!("  - note: {}", fmt_val(note).trim().to_string()));
+        lines.push(format!("  - note: {}", fmt_val(note).trim()));
     }
     if has_pre {
         let r = pre_res.as_ref().unwrap();
-        lines.push(format!(
-            "  - preconditions: **{}** — {}",
-            r.v.name(),
-            r.ev
-        ));
+        lines.push(format!("  - preconditions: **{}** — {}", r.v.name(), r.ev));
     }
     if let Some(verify) = order.get("verify") {
         if let Some(Value::Array(a)) = Some(verify) {
@@ -1495,8 +1499,12 @@ impl Counts {
 }
 
 fn build_report(plan_path: &Path, st: &State, seq: Option<&[State]>) -> Result<String, String> {
-    let text = std::fs::read_to_string(plan_path)
-        .map_err(|e| format!("clean error: cannot read plan file {}: {e}", plan_path.display()))?;
+    let text = std::fs::read_to_string(plan_path).map_err(|e| {
+        format!(
+            "clean error: cannot read plan file {}: {e}",
+            plan_path.display()
+        )
+    })?;
     let doc: Value = serde_json::from_str(&text).map_err(|e| {
         format!(
             "clean error: plan JSON does not parse: {e} (if this is a YAML plan, convert it first: python3 tools/plan_to_json.py)"
@@ -1524,17 +1532,24 @@ fn build_report(plan_path: &Path, st: &State, seq: Option<&[State]>) -> Result<S
     out.push(format!(
         "# Plan dry-run: {} v{}",
         meta.get("id").map(fmt_val).unwrap_or_else(|| "?".into()),
-        meta.get("version").map(fmt_val).unwrap_or_else(|| "?".into())
+        meta.get("version")
+            .map(fmt_val)
+            .unwrap_or_else(|| "?".into())
     ));
     out.push(String::new());
-    out.push(format!("- Title: {}", meta.get("title").map(fmt_val).unwrap_or_else(|| "?".into())));
+    out.push(format!(
+        "- Title: {}",
+        meta.get("title").map(fmt_val).unwrap_or_else(|| "?".into())
+    ));
     out.push(format!(
         "- Map/difficulty (plan): {} — executor map/difficulty/version match is a live check (§3.1) and cannot be settled from captures; not asserted here.",
         meta.get("map").map(fmt_val).unwrap_or_else(|| "None".into())
     ));
     out.push(format!(
         "- Plan game_version: {}",
-        meta.get("game_version").map(fmt_val).unwrap_or_else(|| "None".into())
+        meta.get("game_version")
+            .map(fmt_val)
+            .unwrap_or_else(|| "None".into())
     ));
     out.push(format!(
         "- Requires bridge: {}",
@@ -1700,7 +1715,11 @@ fn build_report(plan_path: &Path, st: &State, seq: Option<&[State]>) -> Result<S
                 "loop position: phase {} of {} — {} [{}]",
                 i + 1,
                 phases.len(),
-                phase_eval[i].phase.get("id").map(fmt_val).unwrap_or_default(),
+                phase_eval[i]
+                    .phase
+                    .get("id")
+                    .map(fmt_val)
+                    .unwrap_or_default(),
                 statuses[i]
             ),
             Some(i),
@@ -1738,7 +1757,11 @@ fn build_report(plan_path: &Path, st: &State, seq: Option<&[State]>) -> Result<S
         None => out.push(format!("**Active phase: none — {plan_status}**")),
         Some(i) => out.push(format!(
             "**Active phase: {}** — {}",
-            phase_eval[i].phase.get("id").map(fmt_val).unwrap_or_default(),
+            phase_eval[i]
+                .phase
+                .get("id")
+                .map(fmt_val)
+                .unwrap_or_default(),
             statuses[i]
         )),
     }
@@ -1884,7 +1907,10 @@ fn build_report(plan_path: &Path, st: &State, seq: Option<&[State]>) -> Result<S
     out.push(String::new());
     match active_idx {
         None => {
-            out.push("No active phase — the plan is complete by its gates; no orders would be prepared.".to_string());
+            out.push(
+                "No active phase — the plan is complete by its gates; no orders would be prepared."
+                    .to_string(),
+            );
         }
         Some(i) => {
             let ph = &phase_eval[i].phase;
@@ -1940,9 +1966,8 @@ fn load_sequence(seq_dir: &Path) -> Result<Vec<State>, String> {
     if seq_dir.join("game-info.json").exists() {
         dirs.push(seq_dir.to_path_buf());
     } else {
-        let rd = std::fs::read_dir(seq_dir).map_err(|e| {
-            format!("clean error: cannot list {}: {e}", seq_dir.display())
-        })?;
+        let rd = std::fs::read_dir(seq_dir)
+            .map_err(|e| format!("clean error: cannot list {}: {e}", seq_dir.display()))?;
         for entry in rd.flatten() {
             let p = entry.path();
             if p.is_dir() && p.join("game-info.json").exists() {
@@ -2364,7 +2389,10 @@ pub fn play_cmd(args: &[String]) -> i32 {
         let text = match std::fs::read_to_string(&plan_pb) {
             Ok(t) => t,
             Err(e) => {
-                eprintln!("clean error: cannot read plan file {}: {e}", plan_pb.display());
+                eprintln!(
+                    "clean error: cannot read plan file {}: {e}",
+                    plan_pb.display()
+                );
                 return 2;
             }
         };
@@ -2533,11 +2561,8 @@ pub fn play_cmd(args: &[String]) -> i32 {
             }
         }
         let mut smap = Map::new();
-        for idx in 0..pcount {
-            smap.insert(
-                phase_ids[idx].clone(),
-                Value::String(ev.statuses[idx].clone()),
-            );
+        for (pid, status) in phase_ids.iter().zip(ev.statuses.iter()) {
+            smap.insert(pid.clone(), Value::String(status.clone()));
         }
         let loop_phase: Value = match ev.loop_idx {
             Some(idx) => Value::String(phase_ids[idx].clone()),
@@ -2633,7 +2658,9 @@ pub fn play_cmd(args: &[String]) -> i32 {
     t.push(String::new());
     t.push("> **PREPARE-ONLY — nothing was executed.** This transcript is a walk over captured state files by `coi play`, the supervised session runner. The runner has **no apply path**: it opens no sockets, prepares nothing through the §12 flow, and sends nothing to a game. Payloads below are the exact command envelopes a supervised executor *would* prepare; a human reviews them and confirms each one in the companion website.".to_string());
     t.push(String::new());
-    t.push(format!("- Plan: `{plan_path}` — `{plan_id}` v{plan_version}"));
+    t.push(format!(
+        "- Plan: `{plan_path}` — `{plan_id}` v{plan_version}"
+    ));
     t.push(format!(
         "- Source: state sequence `{seq_dir}` — {} snapshot(s), {} .. {}",
         states.len(),
@@ -2663,7 +2690,10 @@ pub fn play_cmd(args: &[String]) -> i32 {
             (Some(s), Some(d)) => format!("step {s} · {d}"),
             _ => "—".to_string(),
         };
-        t.push(format!("| `{}` | {entered} | {completed} |", phase_ids[idx]));
+        t.push(format!(
+            "| `{}` | {entered} | {completed} |",
+            phase_ids[idx]
+        ));
     }
     t.push(String::new());
     for idx in 0..pcount {
@@ -2767,9 +2797,8 @@ mod tests {
 
     #[test]
     fn decide_order_holds_already_researched_node() {
-        let (st, dir) = state_with_research(
-            r#"{"researched": ["ResearchCpPacking"], "researchedCount": 1}"#,
-        );
+        let (st, dir) =
+            state_with_research(r#"{"researched": ["ResearchCpPacking"], "researchedCount": 1}"#);
         let dec = decide_order(&research_order("ResearchCpPacking"), &st);
         assert!(!dec.prepared, "already-researched node must not prepare");
         let reason = dec.reason.unwrap_or_default();
@@ -2782,9 +2811,8 @@ mod tests {
 
     #[test]
     fn decide_order_prepares_unresearched_node() {
-        let (st, dir) = state_with_research(
-            r#"{"researched": ["ResearchCpPacking"], "researchedCount": 1}"#,
-        );
+        let (st, dir) =
+            state_with_research(r#"{"researched": ["ResearchCpPacking"], "researchedCount": 1}"#);
         let dec = decide_order(&research_order("ResearchTradeDock"), &st);
         assert!(dec.prepared, "unresearched node must prepare");
         let _ = std::fs::remove_dir_all(&dir);

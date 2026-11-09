@@ -1,0 +1,8861 @@
+{
+ "game-info": {
+  "date": "388-2-27",
+  "tick": 2787522,
+  "isPaused": true,
+  "speed": 3,
+  "gameId": "5583213724730880438",
+  "sessionId": "991004233207764232"
+ },
+ "server-info": {
+  "date": "388-2-27",
+  "tick": 2787522,
+  "port": 3073,
+  "otherOrigins": "none"
+ },
+ "products": {
+  "date": "388-2-27",
+  "tick": 2787522,
+  "products": [
+   {
+    "id": "Product_Acid",
+    "name": "Acid",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Virtual_PollutedAir",
+    "name": "Air pollution",
+    "kind": "virtual",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Ammonia",
+    "name": "Ammonia",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_AnimalFeed",
+    "name": "Animal feed",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Biomass",
+    "name": "Biomass",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Bread",
+    "name": "Bread",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Brine",
+    "name": "Brine",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_BrokenGlass",
+    "name": "Broken glass",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_CarbonDioxide",
+    "name": "Carbon dioxide",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Cement",
+    "name": "Cement",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Chicken",
+    "name": "Chicken",
+    "kind": "virtual",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_ChickenCarcass",
+    "name": "Chicken carcass",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Chlorine",
+    "name": "Chlorine",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Coal",
+    "name": "Coal",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Compost",
+    "name": "Compost",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_ConcreteSlab",
+    "name": "Concrete slab",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_ConstructionParts",
+    "name": "Construction Parts",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_ConstructionParts2",
+    "name": "Construction Parts II",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_ConstructionParts3",
+    "name": "Construction Parts III",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_CookingOil",
+    "name": "Cooking oil",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Copper",
+    "name": "Copper",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_CopperOre",
+    "name": "Copper ore",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_CopperOreCrushed",
+    "name": "Copper ore crushed",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_CopperScrap",
+    "name": "Copper scrap",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_CopperScrapPressed",
+    "name": "Copper scrap pressed",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Corn",
+    "name": "Corn",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_CornMash",
+    "name": "Corn mash",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_CrudeOil",
+    "name": "Crude oil",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Diesel",
+    "name": "Diesel",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Dirt",
+    "name": "Dirt",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Disinfectant",
+    "name": "Disinfectant",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Eggs",
+    "name": "Eggs",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Electronics",
+    "name": "Electronics",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Ethanol",
+    "name": "Ethanol",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Exhaust",
+    "name": "Exhaust",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_FertilizerOrganic",
+    "name": "Fertilizer (organic)",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Fertilizer",
+    "name": "Fertilizer I",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Fertilizer2",
+    "name": "Fertilizer II",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_FilterMedia",
+    "name": "Filter media",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Flour",
+    "name": "Flour",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_FoodPack",
+    "name": "Food pack",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_FuelGas",
+    "name": "Fuel gas",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Glass",
+    "name": "Glass",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_GlassMix",
+    "name": "Glass mix",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Gravel",
+    "name": "Gravel",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_HeavyOil",
+    "name": "Heavy oil",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_HouseholdGoods",
+    "name": "Household goods",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Hydrogen",
+    "name": "Hydrogen",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_ImpureCopper",
+    "name": "Impure copper",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Iron",
+    "name": "Iron",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_IronOre",
+    "name": "Iron ore",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_IronOreCrushed",
+    "name": "Iron ore crushed",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_IronScrap",
+    "name": "Iron scrap",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_IronScrapPressed",
+    "name": "Iron scrap pressed",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_LabEquipment",
+    "name": "Lab Equipment",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_LabEquipment2",
+    "name": "Lab Equipment II",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_LightOil",
+    "name": "Light oil",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Limestone",
+    "name": "Limestone",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_ManufacturedSand",
+    "name": "Manufactured sand",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Meat",
+    "name": "Meat",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_MeatTrimmings",
+    "name": "Meat trimmings",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_MechanicalParts",
+    "name": "Mechanical Parts",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_MedicalEquipment",
+    "name": "Medical equipment",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_MedicalSupplies",
+    "name": "Medical Supplies",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_MediumOil",
+    "name": "Medium oil",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_MixedMinedMaterial",
+    "name": "Mixed mined material",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_MoltenCopper",
+    "name": "Molten copper",
+    "kind": "molten",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_MoltenGlass",
+    "name": "Molten glass",
+    "kind": "molten",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_MoltenIron",
+    "name": "Molten iron",
+    "kind": "molten",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_MoltenSteel",
+    "name": "Molten steel",
+    "kind": "molten",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Naphtha",
+    "name": "Naphtha",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Nitrogen",
+    "name": "Nitrogen",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Oxygen",
+    "name": "Oxygen",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Paper",
+    "name": "Paper",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Plastic",
+    "name": "Plastic",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Potato",
+    "name": "Potato",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Quartz",
+    "name": "Quartz",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_QuartzCrushed",
+    "name": "Quartz crushed",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_RailParts",
+    "name": "Rail Parts",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Recyclables",
+    "name": "Recyclables",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_RecyclablesPressed",
+    "name": "Recyclables pressed",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Rock",
+    "name": "Rock",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Rubber",
+    "name": "Rubber",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Salt",
+    "name": "Salt",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Sand",
+    "name": "Sand",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Seawater",
+    "name": "Seawater",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Slag",
+    "name": "Slag",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_SlagCrushed",
+    "name": "Slag crushed",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Sludge",
+    "name": "Sludge",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Snack",
+    "name": "Snack",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_SourWater",
+    "name": "Sour water",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Soybean",
+    "name": "Soybean",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_SteamDepleted",
+    "name": "Steam (depleted)",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_SteamHi",
+    "name": "Steam (high)",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_SteamLP",
+    "name": "Steam (low)",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Steel",
+    "name": "Steel",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Sulfur",
+    "name": "Sulfur",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Tofu",
+    "name": "Tofu",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_ToxicSlurry",
+    "name": "Toxic slurry",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_TreeSapling",
+    "name": "Tree sapling",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Vegetables",
+    "name": "Vegetables",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_VehicleParts",
+    "name": "Vehicle Parts",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_VehicleParts2",
+    "name": "Vehicle Parts II",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Waste",
+    "name": "Waste",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_WastePressed",
+    "name": "Waste pressed",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_WasteWater",
+    "name": "Waste water",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Water",
+    "name": "Water",
+    "kind": "fluid",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Virtual_PollutedWater",
+    "name": "Water pollution",
+    "kind": "virtual",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Wheat",
+    "name": "Wheat",
+    "kind": "loose",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Wood",
+    "name": "Wood",
+    "kind": "countable",
+    "isUnlocked": true
+   },
+   {
+    "id": "Product_Woodchips",
+    "name": "Woodchips",
+    "kind": "loose",
+    "isUnlocked": true
+   }
+  ],
+  "unknownIds": []
+ },
+ "stats": {
+  "date": "388-2-27",
+  "tick": 2787522,
+  "products": {
+   "Product_Acid": {
+    "quantity": 9144,
+    "stored": 9066,
+    "storageCapacity": 9066,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     17136
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     7992
+    ]
+   },
+   "Product_Ammonia": {
+    "quantity": 826,
+    "stored": 807,
+    "storageCapacity": 1000,
+    "produced": [
+     19,
+     20,
+     39,
+     195,
+     35339
+    ],
+    "consumed": [
+     4,
+     8,
+     12,
+     72,
+     17768
+    ]
+   },
+   "Product_AnimalFeed": {
+    "quantity": 1333,
+    "stored": 853,
+    "storageCapacity": 4000,
+    "produced": [
+     0,
+     0,
+     0,
+     23,
+     1333
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Biomass": {
+    "quantity": 920,
+    "stored": 680,
+    "storageCapacity": 1200,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     920
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Bread": {
+    "quantity": 975,
+    "stored": 711,
+    "storageCapacity": 10211,
+    "produced": [
+     0,
+     0,
+     0,
+     240,
+     9864
+    ],
+    "consumed": [
+     14,
+     15,
+     29,
+     185,
+     8889
+    ]
+   },
+   "Product_Brine": {
+    "quantity": 561,
+    "stored": 400,
+    "storageCapacity": 501,
+    "produced": [
+     168,
+     84,
+     252,
+     1687,
+     418166
+    ],
+    "consumed": [
+     12,
+     47,
+     59,
+     144,
+     64030
+    ]
+   },
+   "Product_BrokenGlass": {
+    "quantity": 40,
+    "stored": 0,
+    "storageCapacity": 500,
+    "produced": [
+     0,
+     4,
+     4,
+     0,
+     23824
+    ],
+    "consumed": [
+     0,
+     24,
+     24,
+     0,
+     23784
+    ]
+   },
+   "Product_CarbonDioxide": {
+    "quantity": 442,
+    "stored": 24,
+    "storageCapacity": 24,
+    "produced": [
+     344,
+     316,
+     660,
+     4840,
+     159468
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Cement": {
+    "quantity": 189,
+    "stored": 6,
+    "storageCapacity": 6,
+    "produced": [
+     6,
+     4,
+     10,
+     6,
+     20904
+    ],
+    "consumed": [
+     0,
+     1,
+     1,
+     5,
+     20655
+    ]
+   },
+   "Product_Chicken": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_ChickenCarcass": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Chlorine": {
+    "quantity": 29,
+    "stored": 8,
+    "storageCapacity": 8,
+    "produced": [
+     8,
+     10,
+     18,
+     96,
+     7124
+    ],
+    "consumed": [
+     8,
+     8,
+     16,
+     96,
+     7088
+    ]
+   },
+   "Product_Coal": {
+    "quantity": 19811,
+    "stored": 15461,
+    "storageCapacity": 31300,
+    "produced": [
+     0,
+     0,
+     0,
+     2600,
+     770561
+    ],
+    "consumed": [
+     218,
+     211,
+     429,
+     2358,
+     749049
+    ]
+   },
+   "Product_Compost": {
+    "quantity": 1013,
+    "stored": 683,
+    "storageCapacity": 2000,
+    "produced": [
+     3,
+     3,
+     6,
+     36,
+     2649
+    ],
+    "consumed": [
+     12,
+     12,
+     24,
+     116,
+     1636
+    ]
+   },
+   "Product_ConcreteSlab": {
+    "quantity": 8016,
+    "stored": 7205,
+    "storageCapacity": 7526,
+    "produced": [
+     0,
+     8,
+     8,
+     40,
+     180857
+    ],
+    "consumed": [
+     0,
+     4,
+     4,
+     0,
+     152942
+    ]
+   },
+   "Product_ConstructionParts": {
+    "quantity": 763,
+    "stored": 741,
+    "storageCapacity": 741,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     177626
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     179347
+    ]
+   },
+   "Product_ConstructionParts2": {
+    "quantity": 760,
+    "stored": 507,
+    "storageCapacity": 507,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     85212
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     89248
+    ]
+   },
+   "Product_ConstructionParts3": {
+    "quantity": 89,
+    "stored": 89,
+    "storageCapacity": 500,
+    "produced": [
+     0,
+     0,
+     0,
+     5,
+     29359
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     5,
+     33566
+    ]
+   },
+   "Product_CookingOil": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Copper": {
+    "quantity": 99,
+    "stored": 0,
+    "storageCapacity": 500,
+    "produced": [
+     52,
+     78,
+     130,
+     936,
+     196131
+    ],
+    "consumed": [
+     66,
+     72,
+     138,
+     942,
+     197940
+    ]
+   },
+   "Product_CopperOre": {
+    "quantity": 1185,
+    "stored": 655,
+    "storageCapacity": 673,
+    "produced": [
+     58,
+     116,
+     174,
+     1208,
+     263999
+    ],
+    "consumed": [
+     96,
+     96,
+     192,
+     1152,
+     262528
+    ]
+   },
+   "Product_CopperOreCrushed": {
+    "quantity": 284,
+    "stored": 54,
+    "storageCapacity": 54,
+    "produced": [
+     96,
+     96,
+     192,
+     1152,
+     141888
+    ],
+    "consumed": [
+     96,
+     96,
+     192,
+     1152,
+     141600
+    ]
+   },
+   "Product_CopperScrap": {
+    "quantity": 2,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     1128
+    ]
+   },
+   "Product_CopperScrapPressed": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Corn": {
+    "quantity": 2687,
+    "stored": 2075,
+    "storageCapacity": 6695,
+    "produced": [
+     0,
+     92,
+     92,
+     276,
+     17211
+    ],
+    "consumed": [
+     21,
+     23,
+     44,
+     279,
+     14524
+    ]
+   },
+   "Product_CornMash": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_CrudeOil": {
+    "quantity": 11947,
+    "stored": 9713,
+    "storageCapacity": 9000,
+    "produced": [
+     480,
+     554,
+     1034,
+     1122,
+     467576
+    ],
+    "consumed": [
+     140,
+     200,
+     340,
+     1680,
+     455080
+    ]
+   },
+   "Product_Diesel": {
+    "quantity": 5992,
+    "stored": 5188,
+    "storageCapacity": 7800,
+    "produced": [
+     84,
+     120,
+     204,
+     1022,
+     423589
+    ],
+    "consumed": [
+     161,
+     148,
+     309,
+     1633,
+     420569
+    ]
+   },
+   "Product_Dirt": {
+    "quantity": 11161,
+    "stored": 9424,
+    "storageCapacity": 10399,
+    "produced": [
+     35,
+     19,
+     54,
+     255,
+     405388
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     16,
+     2216
+    ]
+   },
+   "Product_Disinfectant": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Eggs": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Electronics": {
+    "quantity": 8166,
+    "stored": 6761,
+    "storageCapacity": 8200,
+    "produced": [
+     66,
+     72,
+     138,
+     942,
+     197922
+    ],
+    "consumed": [
+     18,
+     38,
+     56,
+     475,
+     192604
+    ]
+   },
+   "Product_Ethanol": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 1000,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Exhaust": {
+    "quantity": 676,
+    "stored": 19,
+    "storageCapacity": 19,
+    "produced": [
+     570,
+     522,
+     1092,
+     5846,
+     1900742
+    ],
+    "consumed": [
+     320,
+     160,
+     480,
+     4000,
+     191040
+    ]
+   },
+   "Product_Fertilizer": {
+    "quantity": 10,
+    "stored": 0,
+    "storageCapacity": 500,
+    "produced": [
+     15,
+     30,
+     45,
+     270,
+     11605
+    ],
+    "consumed": [
+     30,
+     15,
+     45,
+     270,
+     11595
+    ]
+   },
+   "Product_Fertilizer2": {
+    "quantity": 290,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     36,
+     18,
+     54,
+     324,
+     13914
+    ],
+    "consumed": [
+     30,
+     38,
+     68,
+     362,
+     13605
+    ]
+   },
+   "Product_FertilizerOrganic": {
+    "quantity": 546,
+    "stored": 526,
+    "storageCapacity": 526,
+    "produced": [
+     16,
+     16,
+     32,
+     176,
+     5136
+    ],
+    "consumed": [
+     10,
+     20,
+     30,
+     180,
+     4590
+    ]
+   },
+   "Product_FilterMedia": {
+    "quantity": 1844,
+    "stored": 1451,
+    "storageCapacity": 2024,
+    "produced": [
+     0,
+     12,
+     12,
+     60,
+     5388
+    ],
+    "consumed": [
+     4,
+     4,
+     8,
+     48,
+     3544
+    ]
+   },
+   "Product_Flour": {
+    "quantity": 8,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     160,
+     6584
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     160,
+     6576
+    ]
+   },
+   "Product_FoodPack": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_FuelGas": {
+    "quantity": 6330,
+    "stored": 4124,
+    "storageCapacity": 8088,
+    "produced": [
+     194,
+     304,
+     498,
+     2306,
+     111658
+    ],
+    "consumed": [
+     218,
+     256,
+     474,
+     3278,
+     99702
+    ]
+   },
+   "Product_Glass": {
+    "quantity": 5559,
+    "stored": 4851,
+    "storageCapacity": 5712,
+    "produced": [
+     0,
+     4,
+     4,
+     0,
+     23824
+    ],
+    "consumed": [
+     2,
+     6,
+     8,
+     64,
+     18250
+    ]
+   },
+   "Product_GlassMix": {
+    "quantity": 140,
+    "stored": 34,
+    "storageCapacity": 34,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     39960
+    ],
+    "consumed": [
+     0,
+     10,
+     10,
+     0,
+     39820
+    ]
+   },
+   "Product_Gravel": {
+    "quantity": 1839,
+    "stored": 1663,
+    "storageCapacity": 1663,
+    "produced": [
+     0,
+     16,
+     16,
+     56,
+     62667
+    ],
+    "consumed": [
+     0,
+     8,
+     8,
+     46,
+     60784
+    ]
+   },
+   "Product_HeavyOil": {
+    "quantity": 273,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     28,
+     40,
+     68,
+     336,
+     86344
+    ],
+    "consumed": [
+     40,
+     24,
+     64,
+     304,
+     69661
+    ]
+   },
+   "Product_HouseholdGoods": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Hydrogen": {
+    "quantity": 27716,
+    "stored": 19492,
+    "storageCapacity": 36100,
+    "produced": [
+     292,
+     356,
+     648,
+     4220,
+     115702
+    ],
+    "consumed": [
+     321,
+     61,
+     382,
+     1437,
+     84174
+    ]
+   },
+   "Product_ImpureCopper": {
+    "quantity": 180,
+    "stored": 5,
+    "storageCapacity": 5,
+    "produced": [
+     88,
+     96,
+     184,
+     1152,
+     239072
+    ],
+    "consumed": [
+     64,
+     96,
+     160,
+     1152,
+     238832
+    ]
+   },
+   "Product_Iron": {
+    "quantity": 65,
+    "stored": 55,
+    "storageCapacity": 200,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     34268
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     37605
+    ]
+   },
+   "Product_IronOre": {
+    "quantity": 1946,
+    "stored": 1359,
+    "storageCapacity": 6502,
+    "produced": [
+     42,
+     67,
+     109,
+     744,
+     549430
+    ],
+    "consumed": [
+     192,
+     96,
+     288,
+     384,
+     547228
+    ]
+   },
+   "Product_IronOreCrushed": {
+    "quantity": 236,
+    "stored": 3,
+    "storageCapacity": 3,
+    "produced": [
+     192,
+     96,
+     288,
+     384,
+     326688
+    ],
+    "consumed": [
+     112,
+     48,
+     160,
+     528,
+     326416
+    ]
+   },
+   "Product_IronScrap": {
+    "quantity": 3,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     8288
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     10176
+    ]
+   },
+   "Product_IronScrapPressed": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_LabEquipment": {
+    "quantity": 73,
+    "stored": 45,
+    "storageCapacity": 45,
+    "produced": [
+     6,
+     18,
+     24,
+     144,
+     48314
+    ],
+    "consumed": [
+     6,
+     18,
+     24,
+     144,
+     48190
+    ]
+   },
+   "Product_LabEquipment2": {
+    "quantity": 107,
+    "stored": 76,
+    "storageCapacity": 76,
+    "produced": [
+     6,
+     18,
+     24,
+     144,
+     36684
+    ],
+    "consumed": [
+     10,
+     12,
+     22,
+     144,
+     36568
+    ]
+   },
+   "Product_LightOil": {
+    "quantity": 529,
+    "stored": 449,
+    "storageCapacity": 540,
+    "produced": [
+     70,
+     100,
+     170,
+     840,
+     215740
+    ],
+    "consumed": [
+     70,
+     100,
+     170,
+     840,
+     148914
+    ]
+   },
+   "Product_Limestone": {
+    "quantity": 11860,
+    "stored": 10291,
+    "storageCapacity": 10940,
+    "produced": [
+     58,
+     0,
+     58,
+     929,
+     133172
+    ],
+    "consumed": [
+     45,
+     25,
+     70,
+     220,
+     121019
+    ]
+   },
+   "Product_ManufacturedSand": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Meat": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_MeatTrimmings": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_MechanicalParts": {
+    "quantity": 360,
+    "stored": 116,
+    "storageCapacity": 236,
+    "produced": [
+     40,
+     88,
+     128,
+     840,
+     227044
+    ],
+    "consumed": [
+     36,
+     76,
+     112,
+     861,
+     226691
+    ]
+   },
+   "Product_MedicalEquipment": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_MedicalSupplies": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_MediumOil": {
+    "quantity": 192,
+    "stored": 77,
+    "storageCapacity": 77,
+    "produced": [
+     112,
+     160,
+     272,
+     1344,
+     345376
+    ],
+    "consumed": [
+     112,
+     160,
+     272,
+     1344,
+     345184
+    ]
+   },
+   "Product_MoltenCopper": {
+    "quantity": 152,
+    "stored": 20,
+    "storageCapacity": 20,
+    "produced": [
+     96,
+     96,
+     192,
+     1152,
+     239240
+    ],
+    "consumed": [
+     88,
+     96,
+     184,
+     1152,
+     239072
+    ]
+   },
+   "Product_MoltenGlass": {
+    "quantity": 64,
+    "stored": 32,
+    "storageCapacity": 32,
+    "produced": [
+     0,
+     24,
+     24,
+     0,
+     47712
+    ],
+    "consumed": [
+     0,
+     8,
+     8,
+     0,
+     47648
+    ]
+   },
+   "Product_MoltenIron": {
+    "quantity": 88,
+    "stored": 1,
+    "storageCapacity": 1,
+    "produced": [
+     112,
+     48,
+     160,
+     528,
+     513024
+    ],
+    "consumed": [
+     96,
+     32,
+     128,
+     608,
+     512816
+    ]
+   },
+   "Product_MoltenSteel": {
+    "quantity": 56,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     48,
+     16,
+     64,
+     304,
+     240336
+    ],
+    "consumed": [
+     8,
+     0,
+     8,
+     408,
+     240248
+    ]
+   },
+   "Product_Naphtha": {
+    "quantity": 852,
+    "stored": 248,
+    "storageCapacity": 1000,
+    "produced": [
+     200,
+     182,
+     382,
+     1806,
+     104142
+    ],
+    "consumed": [
+     132,
+     240,
+     372,
+     1608,
+     86448
+    ]
+   },
+   "Product_Nitrogen": {
+    "quantity": 132,
+    "stored": 18,
+    "storageCapacity": 18,
+    "produced": [
+     36,
+     36,
+     72,
+     372,
+     280016
+    ],
+    "consumed": [
+     8,
+     16,
+     24,
+     144,
+     7456
+    ]
+   },
+   "Product_Oxygen": {
+    "quantity": 158,
+    "stored": 26,
+    "storageCapacity": 26,
+    "produced": [
+     36,
+     36,
+     72,
+     372,
+     253000
+    ],
+    "consumed": [
+     42,
+     24,
+     66,
+     336,
+     249702
+    ]
+   },
+   "Product_Paper": {
+    "quantity": 134,
+    "stored": 6,
+    "storageCapacity": 6,
+    "produced": [
+     8,
+     8,
+     16,
+     48,
+     12368
+    ],
+    "consumed": [
+     2,
+     6,
+     8,
+     48,
+     12228
+    ]
+   },
+   "Product_Plastic": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Potato": {
+    "quantity": 809,
+    "stored": 329,
+    "storageCapacity": 6121,
+    "produced": [
+     0,
+     0,
+     0,
+     162,
+     82220
+    ],
+    "consumed": [
+     28,
+     33,
+     61,
+     390,
+     81751
+    ]
+   },
+   "Product_Quartz": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_QuartzCrushed": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_RailParts": {
+    "quantity": 1419,
+    "stored": 1342,
+    "storageCapacity": 1342,
+    "produced": [
+     0,
+     8,
+     8,
+     0,
+     22411
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     22568
+    ]
+   },
+   "Product_Recyclables": {
+    "quantity": 10,
+    "stored": 10,
+    "storageCapacity": 10,
+    "produced": [
+     1,
+     0,
+     1,
+     0,
+     81
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_RecyclablesPressed": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Rock": {
+    "quantity": 17775,
+    "stored": 13030,
+    "storageCapacity": 15629,
+    "produced": [
+     431,
+     396,
+     827,
+     4130,
+     873876
+    ],
+    "consumed": [
+     0,
+     16,
+     16,
+     444,
+     107373
+    ]
+   },
+   "Product_Rubber": {
+    "quantity": 6751,
+    "stored": 6197,
+    "storageCapacity": 7000,
+    "produced": [
+     24,
+     24,
+     48,
+     150,
+     48109
+    ],
+    "consumed": [
+     11,
+     12,
+     23,
+     253,
+     42356
+    ]
+   },
+   "Product_Salt": {
+    "quantity": 4437,
+    "stored": 3915,
+    "storageCapacity": 4014,
+    "produced": [
+     0,
+     4,
+     4,
+     0,
+     8456
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     3996
+    ]
+   },
+   "Product_Sand": {
+    "quantity": 6160,
+    "stored": 5163,
+    "storageCapacity": 5774,
+    "produced": [
+     0,
+     0,
+     0,
+     203,
+     99208
+    ],
+    "consumed": [
+     12,
+     18,
+     30,
+     174,
+     92774
+    ]
+   },
+   "Product_Seawater": {
+    "quantity": 270,
+    "stored": 38,
+    "storageCapacity": 38,
+    "produced": [
+     432,
+     216,
+     648,
+     4338,
+     1104372
+    ],
+    "consumed": [
+     432,
+     216,
+     648,
+     4338,
+     1103892
+    ]
+   },
+   "Product_Slag": {
+    "quantity": 588,
+    "stored": 484,
+    "storageCapacity": 3001,
+    "produced": [
+     84,
+     61,
+     145,
+     705,
+     332788
+    ],
+    "consumed": [
+     0,
+     16,
+     16,
+     40,
+     83600
+    ]
+   },
+   "Product_SlagCrushed": {
+    "quantity": 178,
+    "stored": 30,
+    "storageCapacity": 30,
+    "produced": [
+     0,
+     16,
+     16,
+     40,
+     83600
+    ],
+    "consumed": [
+     0,
+     6,
+     6,
+     24,
+     83394
+    ]
+   },
+   "Product_Sludge": {
+    "quantity": 54,
+    "stored": 18,
+    "storageCapacity": 18,
+    "produced": [
+     18,
+     18,
+     36,
+     216,
+     15948
+    ],
+    "consumed": [
+     18,
+     18,
+     36,
+     216,
+     15894
+    ]
+   },
+   "Product_Snack": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_SourWater": {
+    "quantity": 15,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     42,
+     60,
+     102,
+     504,
+     129516
+    ],
+    "consumed": [
+     60,
+     48,
+     108,
+     492,
+     126444
+    ]
+   },
+   "Product_Soybean": {
+    "quantity": 28,
+    "stored": 15,
+    "storageCapacity": 3000,
+    "produced": [
+     0,
+     0,
+     0,
+     31,
+     1048
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     6,
+     1020
+    ]
+   },
+   "Product_SteamDepleted": {
+    "quantity": 8,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     44,
+     48,
+     92,
+     576,
+     57532
+    ],
+    "consumed": [
+     40,
+     48,
+     88,
+     576,
+     57524
+    ]
+   },
+   "Product_SteamHi": {
+    "quantity": 1400,
+    "stored": 61,
+    "storageCapacity": 61,
+    "produced": [
+     246,
+     268,
+     514,
+     3090,
+     565694
+    ],
+    "consumed": [
+     244,
+     263,
+     507,
+     3101,
+     563520
+    ]
+   },
+   "Product_SteamLP": {
+    "quantity": 106,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     152,
+     160,
+     312,
+     2128,
+     365188
+    ],
+    "consumed": [
+     128,
+     144,
+     272,
+     1728,
+     316682
+    ]
+   },
+   "Product_Steel": {
+    "quantity": 1108,
+    "stored": 298,
+    "storageCapacity": 5700,
+    "produced": [
+     8,
+     0,
+     8,
+     408,
+     249880
+    ],
+    "consumed": [
+     20,
+     46,
+     66,
+     512,
+     267683
+    ]
+   },
+   "Product_Sulfur": {
+    "quantity": 12163,
+    "stored": 11572,
+    "storageCapacity": 20000,
+    "produced": [
+     23,
+     16,
+     39,
+     223,
+     36387
+    ],
+    "consumed": [
+     9,
+     6,
+     15,
+     64,
+     10834
+    ]
+   },
+   "Product_Tofu": {
+    "quantity": 400,
+    "stored": 0,
+    "storageCapacity": 6000,
+    "produced": [
+     0,
+     0,
+     0,
+     8,
+     1360
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     960
+    ]
+   },
+   "Product_ToxicSlurry": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_TreeSapling": {
+    "quantity": 84,
+    "stored": 0,
+    "storageCapacity": 200,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     5642
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     5558
+    ]
+   },
+   "Product_Vegetables": {
+    "quantity": 814,
+    "stored": 334,
+    "storageCapacity": 6000,
+    "produced": [
+     0,
+     0,
+     0,
+     84,
+     85879
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     85065
+    ]
+   },
+   "Product_VehicleParts": {
+    "quantity": 3,
+    "stored": 0,
+    "storageCapacity": 500,
+    "produced": [
+     0,
+     0,
+     0,
+     62,
+     23634
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     64,
+     24288
+    ]
+   },
+   "Product_VehicleParts2": {
+    "quantity": 196,
+    "stored": 0,
+    "storageCapacity": 500,
+    "produced": [
+     0,
+     0,
+     0,
+     104,
+     17916
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     90,
+     17720
+    ]
+   },
+   "Product_Virtual_PollutedAir": {
+    "quantity": 254,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     184,
+     241,
+     425,
+     2225,
+     1040543
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Virtual_PollutedWater": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     10,
+     10,
+     238,
+     175759
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Waste": {
+    "quantity": 87,
+    "stored": 60,
+    "storageCapacity": 700,
+    "produced": [
+     66,
+     76,
+     142,
+     909,
+     189023
+    ],
+    "consumed": [
+     48,
+     96,
+     144,
+     912,
+     83952
+    ]
+   },
+   "Product_WastePressed": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_WasteWater": {
+    "quantity": 77,
+    "stored": 3,
+    "storageCapacity": 3,
+    "produced": [
+     86,
+     100,
+     186,
+     1198,
+     240856
+    ],
+    "consumed": [
+     80,
+     80,
+     160,
+     960,
+     70880
+    ]
+   },
+   "Product_Water": {
+    "quantity": 17046,
+    "stored": 14314,
+    "storageCapacity": 16377,
+    "produced": [
+     613,
+     388,
+     1001,
+     7807,
+     1865813
+    ],
+    "consumed": [
+     514,
+     570,
+     1084,
+     6873,
+     1801613
+    ]
+   },
+   "Product_Wheat": {
+    "quantity": 5,
+    "stored": 0,
+    "storageCapacity": 3000,
+    "produced": [
+     0,
+     0,
+     0,
+     162,
+     6589
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     160,
+     6584
+    ]
+   },
+   "Product_Wood": {
+    "quantity": 5174,
+    "stored": 4271,
+    "storageCapacity": 5400,
+    "produced": [
+     0,
+     0,
+     0,
+     20,
+     118920
+    ],
+    "consumed": [
+     4,
+     12,
+     16,
+     32,
+     113878
+    ]
+   },
+   "Product_Woodchips": {
+    "quantity": 57,
+    "stored": 8,
+    "storageCapacity": 8,
+    "produced": [
+     4,
+     12,
+     16,
+     32,
+     7808
+    ],
+    "consumed": [
+     4,
+     4,
+     8,
+     32,
+     7744
+    ]
+   },
+   "Product_MixedMinedMaterial": {
+    "quantity": 0,
+    "stored": 0,
+    "storageCapacity": 0,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  "unknownIds": []
+ },
+ "pinned": {
+  "date": "388-2-27",
+  "tick": 2787522,
+  "products": {
+   "Product_Coal": {
+    "quantity": 19811,
+    "stored": 15461,
+    "storageCapacity": 31300,
+    "produced": [
+     0,
+     0,
+     0,
+     2600,
+     770561
+    ],
+    "consumed": [
+     218,
+     211,
+     429,
+     2358,
+     749049
+    ]
+   },
+   "Product_Iron": {
+    "quantity": 65,
+    "stored": 55,
+    "storageCapacity": 200,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     34268
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     37605
+    ]
+   },
+   "Product_Potato": {
+    "quantity": 809,
+    "stored": 329,
+    "storageCapacity": 6121,
+    "produced": [
+     0,
+     0,
+     0,
+     162,
+     82220
+    ],
+    "consumed": [
+     28,
+     33,
+     61,
+     390,
+     81751
+    ]
+   },
+   "Product_Diesel": {
+    "quantity": 5992,
+    "stored": 5188,
+    "storageCapacity": 7800,
+    "produced": [
+     84,
+     120,
+     204,
+     1022,
+     423589
+    ],
+    "consumed": [
+     161,
+     148,
+     309,
+     1633,
+     420569
+    ]
+   },
+   "Product_ConcreteSlab": {
+    "quantity": 8016,
+    "stored": 7205,
+    "storageCapacity": 7526,
+    "produced": [
+     0,
+     8,
+     8,
+     40,
+     180857
+    ],
+    "consumed": [
+     0,
+     4,
+     4,
+     0,
+     152942
+    ]
+   },
+   "Product_ConstructionParts2": {
+    "quantity": 760,
+    "stored": 507,
+    "storageCapacity": 507,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     85212
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     89248
+    ]
+   },
+   "Product_Steel": {
+    "quantity": 1108,
+    "stored": 298,
+    "storageCapacity": 5700,
+    "produced": [
+     8,
+     0,
+     8,
+     408,
+     249880
+    ],
+    "consumed": [
+     20,
+     46,
+     66,
+     512,
+     267683
+    ]
+   },
+   "Product_ConstructionParts3": {
+    "quantity": 89,
+    "stored": 89,
+    "storageCapacity": 500,
+    "produced": [
+     0,
+     0,
+     0,
+     5,
+     29359
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     5,
+     33566
+    ]
+   },
+   "Product_Compost": {
+    "quantity": 1013,
+    "stored": 683,
+    "storageCapacity": 2000,
+    "produced": [
+     3,
+     3,
+     6,
+     36,
+     2649
+    ],
+    "consumed": [
+     12,
+     12,
+     24,
+     116,
+     1636
+    ]
+   },
+   "Product_ConstructionParts": {
+    "quantity": 763,
+    "stored": 741,
+    "storageCapacity": 741,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     177626
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     179347
+    ]
+   },
+   "Product_CrudeOil": {
+    "quantity": 11947,
+    "stored": 9713,
+    "storageCapacity": 9000,
+    "produced": [
+     480,
+     554,
+     1034,
+     1122,
+     467576
+    ],
+    "consumed": [
+     140,
+     200,
+     340,
+     1680,
+     455080
+    ]
+   },
+   "Product_Corn": {
+    "quantity": 2687,
+    "stored": 2075,
+    "storageCapacity": 6695,
+    "produced": [
+     0,
+     92,
+     92,
+     276,
+     17211
+    ],
+    "consumed": [
+     21,
+     23,
+     44,
+     279,
+     14524
+    ]
+   },
+   "Product_Electronics": {
+    "quantity": 8166,
+    "stored": 6761,
+    "storageCapacity": 8200,
+    "produced": [
+     66,
+     72,
+     138,
+     942,
+     197922
+    ],
+    "consumed": [
+     18,
+     38,
+     56,
+     475,
+     192604
+    ]
+   },
+   "Product_FuelGas": {
+    "quantity": 6330,
+    "stored": 4124,
+    "storageCapacity": 8088,
+    "produced": [
+     194,
+     304,
+     498,
+     2306,
+     111658
+    ],
+    "consumed": [
+     218,
+     256,
+     474,
+     3278,
+     99702
+    ]
+   },
+   "Product_Glass": {
+    "quantity": 5559,
+    "stored": 4851,
+    "storageCapacity": 5712,
+    "produced": [
+     0,
+     4,
+     4,
+     0,
+     23824
+    ],
+    "consumed": [
+     2,
+     6,
+     8,
+     64,
+     18250
+    ]
+   },
+   "Product_FilterMedia": {
+    "quantity": 1844,
+    "stored": 1451,
+    "storageCapacity": 2024,
+    "produced": [
+     0,
+     12,
+     12,
+     60,
+     5388
+    ],
+    "consumed": [
+     4,
+     4,
+     8,
+     48,
+     3544
+    ]
+   },
+   "Product_Limestone": {
+    "quantity": 11860,
+    "stored": 10291,
+    "storageCapacity": 10940,
+    "produced": [
+     58,
+     0,
+     58,
+     929,
+     133172
+    ],
+    "consumed": [
+     45,
+     25,
+     70,
+     220,
+     121019
+    ]
+   },
+   "Product_RailParts": {
+    "quantity": 1419,
+    "stored": 1342,
+    "storageCapacity": 1342,
+    "produced": [
+     0,
+     8,
+     8,
+     0,
+     22411
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     22568
+    ]
+   },
+   "Product_Tofu": {
+    "quantity": 400,
+    "stored": 0,
+    "storageCapacity": 6000,
+    "produced": [
+     0,
+     0,
+     0,
+     8,
+     1360
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     960
+    ]
+   },
+   "Product_Sulfur": {
+    "quantity": 12163,
+    "stored": 11572,
+    "storageCapacity": 20000,
+    "produced": [
+     23,
+     16,
+     39,
+     223,
+     36387
+    ],
+    "consumed": [
+     9,
+     6,
+     15,
+     64,
+     10834
+    ]
+   },
+   "Product_Water": {
+    "quantity": 17046,
+    "stored": 14314,
+    "storageCapacity": 16377,
+    "produced": [
+     613,
+     388,
+     1001,
+     7807,
+     1865813
+    ],
+    "consumed": [
+     514,
+     570,
+     1084,
+     6873,
+     1801613
+    ]
+   },
+   "Product_Wood": {
+    "quantity": 5174,
+    "stored": 4271,
+    "storageCapacity": 5400,
+    "produced": [
+     0,
+     0,
+     0,
+     20,
+     118920
+    ],
+    "consumed": [
+     4,
+     12,
+     16,
+     32,
+     113878
+    ]
+   },
+   "Product_Wheat": {
+    "quantity": 5,
+    "stored": 0,
+    "storageCapacity": 3000,
+    "produced": [
+     0,
+     0,
+     0,
+     162,
+     6589
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     160,
+     6584
+    ]
+   },
+   "Product_Vegetables": {
+    "quantity": 814,
+    "stored": 334,
+    "storageCapacity": 6000,
+    "produced": [
+     0,
+     0,
+     0,
+     84,
+     85879
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     85065
+    ]
+   },
+   "Product_TreeSapling": {
+    "quantity": 84,
+    "stored": 0,
+    "storageCapacity": 200,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     5642
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     5558
+    ]
+   },
+   "Product_Soybean": {
+    "quantity": 28,
+    "stored": 15,
+    "storageCapacity": 3000,
+    "produced": [
+     0,
+     0,
+     0,
+     31,
+     1048
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     6,
+     1020
+    ]
+   },
+   "Product_Sand": {
+    "quantity": 6160,
+    "stored": 5163,
+    "storageCapacity": 5774,
+    "produced": [
+     0,
+     0,
+     0,
+     203,
+     99208
+    ],
+    "consumed": [
+     12,
+     18,
+     30,
+     174,
+     92774
+    ]
+   },
+   "Product_Salt": {
+    "quantity": 4437,
+    "stored": 3915,
+    "storageCapacity": 4014,
+    "produced": [
+     0,
+     4,
+     4,
+     0,
+     8456
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     3996
+    ]
+   },
+   "Product_Rubber": {
+    "quantity": 6751,
+    "stored": 6197,
+    "storageCapacity": 7000,
+    "produced": [
+     24,
+     24,
+     48,
+     150,
+     48109
+    ],
+    "consumed": [
+     11,
+     12,
+     23,
+     253,
+     42356
+    ]
+   },
+   "Product_Rock": {
+    "quantity": 17775,
+    "stored": 13030,
+    "storageCapacity": 15629,
+    "produced": [
+     431,
+     396,
+     827,
+     4130,
+     873876
+    ],
+    "consumed": [
+     0,
+     16,
+     16,
+     444,
+     107373
+    ]
+   },
+   "Product_Naphtha": {
+    "quantity": 852,
+    "stored": 248,
+    "storageCapacity": 1000,
+    "produced": [
+     200,
+     182,
+     382,
+     1806,
+     104142
+    ],
+    "consumed": [
+     132,
+     240,
+     372,
+     1608,
+     86448
+    ]
+   },
+   "Product_Hydrogen": {
+    "quantity": 27716,
+    "stored": 19492,
+    "storageCapacity": 36100,
+    "produced": [
+     292,
+     356,
+     648,
+     4220,
+     115702
+    ],
+    "consumed": [
+     321,
+     61,
+     382,
+     1437,
+     84174
+    ]
+   },
+   "Product_Dirt": {
+    "quantity": 11161,
+    "stored": 9424,
+    "storageCapacity": 10399,
+    "produced": [
+     35,
+     19,
+     54,
+     255,
+     405388
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     16,
+     2216
+    ]
+   },
+   "Product_Bread": {
+    "quantity": 975,
+    "stored": 711,
+    "storageCapacity": 10211,
+    "produced": [
+     0,
+     0,
+     0,
+     240,
+     9864
+    ],
+    "consumed": [
+     14,
+     15,
+     29,
+     185,
+     8889
+    ]
+   },
+   "Product_AnimalFeed": {
+    "quantity": 1333,
+    "stored": 853,
+    "storageCapacity": 4000,
+    "produced": [
+     0,
+     0,
+     0,
+     23,
+     1333
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "Product_Biomass": {
+    "quantity": 920,
+    "stored": 680,
+    "storageCapacity": 1200,
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     920
+    ],
+    "consumed": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  "unknownIds": []
+ },
+ "hist-keys": {
+  "date": "388-2-27",
+  "tick": 2787522,
+  "resolution": "month",
+  "start": "387-8-1",
+  "products": {
+   "Product_Steel": {
+    "produced": [
+     0,
+     32,
+     0,
+     0,
+     0,
+     0,
+     8
+    ],
+    "consumed": [
+     36,
+     32,
+     36,
+     20,
+     36,
+     46,
+     20
+    ],
+    "quantity": [
+     1347,
+     1315,
+     1315,
+     1279,
+     1251,
+     1219,
+     1108
+    ]
+   },
+   "Product_Diesel": {
+    "produced": [
+     120,
+     114,
+     96,
+     108,
+     96,
+     120,
+     84
+    ],
+    "consumed": [
+     178,
+     195,
+     153,
+     171,
+     140,
+     148,
+     161
+    ],
+    "quantity": [
+     6432,
+     6374,
+     6293,
+     6241,
+     6177,
+     6133,
+     5992
+    ]
+   },
+   "Product_Coal": {
+    "produced": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "consumed": [
+     210,
+     185,
+     180,
+     205,
+     195,
+     211,
+     218
+    ],
+    "quantity": [
+     21307,
+     21097,
+     20907,
+     20732,
+     20527,
+     20327,
+     19811
+    ]
+   }
+  },
+  "unknownIds": []
+ },
+ "src-steel": {
+  "date": "388-2-27",
+  "tick": 2787522,
+  "period": "thisMonth",
+  "products": {
+   "Product_Steel": {
+    "produced": {
+     "total": 8,
+     "rows": [
+      {
+       "type": "recipe",
+       "quantity": 8,
+       "recipe": "SteelCastingCooled",
+       "machine": "CasterCooledT2"
+      }
+     ]
+    },
+    "consumed": {
+     "total": 20,
+     "rows": [
+      {
+       "type": "recipe",
+       "quantity": 20,
+       "recipe": "MechPartsSteelAssembly",
+       "machine": "AssemblyElectrifiedT2"
+      }
+     ]
+    }
+   }
+  },
+  "names": {
+   "SteelCastingCooled": "Molten steel + Water \u2192 Steel",
+   "CasterCooledT2": "Cooled caster II",
+   "MechPartsSteelAssembly": "Steel \u2192 Mechanical Parts",
+   "AssemblyElectrifiedT2": "Assembly III"
+  },
+  "unknownIds": []
+ },
+ "src-diesel": {
+  "date": "388-2-27",
+  "tick": 2787522,
+  "period": "thisMonth",
+  "products": {
+   "Product_Diesel": {
+    "produced": {
+     "total": 84,
+     "rows": [
+      {
+       "type": "recipe",
+       "quantity": 84,
+       "recipe": "CrudeOilRefiningT2",
+       "machine": "DistillationTowerT2"
+      }
+     ]
+    },
+    "consumed": {
+     "total": 161,
+     "rows": [
+      {
+       "type": "recipe",
+       "quantity": 112,
+       "recipe": "DieselReforming",
+       "machine": "HydroCrackerT1"
+      },
+      {
+       "type": "fuel",
+       "quantity": 49
+      }
+     ]
+    }
+   }
+  },
+  "names": {
+   "CrudeOilRefiningT2": "Medium oil + Steam (high) \u2192 Diesel + Light oil",
+   "DistillationTowerT2": "Distillation (stage II)",
+   "DieselReforming": "Diesel + Steam (high) \u2192 Naphtha + Fuel gas",
+   "HydroCrackerT1": "Cracking unit"
+  },
+  "unknownIds": []
+ },
+ "commands": [
+  {
+   "type": "AcceptLoanCmd",
+   "namespace": "Mafi.Core.World.Loans",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "product",
+       "type": "ProductProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "toBorrow",
+       "type": "Quantity",
+       "json": "int"
+      },
+      {
+       "name": "yearsTotal",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AddEntityToScheduleItemCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItem",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "priority",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AddLaunchPadCargoBufferCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "launchPadId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AddNewScheduleItemToTrainLineCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainLineId",
+       "type": "TrainLineId",
+       "json": "int"
+      },
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "priority",
+       "type": "int"
+      },
+      {
+       "name": "index",
+       "type": "int",
+       "default": -1,
+       "description": "New index, when negative, new item will be added to the end of the schedule."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AddSurfaceDecalCmd",
+   "namespace": "Mafi.Core.Terrain.Designation",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "protoId",
+       "type": "Proto.ID",
+       "json": "string"
+      },
+      {
+       "name": "area",
+       "type": "RectangleTerrainArea2i",
+       "json": "{ origin: { x: int, y: int } | ..., size: { x: int, y: int } | ... }"
+      },
+      {
+       "name": "rotation",
+       "type": "Rotation90",
+       "json": "{ angleIndex: int } | { dx: int, dy: int } | { direction: { x: int, y: int } }",
+       "default": {
+        "angleIndex": 0
+       }
+      },
+      {
+       "name": "isReflected",
+       "type": "bool",
+       "default": false
+      },
+      {
+       "name": "colorKey",
+       "type": "int",
+       "default": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AddTrainTrackPillarCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "blockIdx",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AddTransportPillarCmd",
+   "namespace": "Mafi.Core.Factory.Transports",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "transportId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "supportTileIndex",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AddVehicleReplacementTaskCmd",
+   "namespace": "Mafi.Core.Vehicles",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "currentProtoId",
+       "type": "DynamicEntityProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "replacementProtoId",
+       "type": "DynamicEntityProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "zoneId",
+       "type": "LogisticsZoneId",
+       "json": "int"
+      },
+      {
+       "name": "vehicleDepotId",
+       "type": "EntityId?",
+       "json": "int or null",
+       "default": null
+      },
+      {
+       "name": "unassignedOnly",
+       "type": "bool"
+      },
+      {
+       "name": "assigneeId",
+       "type": "EntityId?",
+       "json": "int or null",
+       "default": null
+      },
+      {
+       "name": "limit",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AddVehicleToBuildQueueCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "Requests assembly of vehicle from the given depot depot.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "protoId",
+       "type": "DynamicEntityProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "vehicleDepotId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "count",
+       "type": "int",
+       "default": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AnimalFarmSetSlaughterLimitCmd",
+   "namespace": "Mafi.Core.Buildings.Farms",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "farmId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "slaughterSliderStep",
+       "type": "int?",
+       "json": "int or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AnimalFarmToggleGrowthPauseCmd",
+   "namespace": "Mafi.Core.Buildings.Farms",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "farmId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AssignProductToSlotCmd",
+   "namespace": "Mafi.Core.Buildings.Storages",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID?",
+       "json": "string or null",
+       "default": null
+      },
+      {
+       "name": "slot",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AssignTrainLineToTrainCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      },
+      {
+       "name": "trainLineId",
+       "type": "TrainLineIdOrNone",
+       "json": "int",
+       "description": "Set None to unassign."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AssignTrainLineToUnfinishedTrainCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "depotId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "queueIndex",
+       "type": "int"
+      },
+      {
+       "name": "trainLineId",
+       "type": "TrainLineIdOrNone",
+       "json": "int",
+       "description": "Set None to unassign."
+      },
+      {
+       "name": "trainNetworkId",
+       "type": "TrainNetworkIdOrNone",
+       "json": "int",
+       "default": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AssignTrainToNetworkCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      },
+      {
+       "name": "networkId",
+       "type": "TrainNetworkIdOrNone",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AssignVehicleToEntityCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "Assigns a concrete vehicle to an entity.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "AssignVehicleTypeToEntityCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "Assigns a vehicle type to an entity.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "DynamicEntityProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "count",
+       "type": "int",
+       "default": 1
+      },
+      {
+       "name": "zoneId",
+       "type": "LogisticsZoneId?",
+       "json": "int or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "BringAsteroidToOrbitCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "asteroidId",
+       "type": "AsteroidId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "BuildOrUpgradeSpaceStationCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "BuildVehicleForeverCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "Build vehicle forever, set null ID to clear.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "protoId",
+       "type": "DynamicEntityProto.ID?",
+       "json": "string or null",
+       "default": null
+      },
+      {
+       "name": "vehicleDepotId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "CancelBuildOrUpgradeOfSpaceStationCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "CancelReplaceVehicleCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "CancelTrainBuildCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "depotId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "queueIndex",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "CancelTrainJobCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "CancelTrainReplacementCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "CargoDepotSetFuelSliderStepCmd",
+   "namespace": "Mafi.Core.Buildings.Cargo",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "cargoDepotId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "importStep",
+       "type": "int?",
+       "json": "int or null",
+       "default": null,
+       "description": "Negative if undefined."
+      },
+      {
+       "name": "exportStep",
+       "type": "int?",
+       "json": "int or null",
+       "default": null,
+       "description": "Negative if undefined."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "CargoShipReplaceFuelCmd",
+   "namespace": "Mafi.Core.Buildings.Cargo.Modules",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "cargoShipId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "fuelId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ChangeSurfaceDecalColorCmd",
+   "namespace": "Mafi.Core.Terrain.Designation",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "area",
+       "type": "RectangleTerrainArea2i",
+       "json": "{ origin: { x: int, y: int } | ..., size: { x: int, y: int } | ... }"
+      },
+      {
+       "name": "colorKey",
+       "type": "int",
+       "default": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ClearTransportCmd",
+   "namespace": "Mafi.Core.Factory.Transports",
+   "description": "",
+   "result": "EntityId",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "transportId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ClearUnusedMachineBuffersCmd",
+   "namespace": "Mafi.Core.Factory.Machines",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "machineId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "CloneConfigBetweenEntitiesCmd",
+   "namespace": "Mafi.Core.Entities.Static.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "sourceEntityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "targetEntityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "CreateNewLogisticsZoneCmd",
+   "namespace": "Mafi.Core.Vehicles",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "CreateNewTrainLineCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "TrainLineId",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "CreateNewTrainNetworkCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "TrainNetworkId",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "CreateStaticEntityCmd",
+   "namespace": "Mafi.Core.Entities.Static.Commands",
+   "description": "",
+   "result": "EntityId",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "protoId",
+       "type": "StaticEntityProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "transform",
+       "type": "TileTransform",
+       "json": "{ position: { x: int, y: int, z: int } | ..., rotation?: { dx: int, dy: int } | ..., isReflected?: bool } | { position: { x: int, y: int, z: int } | ..., rotFlip: int | ... }"
+      },
+      {
+       "name": "allowValidationSuppression",
+       "type": "bool",
+       "default": false,
+       "description": "Whether this entity can suppress validation, if other conditions are met."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "CreateTrainTrackEntityWithDirectionCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "EntityId",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "protoId",
+       "type": "StaticEntityProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "transform",
+       "type": "TileTransform",
+       "json": "{ position: { x: int, y: int, z: int } | ..., rotation?: { dx: int, dy: int } | ..., isReflected?: bool } | { position: { x: int, y: int, z: int } | ..., rotFlip: int | ... }"
+      },
+      {
+       "name": "direction",
+       "type": "TrainTrackTrajectoryDirection",
+       "json": "string",
+       "values": [
+        "Unknown",
+        "Forward",
+        "Backward",
+        "Bidirectional"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "DataCenterToggleRackCmd",
+   "namespace": "Mafi.Core.Factory.Datacenters",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "dataCenterId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "serverRackId",
+       "type": "Proto.ID",
+       "json": "string"
+      },
+      {
+       "name": "difference",
+       "type": "int",
+       "description": "Negative if removal, positive if addition."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "DeconstructTransportSegmentCmd",
+   "namespace": "Mafi.Core.Factory.Transports",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "transportId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "startPosition",
+       "type": "Tile3i",
+       "json": "{ x: int, y: int, z: int } | { vector: { x: int, y: int } | ..., z: int } | { tileCoord: { x: int, y: int, z: int } | ... }"
+      },
+      {
+       "name": "endPosition",
+       "type": "Tile3i",
+       "json": "{ x: int, y: int, z: int } | { vector: { x: int, y: int } | ..., z: int } | { tileCoord: { x: int, y: int, z: int } | ... }"
+      },
+      {
+       "name": "quickRemove",
+       "type": "bool",
+       "default": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "DesignateHarvestedTreesCmd",
+   "namespace": "Mafi.Core.Terrain.Trees",
+   "description": "Adds or removes all trees in the specified area to/from the set of trees to be harvested. The area is represented by rectangle area specified by two tile positions.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "area",
+       "type": "RectangleTerrainArea2i",
+       "json": "{ origin: { x: int, y: int } | ..., size: { x: int, y: int } | ... }"
+      },
+      {
+       "name": "addToHarvest",
+       "type": "bool",
+       "description": "Whether trees are to be added to the set of trees to harvest, or removed."
+      },
+      {
+       "name": "harvestedProductId",
+       "type": "ProductProto.ID?",
+       "json": "string or null",
+       "default": null,
+       "description": "If set, only trees with given harvested product will be selected."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "DiscardAsteroidCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "asteroidId",
+       "type": "AsteroidId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "DiscardVehicleCargoCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "DowngradeSpaceStationCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "DropAsteroidAtCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "asteroidId",
+       "type": "AsteroidId",
+       "json": "int"
+      },
+      {
+       "name": "position",
+       "type": "Tile2i",
+       "json": "{ x: int, y: int } | { coord: { x: int, y: int } } | { coord: { x: int, y: int } | ... }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "EntityDisableLogisticsToggleCmd",
+   "namespace": "Mafi.Core.Entities.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "isInput",
+       "type": "bool"
+      },
+      {
+       "name": "mode",
+       "type": "EntityLogisticsMode",
+       "json": "string",
+       "values": [
+        "Auto",
+        "On",
+        "Off"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ExcavatorTogglePreferredProductCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "excavatorId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productToMine",
+       "type": "ProductProto.ID?",
+       "json": "string or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "FarmAssignCropCmd",
+   "namespace": "Mafi.Core.Buildings.Farms",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "farmId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "cropId",
+       "type": "Proto.ID?",
+       "json": "string or null",
+       "default": null
+      },
+      {
+       "name": "scheduleSlot",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "FarmForceNextSlotCmd",
+   "namespace": "Mafi.Core.Buildings.Farms",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "farmId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "FarmHarvestNowCmd",
+   "namespace": "Mafi.Core.Buildings.Farms",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "farmId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "FarmSetFertilityTargetCmd",
+   "namespace": "Mafi.Core.Buildings.Farms",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "farmId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "target",
+       "type": "Percent",
+       "json": "number (0.5 is 50%)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "FinishBuildOfStaticEntityCmd",
+   "namespace": "Mafi.Core.Entities.Static.Commands",
+   "description": "Quick build or quick removal of an entity, paid with Unity.",
+   "result": "EntityId",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "id",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "FleetLoadCrewCmd",
+   "namespace": "Mafi.Core.World",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "FleetModificationsCancelCmd",
+   "namespace": "Mafi.Core.World",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "FleetToggleAutoReturnCmd",
+   "namespace": "Mafi.Core.World",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "FleetUnloadCrewCmd",
+   "namespace": "Mafi.Core.World",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "FleetUnloadFuelCmd",
+   "namespace": "Mafi.Core.World",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "ForestryTowerSetCutPercentageCmd",
+   "namespace": "Mafi.Core.Buildings.Forestry",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "towerId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "cutPercent",
+       "type": "Percent",
+       "json": "number (0.5 is 50%)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ForestryTowerSetTreeProtoCmd",
+   "namespace": "Mafi.Core.Buildings.Forestry",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "towerId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "groupProtoId",
+       "type": "Proto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "GameConsoleCmd",
+   "namespace": "Mafi.Core.Console",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "command",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "GameSpeedChangeCmd",
+   "namespace": "Mafi.Core.Simulation",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "newSpeedMultiplier",
+       "type": "int",
+       "description": "From 1 to MAX_GAME_SPEED. Other values are clamped to this range when the command is processed."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "GoToLocationCmd",
+   "namespace": "Mafi.Core.World",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "id",
+       "type": "WorldMapLocId",
+       "json": "int"
+      },
+      {
+       "name": "reason",
+       "type": "LocationVisitReason",
+       "json": "string",
+       "values": [
+        "General",
+        "LoadCargo",
+        "DeliverCargo"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "InputCommand",
+   "namespace": "Mafi.Core.Input",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "LaunchRocketCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "launchPadId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "MachineBoostToggleCmd",
+   "namespace": "Mafi.Core.Factory.Machines",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "machineId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "MachineSetRecipeActiveCmd",
+   "namespace": "Mafi.Core.Factory.Machines",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "machineId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "recipeId",
+       "type": "RecipeProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "enableRecipe",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "MachineToggleRecipeActiveCmd",
+   "namespace": "Mafi.Core.Factory.Machines",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "machineId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "recipeId",
+       "type": "RecipeProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "MakeLoanOverpaymentCmd",
+   "namespace": "Mafi.Core.World.Loans",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "product",
+       "type": "ProductProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "loanId",
+       "type": "uint",
+       "json": "int"
+      },
+      {
+       "name": "toPay",
+       "type": "Quantity",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "MarkGoalAsFinishedCmd",
+   "namespace": "Mafi.Core.Messages.Goals",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "protoId",
+       "type": "Proto.ID",
+       "json": "string"
+      },
+      {
+       "name": "goalWasSkipped",
+       "type": "bool",
+       "default": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "MarkMessageAsReadCmd",
+   "namespace": "Mafi.Core.Messages",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "protoId",
+       "type": "Proto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "MessageNotificationDismissCmd",
+   "namespace": "Mafi.Core.MessageNotifications",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "messageId",
+       "type": "MessageNotificationId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "MoveAnimalsCmd",
+   "namespace": "Mafi.Core.Buildings.Farms",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "farmId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "numberToMove",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "NavigateTrainToCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      },
+      {
+       "name": "targetEntityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "NavigateVehicleToPositionCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "position",
+       "type": "Tile2i",
+       "json": "{ x: int, y: int } | { coord: { x: int, y: int } } | { coord: { x: int, y: int } | ... }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "NavigateVehicleToStaticEntityCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "staticEntityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "NavigateVehicleToVehicleCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "goalVehicleId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "NotifyOnBattleOpenedCmd",
+   "namespace": "Mafi.Core.Fleet",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "NuclearReactorSetEnrichmentStepCmd",
+   "namespace": "Mafi.Core.Factory.NuclearReactors",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "reactorId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "enrichmentStep",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "NuclearReactorSetPowerLevelCmd",
+   "namespace": "Mafi.Core.Factory.NuclearReactors",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "reactorId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "powerLevel",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "NuclearReactorToggleAllowedFuelCmd",
+   "namespace": "Mafi.Core.Factory.NuclearReactors",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "reactorId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "fuelProtoId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "NuclearReactorToggleAutomaticRegulationCmd",
+   "namespace": "Mafi.Core.Factory.NuclearReactors",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "reactorId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "NuclearWasteStorageToggleOutputPortCmd",
+   "namespace": "Mafi.Core.Buildings.Storages.NuclearWaste",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "storageId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "PinnedProductReorderCmd",
+   "namespace": "Mafi.Core.Products",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "productToMove",
+       "type": "ProductProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "newIndex",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "PinToggleCmd",
+   "namespace": "Mafi.Core.Products",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "productToToggle",
+       "type": "ProductProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "PrepareManualPlantTreeCmd",
+   "namespace": "Mafi.Core.Terrain.Trees",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "protoId",
+       "type": "Proto.ID",
+       "json": "string"
+      },
+      {
+       "name": "transform",
+       "type": "TileTransform",
+       "json": "{ position: { x: int, y: int, z: int } | ..., rotation?: { dx: int, dy: int } | ..., isReflected?: bool } | { position: { x: int, y: int, z: int } | ..., rotFlip: int | ... }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "QuickBuildCurrentTrainCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "depotId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "QuickBuildCurrentVehicleCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "Requests to quick build current vehicle and pay for it via unity.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleDepotId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "QuickRemoveEntityRefundCmd",
+   "namespace": "Mafi.Core.Entities",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "QuickRemoveFromEntityCmd",
+   "namespace": "Mafi.Core.Entities.Static",
+   "description": "",
+   "result": "EntityId",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "QuickRemovePropsCmd",
+   "namespace": "Mafi.Core.Terrain.Props",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "area",
+       "type": "RectangleTerrainArea2i",
+       "json": "{ origin: { x: int, y: int } | ..., size: { x: int, y: int } | ... }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "QuickRepairEntityCmd",
+   "namespace": "Mafi.Core.Maintenance",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "QuickRepairTrainCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "QuickTradeCmd",
+   "namespace": "Mafi.Core.World.QuickTrade",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "tradeId",
+       "type": "Proto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RecoverOceanAccessCmd",
+   "namespace": "Mafi.Core.Entities.Static",
+   "description": "",
+   "result": "RecoverOceanResult",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityWithOceanAreas",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "maxTilesToRecover",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RecoverShipCmd",
+   "namespace": "Mafi.Core.Entities.Ships",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "shipId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RecoverTrainCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      },
+      {
+       "name": "forcePause",
+       "type": "bool",
+       "default": false
+      },
+      {
+       "name": "targetDepot",
+       "type": "EntityId?",
+       "json": "int or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RecoverVehicleCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RefuelTrainCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveDepartConditionCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItem",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "rootId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "conditionIndex",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveEntityFromScheduleItemCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItem",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveLaunchPadCargoBufferCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "launchPadId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveLogisticsZoneCmd",
+   "namespace": "Mafi.Core.Vehicles",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "zoneId",
+       "type": "LogisticsZoneId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveManualPlantTreeCmd",
+   "namespace": "Mafi.Core.Terrain.Trees",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "treeId",
+       "type": "TreeId",
+       "json": "{ position: { x: int, y: int } }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemovePathfindingRestrictionCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "waypointId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "restrictionIndex",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveSurfaceDecalCmd",
+   "namespace": "Mafi.Core.Terrain.Designation",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "area",
+       "type": "RectangleTerrainArea2i",
+       "json": "{ origin: { x: int, y: int } | ..., size: { x: int, y: int } | ... }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveTrainLineCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainLineId",
+       "type": "TrainLineId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveTrainLineScheduleItemCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItem",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveTrainNetworkCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "networkId",
+       "type": "TrainNetworkId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveTrainTrackPillarCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "pillarId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveTransportPillarCmd",
+   "namespace": "Mafi.Core.Factory.Transports",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "pillarId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveVehicleFromBuildQueueCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "Requests assembly of vehicle from the given depot depot.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "index",
+       "type": "int"
+      },
+      {
+       "name": "vehicleDepotId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RemoveVehicleReplacementTaskCmd",
+   "namespace": "Mafi.Core.Vehicles",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "taskId",
+       "type": "uint",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RenameLogisticsZoneCmd",
+   "namespace": "Mafi.Core.Vehicles",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "zoneId",
+       "type": "LogisticsZoneId",
+       "json": "int"
+      },
+      {
+       "name": "name",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RenameTrainLineCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainLineId",
+       "type": "TrainLineId",
+       "json": "int"
+      },
+      {
+       "name": "name",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RenameTrainNetworkCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "networkId",
+       "type": "TrainNetworkId",
+       "json": "int"
+      },
+      {
+       "name": "name",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ReorderDepartConditionCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItemId",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "rootId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "conditionIndex",
+       "type": "int"
+      },
+      {
+       "name": "newConditionIndex",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ReorderLaunchPadCargoBufferCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "launchPadId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "oldIndex",
+       "type": "int"
+      },
+      {
+       "name": "newIndexAfterRemove",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ReorderRecipeCmd",
+   "namespace": "Mafi.Core.Factory.Machines",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "machineId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "oldIndex",
+       "type": "int"
+      },
+      {
+       "name": "newIndexAfterRemove",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ReorderTrainLineScheduleItemCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItem",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "newIndex",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ReplaceEntityInScheduleCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItem",
+       "type": "TrainScheduleItemId?",
+       "json": "{ trainLineId: int, scheduleIndex: int } or null",
+       "default": null,
+       "description": "Schedule item to replace the station in. If null, will replace that station in every line."
+      },
+      {
+       "name": "oldEntityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "newEntityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ReplaceVehicleCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "targetProtoId",
+       "type": "DynamicEntityProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ResearchQueueDequeueCmd",
+   "namespace": "Mafi.Core.Research",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "nodeId",
+       "type": "ResearchNodeProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "isEnqueue",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ResearchStartCmd",
+   "namespace": "Mafi.Core.Research",
+   "description": "Command to start a research of the given node from the research tree.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "nodeId",
+       "type": "ResearchNodeProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ResearchStopCmd",
+   "namespace": "Mafi.Core.Research",
+   "description": "Command to stop the current research.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "ReverseLiftCmd",
+   "namespace": "Mafi.Core.Factory.Lifts",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "liftId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ReverseTransportCmd",
+   "namespace": "Mafi.Core.Factory.Transports",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "transportId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "RuinsScrapCmd",
+   "namespace": "Mafi.Core.Buildings.RuinedBuildings",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "isScrapping",
+       "type": "bool"
+      }
+     ]
+    },
+    {
+     "params": [
+      {
+       "name": "ruinsId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "isScrapping",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ScanForNewAsteroidCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "ScrapTrainCarCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "depotId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "carProtoId",
+       "type": "DynamicEntityProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetArrivalRuleAlwaysAllowCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "stationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "alwaysAllow",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetArrivalRuleNetworkPriorityCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "stationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "priority",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetArrivalRuleNetworkThresholdCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "stationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "threshold",
+       "type": "Percent",
+       "json": "number (0.5 is 50%)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetBillboardColorCmd",
+   "namespace": "Mafi.Base.Prototypes.Buildings",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "primaryColor",
+       "type": "ColorRgba",
+       "json": "int | { r: int, g: int, b: int, a?: int } | { rgb: int, a?: int } | { r: number, g: number, b: number, a?: number }"
+      },
+      {
+       "name": "secondaryColor",
+       "type": "ColorRgba",
+       "json": "int | { r: int, g: int, b: int, a?: int } | { rgb: int, a?: int } | { r: number, g: number, b: number, a?: number }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetBridgeLaneLayoutCmd",
+   "namespace": "Mafi.Core.Bridges",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "bridgeId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "laneIndex",
+       "type": "int"
+      },
+      {
+       "name": "laneProtoId",
+       "type": "Proto.ID?",
+       "json": "string or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetConstructionPausedCmd",
+   "namespace": "Mafi.Core.Entities",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "isPaused",
+       "type": "bool?",
+       "json": "bool or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetConstructionPriorityCmd",
+   "namespace": "Mafi.Core.Entities.Commands",
+   "description": "",
+   "result": "EntityId",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "priority",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetCustomPriorityCmd",
+   "namespace": "Mafi.Core.Entities.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "priorityId",
+       "type": "string"
+      },
+      {
+       "name": "priority",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetDepartConditionCombineMethodCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItem",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "rootId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "conditionIndex",
+       "type": "int"
+      },
+      {
+       "name": "combineAsOr",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetDoNotSkipThisTrainStationCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "rootStationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "doNotSkip",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetDumpHeightOffsetCmd",
+   "namespace": "Mafi.Core.Entities.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "depth",
+       "type": "ThicknessTilesI",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetElectricityGenerationPriorityCmd",
+   "namespace": "Mafi.Core.Factory.ElectricPower",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "priority",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetEntityEnabledCmd",
+   "namespace": "Mafi.Core.Entities",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "isEnabled",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetEntityNameCmd",
+   "namespace": "Mafi.Core.Entities",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "title",
+       "type": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetGeneralPriorityCmd",
+   "namespace": "Mafi.Core.Entities.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "priority",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetGlobalPriorityCmd",
+   "namespace": "Mafi.Core.Entities.Priorities",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "priorityId",
+       "type": "string"
+      },
+      {
+       "name": "priority",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetIsElectricitySurplusConsumerCmd",
+   "namespace": "Mafi.Core.Factory.ElectricPower",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "isSurplusConsumer",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetIsElectricitySurplusGeneratorCmd",
+   "namespace": "Mafi.Core.Factory.ElectricPower",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "isSurplusGenerator",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetLoanBufferPriorityCmd",
+   "namespace": "Mafi.Core.World.Loans",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "loanId",
+       "type": "uint",
+       "json": "int"
+      },
+      {
+       "name": "priority",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetLogisticsZoneColorCmd",
+   "namespace": "Mafi.Core.Vehicles",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "zoneId",
+       "type": "LogisticsZoneId",
+       "json": "int"
+      },
+      {
+       "name": "colorIndex",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetNetworkCargoStationCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "networkId",
+       "type": "TrainNetworkId",
+       "json": "int"
+      },
+      {
+       "name": "stationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "add",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetNetworkFuelStationCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "networkId",
+       "type": "TrainNetworkId",
+       "json": "int"
+      },
+      {
+       "name": "stationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "add",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetNetworkRefuelThresholdCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "networkId",
+       "type": "TrainNetworkId",
+       "json": "int"
+      },
+      {
+       "name": "threshold",
+       "type": "Percent",
+       "json": "number (0.5 is 50%)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetNetworkWaitingBayCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "networkId",
+       "type": "TrainNetworkId",
+       "json": "int"
+      },
+      {
+       "name": "stationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "add",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetOfficeComputingBoostStepCmd",
+   "namespace": "Mafi.Core.Buildings.Offices",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "officeId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "step",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetOfficeFocusStepCmd",
+   "namespace": "Mafi.Core.Buildings.Offices",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "focusId",
+       "type": "Proto.ID",
+       "json": "string"
+      },
+      {
+       "name": "diff",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetOrbitCargoLimitCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "limit",
+       "type": "Quantity",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetPlanningModeEnabledCmd",
+   "namespace": "Mafi.Core.Entities",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "isEnabled",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetRocketAutoLaunchCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "launchPadId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "autoLaunch",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetShiftsCountForMineCmd",
+   "namespace": "Mafi.Core.World.Entities",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "shiftsCount",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetSimPauseStateCmd",
+   "namespace": "Mafi.Core.Simulation",
+   "description": "Pauses or resumes the game.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "isPaused",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetStationRequireFullServiceOnArrivalCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "stationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "requireFullTransfer",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainLineColorApplicationCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainLineId",
+       "type": "TrainLineId",
+       "json": "int"
+      },
+      {
+       "name": "applyLineColorToTrains",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainLineColorCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainLineId",
+       "type": "TrainLineId",
+       "json": "int"
+      },
+      {
+       "name": "color",
+       "type": "TrainLineColor",
+       "json": "{ primary: { r: int, g: int, b: int, a?: int } | ..., secondary: { r: int, g: int, b: int, a?: int } | ..., trainColor: int | ... }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainLineLocoColorModeCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainLineId",
+       "type": "TrainLineId",
+       "json": "int"
+      },
+      {
+       "name": "mode",
+       "type": "LocoColorMode",
+       "json": "string",
+       "values": [
+        "SameAsLine",
+        "NoOverride",
+        "Custom"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainLineLocoCustomColorCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainLineId",
+       "type": "TrainLineId",
+       "json": "int"
+      },
+      {
+       "name": "color",
+       "type": "TrainLineColor",
+       "json": "{ primary: { r: int, g: int, b: int, a?: int } | ..., secondary: { r: int, g: int, b: int, a?: int } | ..., trainColor: int | ... }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainNetworkColorApplicationCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "networkId",
+       "type": "TrainNetworkId",
+       "json": "int"
+      },
+      {
+       "name": "applyLineColorToTrains",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainNetworkColorCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "networkId",
+       "type": "TrainNetworkId",
+       "json": "int"
+      },
+      {
+       "name": "color",
+       "type": "TrainLineColor",
+       "json": "{ primary: { r: int, g: int, b: int, a?: int } | ..., secondary: { r: int, g: int, b: int, a?: int } | ..., trainColor: int | ... }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainNetworkLocoColorModeCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "networkId",
+       "type": "TrainNetworkId",
+       "json": "int"
+      },
+      {
+       "name": "mode",
+       "type": "LocoColorMode",
+       "json": "string",
+       "values": [
+        "SameAsLine",
+        "NoOverride",
+        "Custom"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainNetworkLocoCustomColorCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "networkId",
+       "type": "TrainNetworkId",
+       "json": "int"
+      },
+      {
+       "name": "color",
+       "type": "TrainLineColor",
+       "json": "{ primary: { r: int, g: int, b: int, a?: int } | ..., secondary: { r: int, g: int, b: int, a?: int } | ..., trainColor: int | ... }"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainSchedulePriority",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItemId",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "priority",
+       "type": "int"
+      },
+      {
+       "name": "rootId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainScheduleSkipIfCannotArriveCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItemId",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "skipIfCannotArrive",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainScheduleSkipIfHighFuelCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItemId",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "skipIfFuelHigherThan",
+       "type": "Percent",
+       "json": "number (0.5 is 50%)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainScheduleSkipIfNextCanArriveCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItemId",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "skipIfNextCanArrive",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainStationTrainLimitCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "stationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "trainLimit",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetTrainTrackBufferTurnaroundCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "Sets AllowsTurnaround of a buffer.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "bufferId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "allowsTurnaround",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetVehicleDepotTargetZone",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleDepotId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "zoneId",
+       "type": "LogisticsZoneId?",
+       "json": "int or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetVehicleLogisticsZoneCmd",
+   "namespace": "Mafi.Core.Vehicles",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "zoneId",
+       "type": "LogisticsZoneId?",
+       "json": "int or null",
+       "default": null
+      },
+      {
+       "name": "truckId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SetWagonProductFilterCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      },
+      {
+       "name": "wagonIndex",
+       "type": "int"
+      },
+      {
+       "name": "subCarIndex",
+       "type": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID?",
+       "json": "string or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ShipayardSetFuelSliderStepCmd",
+   "namespace": "Mafi.Core.Buildings.Shipyard",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "shipyardId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "importStep",
+       "type": "int?",
+       "json": "int or null",
+       "default": null,
+       "description": "Negative if undefined."
+      },
+      {
+       "name": "exportStep",
+       "type": "int?",
+       "json": "int or null",
+       "default": null,
+       "description": "Negative if undefined."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ShipyardDiscardProductCmd",
+   "namespace": "Mafi.Core.Buildings.Shipyard",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "shipyardId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ShipyardMakePrimaryCmd",
+   "namespace": "Mafi.Core.Buildings.Shipyard",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "shipyardId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ShipyardSetRepairingCmd",
+   "namespace": "Mafi.Core.Buildings.Shipyard",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "isRepairing",
+       "type": "bool"
+      }
+     ]
+    },
+    {
+     "params": [
+      {
+       "name": "shipyardId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "isRepairing",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ShipyardToggleAutoRepairCmd",
+   "namespace": "Mafi.Core.Buildings.Shipyard",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "shipyardId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ShipyardToggleUnloadPriorityCmd",
+   "namespace": "Mafi.Core.Buildings.Shipyard",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "shipyardId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ShipyardToggleWorksPauseCmd",
+   "namespace": "Mafi.Core.Buildings.Shipyard",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    },
+    {
+     "params": [
+      {
+       "name": "shipyardId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ShipyardWorldEntityConstructionToggle",
+   "namespace": "Mafi.Core.Buildings.Shipyard",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "shipyardId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "worldEntityIdToConstruct",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SkipScheduleItemCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SorterToggleProductCmd",
+   "namespace": "Mafi.Core.Factory.Sorters",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "sorterId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "SortingPlantSetBlockedProductAlertCmd",
+   "namespace": "Mafi.Core.Buildings.OreSorting",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "sortingPlantId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "isAlertEnabled",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StackerTowerSetDumpRadiusCmd",
+   "namespace": "Mafi.Core.Factory.Transports",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "radiusLeft",
+       "type": "RelTile1i?",
+       "json": "int or null",
+       "default": null
+      },
+      {
+       "name": "radiusRight",
+       "type": "RelTile1i?",
+       "json": "int or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StackerTowerSetFullAlertActiveCmd",
+   "namespace": "Mafi.Core.Factory.Transports",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "active",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StackerTowerSetMaxSegmentsCmd",
+   "namespace": "Mafi.Core.Factory.Transports",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "segmentsCount",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StartDeconstructionOfStaticEntityCmd",
+   "namespace": "Mafi.Core.Entities.Static.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "reason",
+       "type": "EntityRemoveReason",
+       "json": "string",
+       "values": [
+        "Remove",
+        "Collapse"
+       ]
+      },
+      {
+       "name": "isAreaRemove",
+       "type": "bool",
+       "default": false,
+       "description": "True when this deconstruction is part of an area removal (bulldozing a region). Used so that a waypoint in the area also clears the rail line under it instead of leaving the plain replacement track an individual delete would."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StorageAddAllowedTruckGroupCmd",
+   "namespace": "Mafi.Core.Buildings.Storages",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "storageId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "truckProtoId",
+       "type": "Proto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StorageAlertSetEnabledCmd",
+   "namespace": "Mafi.Core.Buildings.Storages",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "storageId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "isEnabled",
+       "type": "bool"
+      },
+      {
+       "name": "isAbove",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StorageAlertSetThresholdCmd",
+   "namespace": "Mafi.Core.Buildings.Storages",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "storageId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "value",
+       "type": "Percent",
+       "json": "number (0.5 is 50%)"
+      },
+      {
+       "name": "isAbove",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StorageDisableLogisticsToggleCmd",
+   "namespace": "Mafi.Core.Buildings.Storages",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "storageId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "isInput",
+       "type": "bool"
+      },
+      {
+       "name": "isDisabled",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StorageRemoveAllowedTruckGroupCmd",
+   "namespace": "Mafi.Core.Buildings.Storages",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "storageId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "truckProtoId",
+       "type": "Proto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StorageSetProductCmd",
+   "namespace": "Mafi.Core.Buildings.Storages",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "storageId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "StorageSetSliderStepCmd",
+   "namespace": "Mafi.Core.Buildings.Storages",
+   "description": "Sets the sliders of a storage. Steps above MAX_STEPS are clamped to it when the command is processed.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "storageId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "importStep",
+       "type": "int?",
+       "json": "int or null",
+       "default": null,
+       "description": "Negative if undefined."
+      },
+      {
+       "name": "exportStep",
+       "type": "int?",
+       "json": "int or null",
+       "default": null,
+       "description": "Negative if undefined."
+      },
+      {
+       "name": "transportFrom",
+       "type": "int?",
+       "json": "int or null",
+       "default": null,
+       "description": "Negative if undefined."
+      },
+      {
+       "name": "transportUntil",
+       "type": "int?",
+       "json": "int or null",
+       "default": null,
+       "description": "Negative if undefined."
+      }
+     ]
+    },
+    {
+     "params": [
+      {
+       "name": "storageId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "importUntil",
+       "type": "Percent?",
+       "json": "number (0.5 is 50%) or null",
+       "default": null
+      },
+      {
+       "name": "exportFrom",
+       "type": "Percent?",
+       "json": "number (0.5 is 50%) or null",
+       "default": null
+      },
+      {
+       "name": "transportFrom",
+       "type": "Percent?",
+       "json": "number (0.5 is 50%) or null",
+       "default": null,
+       "description": "Negative if undefined."
+      },
+      {
+       "name": "transportUntil",
+       "type": "Percent?",
+       "json": "number (0.5 is 50%) or null",
+       "default": null,
+       "description": "Negative if undefined."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleConstructionPriorityCmd",
+   "namespace": "Mafi.Core.Entities.Static.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleContractCmd",
+   "namespace": "Mafi.Core.World.Contracts",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "contractId",
+       "type": "Proto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleDefaultLogisticsMode",
+   "namespace": "Mafi.Core.Entities",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "ToggleEnabledCmd",
+   "namespace": "Mafi.Core.Entities",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleEnforceAssignedVehiclesForEntityCmd",
+   "namespace": "Mafi.Core.Buildings.Storages",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "storageId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "isEnforced",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleFuelStationTrucksAllowedToRefuelCmd",
+   "namespace": "Mafi.Core.Buildings.FuelStations",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "fuelStationId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleFullBufferNotificationCmd",
+   "namespace": "Mafi.Core.Buildings.Farms",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "farmId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleLoadUnloadTrainScheduleItemCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItemId",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "isUnload",
+       "type": "bool"
+      },
+      {
+       "name": "disable",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleLogisticsZoneConstructionCmd",
+   "namespace": "Mafi.Core.Vehicles",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "zoneId",
+       "type": "LogisticsZoneId",
+       "json": "int"
+      },
+      {
+       "name": "constructionZoneId",
+       "type": "LogisticsZoneId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleMechGeneratorAutoBalanceCmd",
+   "namespace": "Mafi.Base.Prototypes.Machines.PowerGenerators",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TogglePartialTrucksLoadCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "ToggleRocketCountdownMuteCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "launchPadId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleScrapTrainAtNearestDepotCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleSpaceStationCrewEnabledCmd",
+   "namespace": "Mafi.Core.SpaceProgram",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": []
+    }
+   ]
+  },
+  {
+   "type": "ToggleStaticEntityConstructionCmd",
+   "namespace": "Mafi.Core.Entities.Static.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleTrainPausedCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "trainId",
+       "type": "TrainId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleTrainStationAllowedFuelCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "rootStationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "fuelId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleTrainStationModuleLoadUnloadCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "load",
+       "type": "bool?",
+       "json": "bool or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleTrainStationStorageLinkCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "stationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "storageId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ToggleVehicleScrapCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TradeDockToggleUnloadPriorityCmd",
+   "namespace": "Mafi.Core.Buildings.Cargo",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "tradeDockId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TrainContainsDepartConditionEditCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItemId",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "rootId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "conditionIndex",
+       "type": "int"
+      },
+      {
+       "name": "useInferiorToInsteadOfSuperiorTo",
+       "type": "bool?",
+       "json": "bool or null",
+       "default": null
+      },
+      {
+       "name": "mode",
+       "type": "TrainContainsDepartCondition.ComparisonMode?",
+       "json": "string or null",
+       "default": null,
+       "values": [
+        "AllProducts",
+        "AnyProduct",
+        "SpecificProduct"
+       ]
+      },
+      {
+       "name": "percent",
+       "type": "Percent?",
+       "json": "number (0.5 is 50%) or null",
+       "default": null
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID?",
+       "json": "string or null",
+       "default": null
+      },
+      {
+       "name": "productIdSpecified",
+       "type": "bool",
+       "default": false,
+       "description": "Whether to interpret the Product field being null as clear or unset."
+      },
+      {
+       "name": "isSimplified",
+       "type": "bool?",
+       "json": "bool or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TrainDurationDepartConditionEditCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "scheduleItem",
+       "type": "TrainScheduleItemId",
+       "json": "{ trainLineId: int, scheduleIndex: int }"
+      },
+      {
+       "name": "rootId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "conditionIndex",
+       "type": "int"
+      },
+      {
+       "name": "delay",
+       "type": "Duration?",
+       "json": "int or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TrainStationFuelSetFuelCmd",
+   "namespace": "Mafi.Base.Prototypes.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "stationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "primaryFuelId",
+       "type": "ProductProto.ID?",
+       "json": "string or null",
+       "default": null,
+       "description": "null to clear"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TrainStationModuleClearProductCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "moduleId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TrainStationModuleQuickRemoveProductCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "moduleId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TrainStationModuleSetProductCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "moduleId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TruckConstructionRuleSetCmd",
+   "namespace": "Mafi.Core.Vehicles",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "truckId",
+       "type": "Proto.ID",
+       "json": "string"
+      },
+      {
+       "name": "zoneId",
+       "type": "LogisticsZoneId",
+       "json": "int"
+      },
+      {
+       "name": "rule",
+       "type": "TruckConstructionRule",
+       "json": "string",
+       "values": [
+        "None",
+        "OnlyIfOthersCannotReach",
+        "Forbid"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TruckJobsAllowCmd",
+   "namespace": "Mafi.Core.Vehicles",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "truckId",
+       "type": "Proto.ID",
+       "json": "string"
+      },
+      {
+       "name": "zoneId",
+       "type": "LogisticsZoneId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TruckJobsForbidCmd",
+   "namespace": "Mafi.Core.Vehicles",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "truckId",
+       "type": "Proto.ID",
+       "json": "string"
+      },
+      {
+       "name": "zoneId",
+       "type": "LogisticsZoneId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "TryTransformEntityCmd",
+   "namespace": "Mafi.Core.Entities.Static.Commands",
+   "description": "Tries to rotate / flip entity in place. Only applicable to non-constructed ghosts.",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "rotate",
+       "type": "bool"
+      },
+      {
+       "name": "flip",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "UnassignVehicleCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "UnassignVehicleFromEntityCmd",
+   "namespace": "Mafi.Core.Vehicles.Commands",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "vehicleId",
+       "type": "DynamicEntityProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "count",
+       "type": "int",
+       "default": 1
+      },
+      {
+       "name": "zoneToAssign",
+       "type": "LogisticsZoneId?",
+       "json": "int or null",
+       "default": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "UpdateTrainStationArrivalRuleCmd",
+   "namespace": "Mafi.Core.Trains",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "stationId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "productId",
+       "type": "ProductProto.ID",
+       "json": "string"
+      },
+      {
+       "name": "threshold",
+       "type": "Percent",
+       "json": "number (0.5 is 50%)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "WellPumpAlertSetEnabledCmd",
+   "namespace": "Mafi.Core.Factory.Machines",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "wellPumpId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "isEnabled",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "WorldMapEntityCancelRepairCmd",
+   "namespace": "Mafi.Core.World",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "WorldMapEntityStartRepairCmd",
+   "namespace": "Mafi.Core.World",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "WorldMapEntityUpgradeCmd",
+   "namespace": "Mafi.Core.World",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "WorldMapSettlementAdoptPopsCmd",
+   "namespace": "Mafi.Core.World",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "entityId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "popsCount",
+       "type": "int"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ZipperSetForceEvenInputsCmd",
+   "namespace": "Mafi.Core.Factory.Zippers",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "zipperId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "forceEvenInputs",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ZipperSetForceEvenOutputsCmd",
+   "namespace": "Mafi.Core.Factory.Zippers",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "zipperId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "forceEvenOutputs",
+       "type": "bool"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "ZipperSetPriorityPortsCmd",
+   "namespace": "Mafi.Core.Factory.Zippers",
+   "description": "",
+   "result": "bool",
+   "constructors": [
+    {
+     "params": [
+      {
+       "name": "zipperId",
+       "type": "EntityId",
+       "json": "int"
+      },
+      {
+       "name": "portName",
+       "type": "char",
+       "json": "string of one character"
+      },
+      {
+       "name": "isPrioritized",
+       "type": "bool?",
+       "json": "bool or null",
+       "default": null,
+       "description": "Acts like toggle if null."
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
