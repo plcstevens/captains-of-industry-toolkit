@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <AssemblyName>guardtests</AssemblyName>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The EXACT shipping sources of the three extracted guard
+         units, compiled in — executing this executes the guard
+         arithmetic exactly as it ships in the mods. The units are
+         pure (no game-assembly types), which is what makes this
+         possible; the net48 mod DLLs cannot execute on Linux. -->
+    <Compile Include="..\..\QoSChickens\ChickenGuardMath.cs" Link="ChickenGuardMath.cs" />
+    <Compile Include="..\..\QoSVehicleRecovery\RecoveryGuardMath.cs" Link="RecoveryGuardMath.cs" />
+    <Compile Include="..\..\QoSPriorityActuator\ActuatorGuardMath.cs" Link="ActuatorGuardMath.cs" />
+  </ItemGroup>
+</Project>

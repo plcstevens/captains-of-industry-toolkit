@@ -65,6 +65,14 @@ fi
 # pattern, not a hardcoded list; the script scans qos/ + bridge/.
 python3 "$ROOT/tools/check_serializer_pairs.py" || { echo "!! serializer-pair lint FAILED — refusing to build (see above)"; exit 1; }
 
+# Guard-arithmetic tests (QUALITY-AUDIT item 5): execute the three
+# daily services' extracted pure guard units (ChickenGuardMath /
+# RecoveryGuardMath / ActuatorGuardMath — the same sources these
+# projects compile) against their characterised cases. The net48
+# DLLs cannot execute here; the pure units can, and a guard
+# regression must refuse the build like any other safety gate.
+bash "$ROOT/tools/check_qos_guards.sh" || { echo "!! QoS guard tests FAILED — refusing to build (see above)"; exit 1; }
+
 ver() { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" "$1"; }
 CORE_VER="$(ver "$HERE/../QoSCore/manifest.json")"
 CHICK_VER="$(ver "$HERE/../QoSChickens/manifest.json")"

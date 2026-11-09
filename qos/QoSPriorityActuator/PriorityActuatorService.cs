@@ -88,10 +88,6 @@ namespace QoSPriorityActuator;
 [GlobalDependency(RegistrationMode.AsEverything)]
 public sealed class PriorityActuatorService : IDisposable {
 
-	/// <summary>Assignable range of general priority (GeneralPriorities, recon 2a).</summary>
-	private const int MinAssignable = 0;
-	private const int MaxAssignable = 14;
-
 	/// <summary>
 	/// Session-only observation bookkeeping: consecutive-starved
 	/// counting and the per-machine nudge cooldown. Safety never
@@ -208,10 +204,14 @@ public sealed class PriorityActuatorService : IDisposable {
 		}
 		bool nudgeStarved = m_mod.JsonConfig.GetBool("nudge_starved", true);
 		bool restoreWhenWorking = m_mod.JsonConfig.GetBool("restore_when_working", true);
-		int persistenceDays = Math.Max(1, m_mod.JsonConfig.GetInt("persistence_days", 3));
-		int maxNudge = Math.Max(0, m_mod.JsonConfig.GetInt("max_nudge_steps", 2));
-		int cooldownDays = Math.Max(0, m_mod.JsonConfig.GetInt("cooldown_days", 2));
-		int dailyCap = Math.Max(0, m_mod.JsonConfig.GetInt("max_actions_per_day", 10));
+		int persistenceDays = ActuatorGuardMath.ClampPersistenceDays(
+			m_mod.JsonConfig.GetInt("persistence_days", 3));
+		int maxNudge = ActuatorGuardMath.ClampMaxNudge(
+			m_mod.JsonConfig.GetInt("max_nudge_steps", 2));
+		int cooldownDays = ActuatorGuardMath.ClampCooldownDays(
+			m_mod.JsonConfig.GetInt("cooldown_days", 2));
+		int dailyCap = ActuatorGuardMath.ClampDailyCap(
+			m_mod.JsonConfig.GetInt("max_actions_per_day", 10));
 		bool logActions = m_mod.JsonConfig.GetBool("log_actions", true);
 
 		m_passIndex++;
@@ -288,7 +288,8 @@ public sealed class PriorityActuatorService : IDisposable {
 		// PARKED first (§5's order): the player's own choice —
 		// paused, disabled, or reporting the Paused state. Never
 		// touched, never counted toward persistence.
-		if (machine.IsPaused || !machine.IsEnabled || state == Machine.State.Paused) {
+		if (ActuatorGuardMath.IsParked(machine.IsPaused, machine.IsEnabled,
+				state == Machine.State.Paused)) {
 			BreakStreak(id);
 			return;
 		}
@@ -326,59 +327,60 @@ public sealed class PriorityActuatorService : IDisposable {
 		}
 		int id = machine.Id.Value;
 		Observation obs = GetObservation(id);
-		obs.StarvedStreak = (obs.LastSeenPass == m_passIndex - 1 && obs.StarvedStreak > 0)
-			? obs.StarvedStreak + 1
-			: 1;
+		obs.StarvedStreak = ActuatorGuardMath.NextStreak(
+			obs.StarvedStreak, obs.LastSeenPass, m_passIndex);
 		obs.LastSeenPass = m_passIndex;
 
-		if (obs.StarvedStreak < persistenceDays) {
-			QoSLog.Debug("PriorityActuator", "machine #" + id + " (" +
-				machine.Prototype.Id.Value + ") cause=starved, streak " +
-				obs.StarvedStreak + "/" + persistenceDays + " passes — not yet persistent");
-			return;
-		}
-		if (m_passIndex - obs.LastNudgePass < cooldownDays) {
-			QoSLog.Debug("PriorityActuator", "machine #" + id +
-				" nudge skipped: per-machine cooldown");
-			return;
-		}
-
+		// The decision — persistence, cooldown, priority surface,
+		// cargo flag, ownership band, band floor, daily cap, in
+		// that order — is ActuatorGuardMath.DecideNudge (pure,
+		// unit-tested; QUALITY-AUDIT item 5). This method reads the
+		// live values, carries the log lines, and schedules.
 		IEntityWithGeneralPriority gp = machine as IEntityWithGeneralPriority;
-		if (gp == null) {
-			return;
-		}
-		if (!machine.IsCargoAffectedByGeneralPriority) {
-			// The value would be inert for this machine's cargo —
-			// never perform a no-op action.
-			QoSLog.Debug("PriorityActuator", "machine #" + id +
-				" nudge skipped: its cargo is not affected by general priority");
-			return;
-		}
 		int protoDefault = machine.Prototype.Costs.DefaultPriority;
-		int bandFloor = Math.Max(MinAssignable, protoDefault - maxNudge);
-		int current = gp.GeneralPriority;
+		int bandFloor = ActuatorGuardMath.BandFloor(protoDefault, maxNudge);
+		int current = gp != null ? gp.GeneralPriority : 0;
+		int target;
+		ActuatorGuardMath.NudgeDecision decision = ActuatorGuardMath.DecideNudge(
+			obs.StarvedStreak, persistenceDays, m_passIndex, obs.LastNudgePass, cooldownDays,
+			gp != null, machine.IsCargoAffectedByGeneralPriority,
+			current, protoDefault, maxNudge, actions, dailyCap, out target);
+		switch (decision) {
+			case ActuatorGuardMath.NudgeDecision.NotPersistent:
+				QoSLog.Debug("PriorityActuator", "machine #" + id + " (" +
+					machine.Prototype.Id.Value + ") cause=starved, streak " +
+					obs.StarvedStreak + "/" + persistenceDays + " passes — not yet persistent");
+				return;
+			case ActuatorGuardMath.NudgeDecision.CoolingDown:
+				QoSLog.Debug("PriorityActuator", "machine #" + id +
+					" nudge skipped: per-machine cooldown");
+				return;
+			case ActuatorGuardMath.NudgeDecision.NoPrioritySurface:
+				return;
+			case ActuatorGuardMath.NudgeDecision.CargoUnaffected:
+				// The value would be inert for this machine's cargo —
+				// never perform a no-op action.
+				QoSLog.Debug("PriorityActuator", "machine #" + id +
+					" nudge skipped: its cargo is not affected by general priority");
+				return;
+			case ActuatorGuardMath.NudgeDecision.OutsideBand:
+				// STATELESS OWNERSHIP: only values this mod's rule
+				// could have produced may be adjusted. Anything else
+				// is the player's and is never fought.
+				QoSLog.Debug("PriorityActuator", "machine #" + id + " cause=starved but priority " +
+					current + " is outside the owned band [" + bandFloor + ", " + protoDefault +
+					"] (proto default " + protoDefault + ") — treated as player-set, hands off");
+				return;
+			case ActuatorGuardMath.NudgeDecision.AtBandFloor:
+				QoSLog.Debug("PriorityActuator", "machine #" + id +
+					" cause=starved but already at the band floor " + bandFloor + " — no further step");
+				return;
+			case ActuatorGuardMath.NudgeDecision.DailyCapReached:
+				QoSLog.Debug("PriorityActuator", "machine #" + id +
+					" nudge skipped: daily action cap reached");
+				return;
+		}
 
-		// STATELESS OWNERSHIP: only values this mod's rule could
-		// have produced may be adjusted. Anything else is the
-		// player's and is never fought.
-		if (current > protoDefault || current < bandFloor) {
-			QoSLog.Debug("PriorityActuator", "machine #" + id + " cause=starved but priority " +
-				current + " is outside the owned band [" + bandFloor + ", " + protoDefault +
-				"] (proto default " + protoDefault + ") — treated as player-set, hands off");
-			return;
-		}
-		if (current <= bandFloor) {
-			QoSLog.Debug("PriorityActuator", "machine #" + id +
-				" cause=starved but already at the band floor " + bandFloor + " — no further step");
-			return;
-		}
-		if (actions >= dailyCap) {
-			QoSLog.Debug("PriorityActuator", "machine #" + id +
-				" nudge skipped: daily action cap reached");
-			return;
-		}
-
-		int target = current - 1;
 		m_scheduler.ScheduleInputCmd(new SetGeneralPriorityCmd(machine, target));
 		// Unified activity record (Addendum XVI).
 		QoSEventLog.Record("QoSPriorityActuator", QoSPriorityActuatorMod.Version, "command",
@@ -422,23 +424,23 @@ public sealed class PriorityActuatorService : IDisposable {
 		}
 		int id = machine.Id.Value;
 		int protoDefault = machine.Prototype.Costs.DefaultPriority;
-		int bandFloor = Math.Max(MinAssignable, protoDefault - maxNudge);
+		int bandFloor = ActuatorGuardMath.BandFloor(protoDefault, maxNudge);
 		int current = gp.GeneralPriority;
 
-		// STATELESS RESTORE TEST: step back only a value this
-		// mod's rule would have set for the starved cause —
-		// exactly default minus 1..N steps. A value at the
-		// default needs nothing; anything else is not ours.
-		if (current >= protoDefault || current < bandFloor) {
-			return;
-		}
-		int target = current + 1;
-		if (target > MaxAssignable) {
-			return;
-		}
-		if (actions >= dailyCap) {
+		// STATELESS RESTORE TEST (ActuatorGuardMath.DecideRestore,
+		// pure, unit-tested): step back only a value this mod's
+		// rule would have set for the starved cause — exactly
+		// default minus 1..N steps. A value at the default needs
+		// nothing; anything else is not ours.
+		int target;
+		ActuatorGuardMath.RestoreDecision decision = ActuatorGuardMath.DecideRestore(
+			current, protoDefault, maxNudge, actions, dailyCap, out target);
+		if (decision == ActuatorGuardMath.RestoreDecision.DailyCapReached) {
 			QoSLog.Debug("PriorityActuator", "machine #" + id +
 				" restore skipped: daily action cap reached");
+			return;
+		}
+		if (decision != ActuatorGuardMath.RestoreDecision.Restore) {
 			return;
 		}
 

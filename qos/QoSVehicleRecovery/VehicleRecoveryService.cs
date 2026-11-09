@@ -76,9 +76,6 @@ namespace QoSVehicleRecovery;
 [GlobalDependency(RegistrationMode.AsEverything)]
 public sealed class VehicleRecoveryService : IDisposable {
 
-	/// <summary>How long (in daily passes) a stage-2 mark stays valid.</summary>
-	private const int MarkLifetimePasses = 7;
-
 	private sealed class RecoveryMark {
 		public int Pass;
 		public string ProductId;
@@ -192,9 +189,12 @@ public sealed class VehicleRecoveryService : IDisposable {
 		bool recoverCannotDeliver = m_mod.JsonConfig.GetBool("recover_cannot_deliver", true);
 		bool recoverNavStuck = m_mod.JsonConfig.GetBool("recover_navigation_stuck", true);
 		bool emptyEnabled = m_mod.JsonConfig.GetBool("empty_cargo_if_still_undeliverable", false);
-		int minStreak = Math.Max(1, m_mod.JsonConfig.GetInt("min_navigation_failed_streak", 3));
-		int dailyCap = Math.Max(0, m_mod.JsonConfig.GetInt("max_recoveries_per_day", 5));
-		Upoints reserveFloor = Math.Max(0.0, m_mod.JsonConfig.GetDouble("unity_reserve_floor", 5.0)).Upoints();
+		int minStreak = RecoveryGuardMath.ClampMinStreak(
+			m_mod.JsonConfig.GetInt("min_navigation_failed_streak", 3));
+		int dailyCap = RecoveryGuardMath.ClampDailyCap(
+			m_mod.JsonConfig.GetInt("max_recoveries_per_day", 5));
+		Upoints reserveFloor = RecoveryGuardMath.ClampReserveFloor(
+			m_mod.JsonConfig.GetDouble("unity_reserve_floor", 5.0)).Upoints();
 		bool logActions = m_mod.JsonConfig.GetBool("log_actions", true);
 
 		m_passIndex++;
@@ -223,7 +223,7 @@ public sealed class VehicleRecoveryService : IDisposable {
 		}
 		var stale = new List<int>();
 		foreach (KeyValuePair<int, RecoveryMark> kv in m_marks) {
-			if (m_passIndex - kv.Value.Pass > MarkLifetimePasses) {
+			if (RecoveryGuardMath.IsMarkExpired(m_passIndex, kv.Value.Pass)) {
 				stale.Add(kv.Key);
 			}
 		}
@@ -240,17 +240,16 @@ public sealed class VehicleRecoveryService : IDisposable {
 		if (truck.IsDestroyed || !truck.IsSpawned) {
 			return;
 		}
-		if (m_vehicles.IsVehicleBeingRecovered(truck)) {
-			return;
-		}
-		if (truck.IsOnWayToDepotForScrap || truck.IsOnWayToDepotForReplacement || truck.ReplaceQueued) {
+		if (RecoveryGuardMath.IsHandsOff(m_vehicles.IsVehicleBeingRecovered(truck),
+				truck.IsOnWayToDepotForScrap, truck.IsOnWayToDepotForReplacement,
+				truck.ReplaceQueued)) {
 			return;
 		}
 
 		int id = truck.Id.Value;
 		bool cannotDeliver = truck.IsCannotDeliverNotificationActive;
-		bool navStuck = truck.IsFailingToNavigateRepeatedly ||
-			(truck.IsStuck && truck.NavigationFailedStreak >= minStreak);
+		bool navStuck = RecoveryGuardMath.IsNavStuck(truck.IsFailingToNavigateRepeatedly,
+			truck.IsStuck, truck.NavigationFailedStreak, minStreak);
 
 		// A marked truck whose load is gone has finished its
 		// episode (delivered after recovery): clear the mark.
@@ -267,11 +266,15 @@ public sealed class VehicleRecoveryService : IDisposable {
 		// once, and the SAME load is flagged undeliverable again.
 		// Checked before stage 1 so a repeat rescue never loops.
 		RecoveryMark mark;
-		if (emptyEnabled && cannotDeliver && truck.IsNotEmpty &&
-				m_marks.TryGetValue(id, out mark) &&
-				mark.ProductId == truck.Cargo.Product.Id.Value) {
+		bool hasMark = m_marks.TryGetValue(id, out mark);
+		// Cargo product is read only for a loaded truck (as the
+		// shipped short-circuit did); the eligibility rule itself
+		// is RecoveryGuardMath.IsStage2Eligible.
+		string cargoProductId = truck.IsNotEmpty ? truck.Cargo.Product.Id.Value : null;
+		if (RecoveryGuardMath.IsStage2Eligible(emptyEnabled, cannotDeliver, truck.IsNotEmpty,
+				hasMark, hasMark ? mark.ProductId : null, cargoProductId)) {
 			Upoints discardCost = VehicleCommandsProcessor.COST_TO_DISCARD_CARGO;
-			if (!m_upoints.CanConsume(reserveFloor + discardCost)) {
+			if (!m_upoints.CanConsume(RequiredWithReserve(reserveFloor, discardCost))) {
 				QoSLog.Debug("VehicleRecovery", "truck #" + id +
 					" stage-2 empty skipped: Unity reserve floor would be breached");
 				return;
@@ -300,11 +303,12 @@ public sealed class VehicleRecoveryService : IDisposable {
 		}
 
 		// Stage 1 — RECOVER.
-		bool wanted = (cannotDeliver && recoverCannotDeliver) || (navStuck && recoverNavStuck);
+		bool wanted = RecoveryGuardMath.IsStage1Wanted(cannotDeliver, recoverCannotDeliver,
+			navStuck, recoverNavStuck);
 		if (!wanted) {
 			return;
 		}
-		if (recoveries >= dailyCap) {
+		if (!RecoveryGuardMath.WithinDailyCap(recoveries, dailyCap)) {
 			QoSLog.Debug("VehicleRecovery", "truck #" + id +
 				" recovery skipped: daily cap reached");
 			return;
@@ -322,7 +326,7 @@ public sealed class VehicleRecoveryService : IDisposable {
 			return;
 		}
 		Upoints cost = VehiclesManager.VEHICLE_RECOVERY_COST;
-		if (!m_upoints.CanConsume(reserveFloor + cost)) {
+		if (!m_upoints.CanConsume(RequiredWithReserve(reserveFloor, cost))) {
 			QoSLog.Debug("VehicleRecovery", "truck #" + id +
 				" recovery skipped: Unity reserve floor would be breached");
 			return;
@@ -364,6 +368,19 @@ public sealed class VehicleRecoveryService : IDisposable {
 				", predicted cost " + cost.Format1Dec() +
 				" Upoints; expected: teleport to closest accepting depot, cargo preserved aboard");
 		}
+	}
+
+	/// <summary>
+	/// The guarded amount for CanConsume: reserve floor + action
+	/// cost. The composition is RecoveryGuardMath.RequiredRaw over
+	/// Fix32 raw units — verified identical to the shipped
+	/// Upoints addition (Upoints.+ is raw addition of the wrapped
+	/// Fix32 values) — reconstructed here via Fix32.FromRaw so the
+	/// game-side CanConsume check itself is untouched.
+	/// </summary>
+	private static Upoints RequiredWithReserve(Upoints reserveFloor, Upoints cost) {
+		return new Upoints(Fix32.FromRaw(
+			RecoveryGuardMath.RequiredRaw(reserveFloor.Value.RawValue, cost.Value.RawValue)));
 	}
 
 	private static string DescribeCargo(Truck truck) {

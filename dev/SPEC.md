@@ -2170,3 +2170,89 @@ hashes). cargo test 53/53 (new: XDG dir resolution, config
 candidate order, shutdown page + token gate, in-flight drain);
 clippy -D warnings and rustfmt clean; full check suite green
 including check_shutdown.sh.
+
+## Addendum XXV — QoS guard arithmetic extracted + unit-tested (QUALITY-AUDIT item 5) (2026-11-09)
+
+The last open item of the 2026-11-06 quality audit (finding T2):
+the three daily QoS services' guard arithmetic — the numeric
+conditions gating when the mods may act — was inline in the C#
+services, interleaved with live game objects, and guarded by
+nothing but compilation. It is now extracted into pure,
+game-independent units that the shipped code calls, and executed
+by an automated test harness. This was a behaviour-identical
+refactor: expected outputs were characterised from the shipped
+code first and pinned as test cases before/with the move; no
+guard's semantics changed (one mischaracterisation was caught by
+the harness during the round — an at-cap farm that stays
+unchanged is unconstrained in GuardsSatisfied; the veto fires
+only when it gains — and the case was corrected to the shipped
+semantics and pinned).
+
+- **The units** (one per mod, compiled into the shipped DLL by
+  the existing per-mod csproj glob, and linked verbatim by the
+  test harness): `qos/QoSChickens/ChickenGuardMath.cs` (mode
+  gate, budget/floor clamps, eligibility incl. the
+  growth-paused-species skip, ReceiverCap, GuardsSatisfied, the
+  exact round-robin pull/push simulations, the halving
+  safe-move search, the equalise and fill-first decisions),
+  `qos/QoSVehicleRecovery/RecoveryGuardMath.cs` (config clamps,
+  hands-off gate, the sustained-stuck signal, stage-1 wanted /
+  stage-2 same-load eligibility, 7-pass mark expiry, the daily
+  cap, and the Unity reserve composition in Fix32 raw units),
+  `qos/QoSPriorityActuator/ActuatorGuardMath.cs` (config
+  clamps, parked predicate, streak recurrence, band floor, and
+  the nudge/restore decisions with their shipped check order).
+  The services keep game-object reads, logging, scheduling, and
+  the game-side gates (CanRecoverVehicle, CanConsume) — the
+  extraction seam is exactly where game types begin.
+- **The reserve composition is provably the shipped one.**
+  `Upoints.op_Addition` in the shipped assemblies is
+  `new Upoints(new Fix32(lhs.Raw + rhs.Raw))`; RecoveryGuardMath
+  .RequiredRaw is that same unchecked raw addition, and the
+  service reconstructs the CanConsume argument via
+  `Fix32.FromRaw`. The balance comparison itself stays in
+  CanConsume by design (it also honours the game's
+  IgnoreMissingUnity setting and GetQuantityRounded rounding —
+  see the finding below).
+- **The harness**: `qos/build/guardtests` (net8.0, canonprobe
+  pattern) compiles the three shipped GuardMath sources and
+  executes **216 named cases, all passing**: boundaries on both
+  sides of every threshold (streak == min streak, mark age
+  exactly 7 vs 8, balance exactly floor+cost, streak exactly
+  persistence, cooldown exactly elapsed, target exactly
+  MaxAssignable), check-order pins (an earlier guard masks
+  later ones), zero/empty extremes, and fail-closed directions
+  (a guard never acts on degenerate input where the shipped
+  semantics said no). Gate: `tools/check_qos_guards.sh`, wired
+  into `qos/build/build.sh` (the suite build refuses to package
+  on failure) and into the standard check sequence in
+  tools/README.md.
+- **Findings recorded, NOT changed** (characterised, pinned,
+  and left as shipped): (1) the Unity reserve floor is
+  implemented through `IUpointsManager.CanConsume`, whose
+  implementation returns the game's `IgnoreMissingUnity`
+  setting when the balance is short — under that game/editor
+  flag the reserve floor is not a hard floor; the mod inherits
+  vanilla's affordability notion by design, the same function
+  vanilla's own recovery gate uses. (2) The stage-2 EMPTY path
+  has no daily cap and does not consume stage-1 cap budget —
+  bounded instead by the mark system (one empty per mark, the
+  mark is consumed, and a mark requires a prior mod recovery of
+  the same load). (3) Actuator restores are not cooldown-gated
+  (documented in the config description; by design).
+- **Packaging**: the refactor necessarily changed the three
+  DLLs. New hashes — QoSChickens.dll b35c6c0f…,
+  QoSVehicleRecovery.dll 80f8ea3d…, QoSPriorityActuator.dll
+  90222cda…; QoSCore.dll and QoSWorldMap.dll byte-identical
+  (their zips re-verified unchanged: QoSCore-mod-0.2.0
+  e55fcdec…, QoSWorldMap-mod-0.1.1 af9f2559…). New zips:
+  QoSChickens-mod-0.1.2 7d81ccf8…, QoSVehicleRecovery-mod-0.1.2
+  36f5fa7a…, QoSPriorityActuator-mod-0.1.2 09f60270…,
+  QoS-suite-0.5.1 739a1e0c… (130,404 B; weekend bundle
+  restaged, BUNDLE-README updated). C# build 0 warnings /
+  0 errors across all five projects; mod-package linter PASS
+  in source and --zips modes (6 known description-length
+  warnings carried); full standard check sequence green
+  (cargo test 53/53, canon, plan parity, serializer pairs,
+  structure 454 files, page checks, audit fail-loud, shutdown,
+  badge on both captures).

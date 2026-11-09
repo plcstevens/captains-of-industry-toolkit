@@ -147,22 +147,26 @@ public sealed class ChickenBalancer : IDisposable {
 			QoSLog.Debug("Chickens", "pass skipped: 'enabled' is false");
 			return;
 		}
-		string mode = (m_mod.JsonConfig.GetString("mode", "equalise") ?? "equalise").Trim().ToLowerInvariant();
-		if (mode == "off") {
+		string modeText;
+		ChickenGuardMath.BalanceMode mode = ChickenGuardMath.ParseMode(
+			m_mod.JsonConfig.GetString("mode", "equalise"), out modeText);
+		if (mode == ChickenGuardMath.BalanceMode.Off) {
 			QoSLog.Debug("Chickens", "pass skipped: mode is off");
 			return;
 		}
-		if (mode != "equalise" && mode != "fill_first") {
-			QoSLog.Warning("Chickens", "unknown mode '" + mode +
+		if (mode == ChickenGuardMath.BalanceMode.Unknown) {
+			QoSLog.Warning("Chickens", "unknown mode '" + modeText +
 				"' — doing nothing (valid modes: equalise, fill_first, off)");
 			return;
 		}
-		int budget = Math.Max(0, m_mod.JsonConfig.GetInt("max_animals_moved_per_day", 50));
+		int budget = ChickenGuardMath.ClampBudget(
+			m_mod.JsonConfig.GetInt("max_animals_moved_per_day", 50));
 		if (budget <= 0) {
 			QoSLog.Debug("Chickens", "pass skipped: daily move cap is 0");
 			return;
 		}
-		int floor = Math.Max(0, m_mod.JsonConfig.GetInt("breeding_nucleus_floor", 10));
+		int floor = ChickenGuardMath.ClampFloor(
+			m_mod.JsonConfig.GetInt("breeding_nucleus_floor", 10));
 		bool logMoves = m_mod.JsonConfig.GetBool("log_moves", true);
 
 		// Group all animal farms by species (Prototype.Animal), in
@@ -186,7 +190,7 @@ public sealed class ChickenBalancer : IDisposable {
 			if (budget <= 0) {
 				break;
 			}
-			int moved = mode == "equalise"
+			int moved = mode == ChickenGuardMath.BalanceMode.Equalise
 				? BalanceEqualise(group.Value, floor, budget, logMoves)
 				: BalanceFillFirst(group.Value, floor, budget, logMoves);
 			budget -= moved;
@@ -194,7 +198,11 @@ public sealed class ChickenBalancer : IDisposable {
 	}
 
 	// ------------------------------------------------------------------
-	// Modes
+	// Modes. The decisions live in ChickenGuardMath (pure functions
+	// over plain values, unit-tested off-game — QUALITY-AUDIT
+	// item 5); these wrappers translate between game objects and
+	// the parallel arrays it works on, and own the logging and
+	// scheduling side effects.
 	// ------------------------------------------------------------------
 
 	/// <summary>Converge all eligible farms of one species to within ±1.</summary>
@@ -203,56 +211,37 @@ public sealed class ChickenBalancer : IDisposable {
 		if (!TryGetEligible(farms, out eligible)) {
 			return 0;
 		}
-		if (eligible.Count < 2) {
-			return 0;
+		int[] counts = CountsOf(eligible);
+		bool pull;
+		int focus, moved;
+		int[] predicted;
+		ChickenGuardMath.BalanceOutcome outcome = ChickenGuardMath.DecideEqualise(
+			counts, CapacitiesOf(eligible), ReceiverCapsOf(eligible), floor, budget,
+			out pull, out focus, out moved, out predicted);
+		if (outcome == ChickenGuardMath.BalanceOutcome.Move) {
+			ScheduleMove(eligible, eligible[focus], pull, moved, predicted, logMoves, "equalise");
+			return moved;
 		}
-		int total = 0, min = int.MaxValue, max = int.MinValue;
-		foreach (AnimalFarm f in eligible) {
-			total += f.AnimalsCount;
-			if (f.AnimalsCount < min) min = f.AnimalsCount;
-			if (f.AnimalsCount > max) max = f.AnimalsCount;
-		}
-		if (total <= 0 || max - min <= 1) {
+		if (outcome == ChickenGuardMath.BalanceOutcome.Balanced) {
+			int min = int.MaxValue, max = int.MinValue;
+			foreach (int c in counts) {
+				if (c < min) min = c;
+				if (c > max) max = c;
+			}
 			QoSLog.Debug("Chickens", "equalise: already within +/-1 (min " + min + ", max " + max + ")");
 			return 0;
 		}
-		int target = total / eligible.Count;
-
-		// Pull into the emptiest valid receiver (drains every peer
-		// evenly, which also trims the fullest farms).
-		AnimalFarm receiver = null;
-		foreach (AnimalFarm f in eligible) {
-			if (f.AnimalsCount < target && f.AnimalsCount < ReceiverCap(f) &&
-					(receiver == null || f.AnimalsCount < receiver.AnimalsCount)) {
-				receiver = f;
+		if (outcome == ChickenGuardMath.BalanceOutcome.Blocked) {
+			int min = int.MaxValue, max = int.MinValue;
+			foreach (AnimalFarm f in eligible) {
+				if (f.AnimalsCount < min) min = f.AnimalsCount;
+				if (f.AnimalsCount > max) max = f.AnimalsCount;
 			}
+			QoSLog.Debug("Chickens", "equalise: spread " + min + ".." + max +
+				" but every candidate move was blocked by the guards");
+			return 0;
 		}
-		if (receiver != null) {
-			int moved = TryMove(eligible, receiver, true,
-				Math.Min(target - receiver.AnimalsCount, ReceiverCap(receiver) - receiver.AnimalsCount),
-				floor, budget, logMoves, "equalise");
-			if (moved > 0) {
-				return moved;
-			}
-		}
-
-		// Otherwise push out of the fullest farm (fills every peer evenly).
-		AnimalFarm source = null;
-		foreach (AnimalFarm f in eligible) {
-			if (f.AnimalsCount > target && (source == null || f.AnimalsCount > source.AnimalsCount)) {
-				source = f;
-			}
-		}
-		if (source != null) {
-			int moved = TryMove(eligible, source, false,
-				source.AnimalsCount - target, floor, budget, logMoves, "equalise");
-			if (moved > 0) {
-				return moved;
-			}
-		}
-		QoSLog.Debug("Chickens", "equalise: spread " + min + ".." + max +
-			" but every candidate move was blocked by the guards");
-		return 0;
+		return 0; // NoOp: fewer than two eligible farms — silent, as shipped.
 	}
 
 	/// <summary>Fill farms in the configured priority order, each to its cap.</summary>
@@ -262,39 +251,27 @@ public sealed class ChickenBalancer : IDisposable {
 			return 0;
 		}
 		string raw = m_mod.JsonConfig.GetString("fill_first_farm_ids", "") ?? "";
-		var targets = new List<AnimalFarm>();
-		foreach (string part in raw.Split(',')) {
-			int id;
-			if (!int.TryParse(part.Trim(), out id)) {
-				continue;
-			}
-			foreach (AnimalFarm f in eligible) {
-				if (f.Id.Value == id && !targets.Contains(f)) {
-					targets.Add(f);
-				}
-			}
-		}
-		if (targets.Count == 0) {
+		int focus, moved;
+		int[] predicted;
+		bool targetsFound;
+		bool ok = ChickenGuardMath.DecideFillFirst(
+			CountsOf(eligible), CapacitiesOf(eligible), ReceiverCapsOf(eligible),
+			IdsOf(eligible), raw, floor, budget,
+			out focus, out moved, out predicted, out targetsFound);
+		if (!targetsFound) {
 			QoSLog.Warning("Chickens", "fill_first mode but 'fill_first_farm_ids' names no " +
 				"eligible farm — doing nothing (ids are entity ids, e.g. from the companion census)");
 			return 0;
 		}
-		foreach (AnimalFarm target in targets) {
-			int cap = ReceiverCap(target);
-			if (target.AnimalsCount >= cap) {
-				continue;
-			}
-			int moved = TryMove(eligible, target, true, cap - target.AnimalsCount,
-				floor, budget, logMoves, "fill-first");
-			if (moved > 0) {
-				return moved;
-			}
+		if (!ok) {
+			return 0;
 		}
-		return 0;
+		ScheduleMove(eligible, eligible[focus], true, moved, predicted, logMoves, "fill-first");
+		return moved;
 	}
 
 	// ------------------------------------------------------------------
-	// Eligibility + guards
+	// Eligibility + game-object/array translation
 	// ------------------------------------------------------------------
 
 	/// <summary>
@@ -302,180 +279,104 @@ public sealed class ChickenBalancer : IDisposable {
 	/// Returns false (skip this species today) when a constructed +
 	/// enabled growth-paused farm exists: the shipped move command's
 	/// peer set cannot exclude it, so any move would touch a farm
-	/// the player told to stay put.
+	/// the player told to stay put. The rule itself is
+	/// ChickenGuardMath.EvaluateEligibility; this wrapper only
+	/// reads the flags and carries the log line.
 	/// </summary>
 	private bool TryGetEligible(List<AnimalFarm> farms, out List<AnimalFarm> eligible) {
+		int n = farms.Count;
+		var constructed = new bool[n];
+		var enabled = new bool[n];
+		var growthPaused = new bool[n];
+		for (int i = 0; i < n; i++) {
+			constructed[i] = farms[i].IsConstructed;
+			enabled[i] = farms[i].IsEnabled;
+			growthPaused[i] = farms[i].IsGrowthPaused;
+		}
+		int[] indices;
+		int pausedIndex;
+		if (!ChickenGuardMath.EvaluateEligibility(constructed, enabled, growthPaused,
+				out indices, out pausedIndex)) {
+			QoSLog.Debug("Chickens", "species of farm #" + farms[pausedIndex].Id.Value +
+				" skipped: a growth-paused farm is in the shipped command's peer set and cannot be excluded from a move");
+			eligible = null;
+			return false;
+		}
 		eligible = new List<AnimalFarm>();
-		foreach (AnimalFarm f in farms) {
-			if (!f.IsConstructed || !f.IsEnabled) {
-				continue;
-			}
-			if (f.IsGrowthPaused) {
-				QoSLog.Debug("Chickens", "species of farm #" + f.Id.Value +
-					" skipped: a growth-paused farm is in the shipped command's peer set and cannot be excluded from a move");
-				eligible = null;
-				return false;
-			}
-			eligible.Add(f);
+		foreach (int i in indices) {
+			eligible.Add(farms[i]);
 		}
 		return true;
 	}
 
-	/// <summary>Most a farm may hold under the guards: capacity, tightened by its slaughter limit.</summary>
-	private static int ReceiverCap(AnimalFarm farm) {
-		int cap = farm.Prototype.AnimalsCapacity;
-		if (farm.SlaughterLimit.HasValue && farm.SlaughterLimit.Value < cap) {
-			cap = farm.SlaughterLimit.Value;
+	private static int[] CountsOf(List<AnimalFarm> farms) {
+		var result = new int[farms.Count];
+		for (int i = 0; i < farms.Count; i++) {
+			result[i] = farms[i].AnimalsCount;
 		}
-		return cap;
+		return result;
 	}
 
-	/// <summary>Check a predicted post-move state against every hard guard.</summary>
-	private static bool GuardsSatisfied(List<AnimalFarm> eligible,
-			Dictionary<AnimalFarm, int> predicted, int floor) {
-		foreach (AnimalFarm f in eligible) {
-			int before = f.AnimalsCount;
-			int after = predicted[f];
-			if (after < before && after < floor) {
-				return false; // drained below the breeding-nucleus floor
-			}
-			if (after > before) {
-				int cap = ReceiverCap(f);
-				if (before >= cap) {
-					return false; // already at/above its slaughter limit — must gain zero
-				}
-				if (after > cap) {
-					return false; // would end above capacity / slaughter limit
-				}
-			}
+	private static int[] CapacitiesOf(List<AnimalFarm> farms) {
+		var result = new int[farms.Count];
+		for (int i = 0; i < farms.Count; i++) {
+			result[i] = farms[i].Prototype.AnimalsCapacity;
 		}
-		return true;
+		return result;
+	}
+
+	private static int[] ReceiverCapsOf(List<AnimalFarm> farms) {
+		var result = new int[farms.Count];
+		for (int i = 0; i < farms.Count; i++) {
+			result[i] = ChickenGuardMath.ReceiverCap(
+				farms[i].Prototype.AnimalsCapacity, farms[i].SlaughterLimit);
+		}
+		return result;
+	}
+
+	private static int[] IdsOf(List<AnimalFarm> farms) {
+		var result = new int[farms.Count];
+		for (int i = 0; i < farms.Count; i++) {
+			result[i] = farms[i].Id.Value;
+		}
+		return result;
 	}
 
 	// ------------------------------------------------------------------
-	// Move execution: simulate exactly, then schedule the simulated move
+	// Move execution: schedule exactly the move ChickenGuardMath
+	// simulated and the guards approved — same amount, same farm.
 	// ------------------------------------------------------------------
 
-	/// <summary>
-	/// Try to schedule one move (pull into / push out of
-	/// <paramref name="farm"/>), shrinking the amount until the
-	/// simulated outcome satisfies the guards. Returns the number
-	/// of animals scheduled (0 = nothing safe to do).
-	/// </summary>
-	private int TryMove(List<AnimalFarm> eligible, AnimalFarm farm, bool pull,
-			int desired, int floor, int budget, bool logMoves, string modeLabel) {
-		desired = Math.Min(desired, budget);
-		while (desired > 0) {
-			int moved;
-			Dictionary<AnimalFarm, int> predicted = pull
-				? SimulatePull(eligible, farm, desired, out moved)
-				: SimulatePush(eligible, farm, desired, out moved);
-			if (moved <= 0) {
-				return 0;
-			}
-			if (GuardsSatisfied(eligible, predicted, floor)) {
-				int signed = pull ? moved : -moved;
-				m_scheduler.ScheduleInputCmd(new MoveAnimalsCmd(farm.Id, signed));
-				int min = int.MaxValue, max = int.MinValue;
-				foreach (KeyValuePair<AnimalFarm, int> kv in predicted) {
-					if (kv.Value < min) min = kv.Value;
-					if (kv.Value > max) max = kv.Value;
-				}
-				// Unified activity record (Addendum XVI): every
-				// scheduled move, whether or not log_moves is on.
-				QoSEventLog.Record("QoSChickens", QoSChickensMod.Version, "command", "MoveAnimalsCmd",
-					modeLabel + ": moved " + (pull ? "+" : "-") + moved + " into farm #" +
-					farm.Id.Value + " (" + farm.Prototype.Animal.Id.Value +
-					"); predicted spread " + min + ".." + max + " across " +
-					eligible.Count + " farms",
-					new Dictionary<string, object> {
-						{ "farmId", farm.Id.Value },
-						{ "amount", signed },
-						{ "species", farm.Prototype.Animal.Id.Value },
-						{ "mode", modeLabel },
-						{ "predictedMin", min },
-						{ "predictedMax", max },
-						{ "eligibleFarms", eligible.Count },
-					});
-				if (logMoves) {
-					QoSLog.Info("Chickens", modeLabel + ": scheduled MoveAnimalsCmd farm #" +
-						farm.Id.Value + " " + (pull ? "+" : "-") + moved +
-						" (" + farm.Prototype.Animal.Id.Value + "; predicted spread " +
-						min + ".." + max + " across " + eligible.Count + " farms)");
-				}
-				return moved;
-			}
-			desired = moved / 2;
+	private void ScheduleMove(List<AnimalFarm> eligible, AnimalFarm farm, bool pull,
+			int moved, int[] predicted, bool logMoves, string modeLabel) {
+		int signed = pull ? moved : -moved;
+		m_scheduler.ScheduleInputCmd(new MoveAnimalsCmd(farm.Id, signed));
+		int min = int.MaxValue, max = int.MinValue;
+		foreach (int v in predicted) {
+			if (v < min) min = v;
+			if (v > max) max = v;
 		}
-		return 0;
-	}
-
-	/// <summary>
-	/// Exact simulation of the shipped pull: MoveAnimalsCmd(target,
-	/// +n) loops the peer array taking 1 animal per peer per pass,
-	/// clamped by the target's free capacity, until n are moved or a
-	/// full pass moves nothing.
-	/// </summary>
-	private static Dictionary<AnimalFarm, int> SimulatePull(List<AnimalFarm> ordered,
-			AnimalFarm target, int n, out int moved) {
-		var pred = new Dictionary<AnimalFarm, int>();
-		foreach (AnimalFarm f in ordered) {
-			pred[f] = f.AnimalsCount;
+		// Unified activity record (Addendum XVI): every
+		// scheduled move, whether or not log_moves is on.
+		QoSEventLog.Record("QoSChickens", QoSChickensMod.Version, "command", "MoveAnimalsCmd",
+			modeLabel + ": moved " + (pull ? "+" : "-") + moved + " into farm #" +
+			farm.Id.Value + " (" + farm.Prototype.Animal.Id.Value +
+			"); predicted spread " + min + ".." + max + " across " +
+			eligible.Count + " farms",
+			new Dictionary<string, object> {
+				{ "farmId", farm.Id.Value },
+				{ "amount", signed },
+				{ "species", farm.Prototype.Animal.Id.Value },
+				{ "mode", modeLabel },
+				{ "predictedMin", min },
+				{ "predictedMax", max },
+				{ "eligibleFarms", eligible.Count },
+			});
+		if (logMoves) {
+			QoSLog.Info("Chickens", modeLabel + ": scheduled MoveAnimalsCmd farm #" +
+				farm.Id.Value + " " + (pull ? "+" : "-") + moved +
+				" (" + farm.Prototype.Animal.Id.Value + "; predicted spread " +
+				min + ".." + max + " across " + eligible.Count + " farms)");
 		}
-		moved = 0;
-		int capacity = target.Prototype.AnimalsCapacity;
-		bool progress = true;
-		while (moved < n && progress) {
-			progress = false;
-			foreach (AnimalFarm peer in ordered) {
-				if (moved >= n) {
-					break;
-				}
-				if (ReferenceEquals(peer, target)) {
-					continue;
-				}
-				if (pred[peer] > 0 && pred[target] < capacity) {
-					pred[peer]--;
-					pred[target]++;
-					moved++;
-					progress = true;
-				}
-			}
-		}
-		return pred;
-	}
-
-	/// <summary>
-	/// Exact simulation of the shipped push: MoveAnimalsCmd(source,
-	/// -n) loops the peer array giving 1 animal per peer per pass,
-	/// clamped by each peer's free capacity, until n are moved or a
-	/// full pass moves nothing.
-	/// </summary>
-	private static Dictionary<AnimalFarm, int> SimulatePush(List<AnimalFarm> ordered,
-			AnimalFarm source, int n, out int moved) {
-		var pred = new Dictionary<AnimalFarm, int>();
-		foreach (AnimalFarm f in ordered) {
-			pred[f] = f.AnimalsCount;
-		}
-		moved = 0;
-		bool progress = true;
-		while (moved < n && progress) {
-			progress = false;
-			foreach (AnimalFarm peer in ordered) {
-				if (moved >= n) {
-					break;
-				}
-				if (ReferenceEquals(peer, source)) {
-					continue;
-				}
-				if (pred[source] > 0 && pred[peer] < peer.Prototype.AnimalsCapacity) {
-					pred[peer]++;
-					pred[source]--;
-					moved++;
-					progress = true;
-				}
-			}
-		}
-		return pred;
 	}
 }

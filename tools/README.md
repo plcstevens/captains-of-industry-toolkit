@@ -13,6 +13,7 @@ cargo test --manifest-path coi/Cargo.toml
 python3 tools/check_canon.py
 python3 tools/check_plan_parity.py
 python3 tools/check_serializer_pairs.py
+bash tools/check_qos_guards.sh
 python3 tools/check_repo_structure.py
 python3 tools/lint_mod_packages.py
 for s in place designate log badge; do bash tools/check_${s}_page.sh; done
@@ -44,6 +45,7 @@ step needed when the owner pastes it.
 | `check_audit_fail_loud.sh` | Breaks the database mid-flow and asserts the UI reports an applied-but-unaudited command instead of claiming success. |
 | `check_shutdown.sh` | Exercises the in-UI Shutdown end to end: top-bar control, confirm page, tokenless POST refused (403), confirmed POST answers the landing page, the process exits 0, the port is released, and a relaunch on the same database passes `PRAGMA integrity_check` with the pre-shutdown snapshot and the shutdown's own Log event intact. |
 | `check_serializer_pairs.py` | Build gate: every mod service that subscribes to saved calendar events must carry its serializer pair and manifest flag, or the build refuses. |
+| `check_qos_guards.sh` | Guard-arithmetic tests (QUALITY-AUDIT item 5): builds `qos/build/guardtests`, a net8.0 harness that compiles the exact shipped sources of the three extracted pure guard units (Chickens/Recovery/Actuator) and executes ~216 characterised cases — boundaries, check-order pins, fail-closed directions. Also wired into `qos/build/build.sh`. |
 | `check_canon.py` | Drift gate: every wired number in the canon (`docs/canon/`) must agree with the code it cites, and the generated `canon.json` / agent rendering must be fresh. |
 | `canon_to_json.py` | Generates `docs/canon/canon.json` (embedded by the server) and `.llms/canon-for-agents.md` from the canon YAML source. |
 | `check_repo_structure.py` | Structure gate: the lean repo layout (root allowlist, per-folder readmes, markdown reference integrity, the mod invariant, `.llms/` index freshness). |
