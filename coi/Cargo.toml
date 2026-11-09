@@ -11,7 +11,7 @@ libc = "0.2"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 sha2 = "0.10"
-getrandom = "0.3"
+getrandom = "0.4"
 
 [profile.release]
 opt-level = 3
