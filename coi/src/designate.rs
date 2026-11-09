@@ -16,7 +16,7 @@
 //!
 //! * **Planners.** The pad planner runs end-to-end on a bridge
 //!   `/terrain/region` height grid. The pit core is pure
-//!   functions over a per-column layer input type (BEHAVIOURS.md
+//!   functions over a per-column layer input type (.llms/BEHAVIOURS.md
 //!   §1 rules 2/3/4/6/7): the bridge serves no per-column layers
 //!   yet (note §1.5), so pit *generation* from live data waits
 //!   on that route — the rules here are fixture-fed and ready.
@@ -122,7 +122,11 @@ impl Cell {
 
     /// A level cell: all four corners at the same height.
     pub fn flat(x: i64, y: i64, height: i64) -> Cell {
-        Cell { x, y, corners: [height; 4] }
+        Cell {
+            x,
+            y,
+            corners: [height; 4],
+        }
     }
 
     pub fn corner_origin(&self) -> i64 {
@@ -191,12 +195,18 @@ pub fn canonical_designation(
     sb.push_str(&format!(",\"createdUtc\":\"{}\"", job_escape(created_utc)));
     sb.push_str(&format!(",\"expiresUtc\":\"{}\"", job_escape(expires_utc)));
     sb.push_str(&format!(",\"gameId\":\"{}\"", job_escape(game_id)));
-    sb.push_str(&format!(",\"companionUser\":\"{}\"", job_escape(companion_user)));
+    sb.push_str(&format!(
+        ",\"companionUser\":\"{}\"",
+        job_escape(companion_user)
+    ));
     sb.push_str(&format!(",\"planName\":\"{}\"", job_escape(plan_name)));
     if job_type == JOB_TYPE_ADD {
         // C# Escape(null) is ""; a null protoId canonicalises to
         // an empty string there, so mirror that rather than fail.
-        sb.push_str(&format!(",\"protoId\":\"{}\"", job_escape(proto_id.unwrap_or(""))));
+        sb.push_str(&format!(
+            ",\"protoId\":\"{}\"",
+            job_escape(proto_id.unwrap_or(""))
+        ));
         sb.push_str(",\"cells\":[");
         let cells = cells.unwrap_or(&[]);
         for (i, c) in cells.iter().enumerate() {
@@ -249,13 +259,22 @@ fn assemble_job(canonical: String) -> DesignationJob {
         &canonical[..canonical.len() - 1],
         sha256
     );
-    DesignationJob { canonical, sha256, file_json }
+    DesignationJob {
+        canonical,
+        sha256,
+        file_json,
+    }
 }
 
 /// Build a "designations-add" job file from a plan's cells.
 /// `max_cells` is the job's own cap, agreed at confirm (the mod
 /// enforces min(job cap, its config cap)).
-pub fn build_add_job(meta: &JobMeta, proto_id: &str, cells: &[Cell], max_cells: i64) -> DesignationJob {
+pub fn build_add_job(
+    meta: &JobMeta,
+    proto_id: &str,
+    cells: &[Cell],
+    max_cells: i64,
+) -> DesignationJob {
     let canonical = canonical_designation(
         meta.job_id,
         SCHEMA_V2,
@@ -326,7 +345,10 @@ impl fmt::Display for PlanError {
             PlanError::EmptyRectangle => write!(f, "rectangle has no area"),
             PlanError::UnsupportedProto(p) => write!(f, "unsupported designation proto: {p}"),
             PlanError::ImplausibleTarget(t) => {
-                write!(f, "target height {t} outside the ±{MAX_CORNER_ABS} sanity bound")
+                write!(
+                    f,
+                    "target height {t} outside the ±{MAX_CORNER_ABS} sanity bound"
+                )
             }
             PlanError::OutsideGrid { footprint } => write!(
                 f,
@@ -374,7 +396,13 @@ impl HeightGrid {
                 heights.len()
             )));
         }
-        Ok(HeightGrid { x0, y0, width, height, heights })
+        Ok(HeightGrid {
+            x0,
+            y0,
+            width,
+            height,
+            heights,
+        })
     }
 
     /// Build from raw Fix32 heights (the bridge's `heightsRaw`):
@@ -506,12 +534,17 @@ pub fn plan_pad(
     let (fx0, fy0) = (floor4(rx0), floor4(ry0));
     let (fx1, fy1) = (floor4(rx1 - 1) + CELL_TILES, floor4(ry1 - 1) + CELL_TILES);
     if fx0 < grid.x0 || fy0 < grid.y0 || fx1 > grid.x1() || fy1 > grid.y1() {
-        return Err(PlanError::OutsideGrid { footprint: (fx0, fy0, fx1, fy1) });
+        return Err(PlanError::OutsideGrid {
+            footprint: (fx0, fy0, fx1, fy1),
+        });
     }
     let nx = ((fx1 - fx0) / CELL_TILES) as usize;
     let ny = ((fy1 - fy0) / CELL_TILES) as usize;
     if nx * ny > max_cells {
-        return Err(PlanError::OverCellCap { cells: nx * ny, cap: max_cells });
+        return Err(PlanError::OverCellCap {
+            cells: nx * ny,
+            cap: max_cells,
+        });
     }
 
     let mut cells = Vec::with_capacity(nx * ny);
@@ -530,7 +563,9 @@ pub fn plan_pad(
     let (mut cut, mut fill) = (0.0f64, 0.0f64);
     for ty in fy0..fy1 {
         for tx in fx0..fx1 {
-            let h = grid.height_at(tx, ty).expect("footprint checked inside grid");
+            let h = grid
+                .height_at(tx, ty)
+                .expect("footprint checked inside grid");
             let d = h - target as f64;
             if d > 0.0 {
                 cut += d;
@@ -551,9 +586,7 @@ pub fn plan_pad(
         let mut vx = fx0;
         while vx <= fx1 {
             if vx == fx0 || vx == fx1 || vy == fy0 || vy == fy1 {
-                for (tx, ty) in
-                    [(vx - 1, vy - 1), (vx, vy - 1), (vx - 1, vy), (vx, vy)]
-                {
+                for (tx, ty) in [(vx - 1, vy - 1), (vx, vy - 1), (vx - 1, vy), (vx, vy)] {
                     let inside = tx >= fx0 && tx < fx1 && ty >= fy0 && ty < fy1;
                     if inside {
                         continue;
@@ -588,7 +621,7 @@ pub fn plan_pad(
 
 // ------------------------------------------------------------------
 // Pit core — pure functions over per-column layers
-// (BEHAVIOURS.md §1 rules 2/3/4/6/7; fixture-fed until a bridge
+// (.llms/BEHAVIOURS.md §1 rules 2/3/4/6/7; fixture-fed until a bridge
 // per-column layers route exists — note §1.5)
 // ------------------------------------------------------------------
 
@@ -685,11 +718,21 @@ impl ColumnGrid {
                 columns.len()
             )));
         }
-        Ok(ColumnGrid { x0, y0, width, height, columns })
+        Ok(ColumnGrid {
+            x0,
+            y0,
+            width,
+            height,
+            columns,
+        })
     }
 
     pub fn at(&self, x: i64, y: i64) -> Option<&Column> {
-        if x < self.x0 || y < self.y0 || x >= self.x0 + self.width as i64 || y >= self.y0 + self.height as i64 {
+        if x < self.x0
+            || y < self.y0
+            || x >= self.x0 + self.width as i64
+            || y >= self.y0 + self.height as i64
+        {
             return None;
         }
         let idx = (y - self.y0) as usize * self.width + (x - self.x0) as usize;
@@ -717,6 +760,7 @@ fn median(values: &mut [f64]) -> f64 {
 }
 
 /// AllowedBedrockResidual (ATD, hardcoded — rule 2).
+// canon: earthworks.spike-filter
 pub const SPIKE_ALLOWED_BEDROCK_RESIDUAL: f64 = 4.0;
 /// MinimumBedrockNeighbors (ATD, hardcoded — rule 2): ALL 8
 /// neighbours must have bedrock or the column is not corrected.
@@ -806,7 +850,12 @@ pub fn target_intervals(
             Some(c) => (top - c).clamp(0.0, layer.thickness),
             None => layer.thickness,
         };
-        out.push(Interval { top, bottom, thickness: layer.thickness, visible });
+        out.push(Interval {
+            top,
+            bottom,
+            thickness: layer.thickness,
+            visible,
+        });
     }
     out
 }
@@ -818,7 +867,10 @@ pub fn visible_target_thickness(
     bedrock: &str,
     cutoff: Option<f64>,
 ) -> f64 {
-    target_intervals(col, target, bedrock, cutoff).iter().map(|i| i.visible).sum()
+    target_intervals(col, target, bedrock, cutoff)
+        .iter()
+        .map(|i| i.visible)
+        .sum()
 }
 
 /// Ore-quality gates by purity level 0–4 (ATD revision-5
@@ -832,12 +884,38 @@ pub struct PurityGate {
     pub min_component_size: usize,
 }
 
+// canon: earthworks.purity-gates
 pub const PURITY_GATES: [PurityGate; 5] = [
-    PurityGate { min_ore_height: 0.0, min_bottom_density: 0.0, min_purity: 0.0, min_component_size: 0 },
-    PurityGate { min_ore_height: 0.25, min_bottom_density: 0.05, min_purity: 0.05, min_component_size: 2 },
-    PurityGate { min_ore_height: 0.75, min_bottom_density: 0.20, min_purity: 0.20, min_component_size: 6 },
-    PurityGate { min_ore_height: 2.0, min_bottom_density: 0.50, min_purity: 0.50, min_component_size: 20 },
-    PurityGate { min_ore_height: 3.0, min_bottom_density: 0.75, min_purity: 0.75, min_component_size: 40 },
+    PurityGate {
+        min_ore_height: 0.0,
+        min_bottom_density: 0.0,
+        min_purity: 0.0,
+        min_component_size: 0,
+    },
+    PurityGate {
+        min_ore_height: 0.25,
+        min_bottom_density: 0.05,
+        min_purity: 0.05,
+        min_component_size: 2,
+    },
+    PurityGate {
+        min_ore_height: 0.75,
+        min_bottom_density: 0.20,
+        min_purity: 0.20,
+        min_component_size: 6,
+    },
+    PurityGate {
+        min_ore_height: 2.0,
+        min_bottom_density: 0.50,
+        min_purity: 0.50,
+        min_component_size: 20,
+    },
+    PurityGate {
+        min_ore_height: 3.0,
+        min_bottom_density: 0.75,
+        min_purity: 0.75,
+        min_component_size: 40,
+    },
 ];
 
 /// The gate row for a purity level (clamped to 0–4; level 0 =
@@ -924,7 +1002,13 @@ pub fn evaluate_origin(
     let purity = if total > 0.0 { ore / total } else { 0.0 };
     let passes_gates = (gate.min_ore_height <= 0.0 || ore >= gate.min_ore_height)
         && (gate.min_purity <= 0.0 || purity >= gate.min_purity);
-    OriginEval { ore_height: ore, total, purity, depth, passes_gates }
+    OriginEval {
+        ore_height: ore,
+        total,
+        purity,
+        depth,
+        passes_gates,
+    }
 }
 
 /// Minimum surface height over an origin's captured columns
@@ -985,7 +1069,12 @@ pub fn components(origins: &[(i64, i64)]) -> Vec<Vec<(i64, i64)>> {
         seen.insert(start);
         while let Some(o) = stack.pop() {
             comp.push(o);
-            for d in [(CELL_TILES, 0), (-CELL_TILES, 0), (0, CELL_TILES), (0, -CELL_TILES)] {
+            for d in [
+                (CELL_TILES, 0),
+                (-CELL_TILES, 0),
+                (0, CELL_TILES),
+                (0, -CELL_TILES),
+            ] {
                 let n = (o.0 + d.0, o.1 + d.1);
                 if set.contains(&n) && seen.insert(n) {
                     stack.push(n);
@@ -1130,8 +1219,7 @@ pub fn build_corners(
     init: CornerInit,
     max_height_diff: i64,
 ) -> (CornerGrid, bool) {
-    let floor_map: HashMap<(i64, i64), i64> =
-        floors.iter().map(|&(x, y, f)| ((x, y), f)).collect();
+    let floor_map: HashMap<(i64, i64), i64> = floors.iter().map(|&(x, y, f)| ((x, y), f)).collect();
     let (mut min_x, mut min_y) = (i64::MAX, i64::MAX);
     let (mut max_x, mut max_y) = (i64::MIN, i64::MIN);
     for &(x, y, _) in floors {
@@ -1142,7 +1230,14 @@ pub fn build_corners(
     }
     if floors.is_empty() {
         return (
-            CornerGrid { x0: 0, y0: 0, nx: 0, ny: 0, heights: vec![], live: vec![] },
+            CornerGrid {
+                x0: 0,
+                y0: 0,
+                nx: 0,
+                ny: 0,
+                heights: vec![],
+                live: vec![],
+            },
             true,
         );
     }
@@ -1157,7 +1252,10 @@ pub fn build_corners(
     // origins (the up-to-4 cells that share the vertex).
     for iy in 0..vh {
         for ix in 0..vw {
-            let (vx, vy) = (min_x + ix as i64 * CELL_TILES, min_y + iy as i64 * CELL_TILES);
+            let (vx, vy) = (
+                min_x + ix as i64 * CELL_TILES,
+                min_y + iy as i64 * CELL_TILES,
+            );
             let mut contribs: Vec<i64> = Vec::with_capacity(4);
             for (ox, oy) in [
                 (vx - CELL_TILES, vy - CELL_TILES),
@@ -1183,8 +1281,14 @@ pub fn build_corners(
             };
         }
     }
-    let mut grid =
-        CornerGrid { x0: min_x, y0: min_y, nx, ny, heights, live };
+    let mut grid = CornerGrid {
+        x0: min_x,
+        y0: min_y,
+        nx,
+        ny,
+        heights,
+        live,
+    };
     // Smoothing: only ever lowers the shallower of a pair.
     let mut converged = false;
     for _ in 0..1000 {
@@ -1282,10 +1386,7 @@ pub fn existing_from_json(v: &Value) -> Vec<ExistingDesignation> {
     };
     let mut out = Vec::with_capacity(rows.len());
     for r in rows {
-        let (Some(x), Some(y)) = (
-            r["origin"][0].as_i64(),
-            r["origin"][1].as_i64(),
-        ) else {
+        let (Some(x), Some(y)) = (r["origin"][0].as_i64(), r["origin"][1].as_i64()) else {
             continue;
         };
         let corners = r["corners"].as_array().and_then(|a| {
@@ -1320,11 +1421,11 @@ pub fn existing_from_json(v: &Value) -> Vec<ExistingDesignation> {
 
 /// The existing designation at a cell origin, if any (origins
 /// are unique in the game — Add replaces).
-pub fn existing_at<'a>(
-    existing: &'a [ExistingDesignation],
+pub fn existing_at(
+    existing: &[ExistingDesignation],
     x: i64,
     y: i64,
-) -> Option<&'a ExistingDesignation> {
+) -> Option<&ExistingDesignation> {
     existing.iter().find(|e| e.x == x && e.y == y)
 }
 
@@ -1345,11 +1446,7 @@ pub enum CellMatch {
 }
 
 /// Match one planned cell against the read-back rows.
-pub fn cell_match(
-    cell: &Cell,
-    proto_id: &str,
-    existing: &[ExistingDesignation],
-) -> CellMatch {
+pub fn cell_match(cell: &Cell, proto_id: &str, existing: &[ExistingDesignation]) -> CellMatch {
     let Some(e) = existing_at(existing, cell.x, cell.y) else {
         return CellMatch::Absent;
     };
@@ -1426,7 +1523,10 @@ mod tests {
     use super::*;
 
     fn layer(material: &str, thickness: f64) -> LayerSpan {
-        LayerSpan { material: material.to_string(), thickness }
+        LayerSpan {
+            material: material.to_string(),
+            thickness,
+        }
     }
 
     fn flat_grid(size: i64, height: f64) -> HeightGrid {
@@ -1481,9 +1581,9 @@ mod tests {
             job.sha256,
             "0d0c86332fae8836d1d091db85ee8981dd326704b3ee68ae7f8b7098d2550bce"
         );
-        assert!(job
-            .file_json
-            .ends_with(",\"sha256\":\"0d0c86332fae8836d1d091db85ee8981dd326704b3ee68ae7f8b7098d2550bce\"}"));
+        assert!(job.file_json.ends_with(
+            ",\"sha256\":\"0d0c86332fae8836d1d091db85ee8981dd326704b3ee68ae7f8b7098d2550bce\"}"
+        ));
     }
 
     #[test]
@@ -1528,7 +1628,10 @@ mod tests {
         let plan = plan_pad(&grid, (0, 0, 16, 16), 7, PROTO_DUMPING, 200).unwrap();
         assert_eq!(plan.footprint, (0, 0, 16, 16));
         assert_eq!(plan.cells.len(), 16);
-        assert!(plan.cells.iter().all(|c| c.is_flat() && c.corner_origin() == 7));
+        assert!(plan
+            .cells
+            .iter()
+            .all(|c| c.is_flat() && c.corner_origin() == 7));
         assert!(plan.warnings.is_empty());
         assert_eq!(plan.cut_tiles3, 0.0);
         assert_eq!(plan.fill_tiles3, 0.0);
@@ -1566,7 +1669,9 @@ mod tests {
         // Every east vertex (vx = 20) warns (outside height 19/20).
         for vy in [4, 8, 12, 16, 20] {
             assert!(
-                plan.warnings.iter().any(|w| w.vertex == (20, vy) && w.step < -1.0),
+                plan.warnings
+                    .iter()
+                    .any(|w| w.vertex == (20, vy) && w.step < -1.0),
                 "expected an east-edge warning at (20, {vy})"
             );
         }
@@ -1595,7 +1700,13 @@ mod tests {
     fn pad_over_cap_refused() {
         let grid = flat_grid(40, 5.0);
         let err = plan_pad(&grid, (0, 0, 40, 40), 5, PROTO_MINING, 10).unwrap_err();
-        assert_eq!(err, PlanError::OverCellCap { cells: 100, cap: 10 });
+        assert_eq!(
+            err,
+            PlanError::OverCellCap {
+                cells: 100,
+                cap: 10
+            }
+        );
     }
 
     // ---- pit core ----
@@ -1627,25 +1738,53 @@ mod tests {
         let mut columns = Vec::new();
         for y in 0..3 {
             for x in 0..3 {
-                columns.push(if (x, y) == (1, 1) { Some(centre.clone()) } else { neighbour(x, y) });
+                columns.push(if (x, y) == (1, 1) {
+                    Some(centre.clone())
+                } else {
+                    neighbour(x, y)
+                });
             }
         }
         let grid = ColumnGrid::new(0, 0, 3, 3, columns).unwrap();
         let cutoffs = spike_cutoffs(&grid, "IronOre", "Bedrock");
         // raise = median(10 x8) - 5 - 4 = 1; cutoff = 8 + 1 = 9.
         assert_eq!(cutoffs[4], Some(9.0));
-        assert!(cutoffs.iter().enumerate().all(|(i, c)| i == 4 || c.is_none()));
+        assert!(cutoffs
+            .iter()
+            .enumerate()
+            .all(|(i, c)| i == 4 || c.is_none()));
         // The seam [8,12] shows only 3 of its 4 tiles above 9.
-        assert_eq!(visible_target_thickness(&centre, "IronOre", "Bedrock", Some(9.0)), 3.0);
-        assert_eq!(visible_target_thickness(&centre, "IronOre", "Bedrock", None), 4.0);
+        assert_eq!(
+            visible_target_thickness(&centre, "IronOre", "Bedrock", Some(9.0)),
+            3.0
+        );
+        assert_eq!(
+            visible_target_thickness(&centre, "IronOre", "Bedrock", None),
+            4.0
+        );
     }
 
     #[test]
     fn dig_depth_bottom_density_stops_at_first_failure() {
         let intervals = [
-            Interval { top: 10.0, bottom: 8.0, thickness: 2.0, visible: 2.0 },
-            Interval { top: 6.0, bottom: 3.0, thickness: 3.0, visible: 3.0 },
-            Interval { top: 3.0, bottom: 1.0, thickness: 2.0, visible: 2.0 },
+            Interval {
+                top: 10.0,
+                bottom: 8.0,
+                thickness: 2.0,
+                visible: 2.0,
+            },
+            Interval {
+                top: 6.0,
+                bottom: 3.0,
+                thickness: 3.0,
+                visible: 3.0,
+            },
+            Interval {
+                top: 3.0,
+                bottom: 1.0,
+                thickness: 2.0,
+                visible: 2.0,
+            },
         ];
         // Second interval density: 3 / ((8-6) + 3) = 0.6; the
         // third is contiguous (density 2 / ((3-3) + 2) = 1.0),
@@ -1682,18 +1821,35 @@ mod tests {
         let grid = ColumnGrid::new(0, 0, 4, 4, columns).unwrap();
         let cutoffs = spike_cutoffs(&grid, "IronOre", "Bedrock");
         assert!(cutoffs.iter().all(|c| c.is_none()));
-        let ev = evaluate_origin(&grid, &cutoffs, (0, 0), "IronOre", "Bedrock", &purity_gate(1));
+        let ev = evaluate_origin(
+            &grid,
+            &cutoffs,
+            (0, 0),
+            "IronOre",
+            "Bedrock",
+            &purity_gate(1),
+        );
         assert_eq!(ev.ore_height, 32.0);
         assert_eq!(ev.total, 80.0);
         assert_eq!(ev.purity, 0.4);
         assert_eq!(ev.depth, Some(8.0));
         assert!(ev.passes_gates);
-        let ev4 = evaluate_origin(&grid, &cutoffs, (0, 0), "IronOre", "Bedrock", &purity_gate(4));
+        let ev4 = evaluate_origin(
+            &grid,
+            &cutoffs,
+            (0, 0),
+            "IronOre",
+            "Bedrock",
+            &purity_gate(4),
+        );
         assert!(!ev4.passes_gates); // purity 0.4 < 0.75
         assert_eq!(origin_surface_min(&grid, (0, 0)), Some(10.0));
         assert_eq!(apply_depth_caps(8.0, 10.0, Some(30.0), None), 8.0);
         assert_eq!(apply_depth_caps(-40.0, 10.0, Some(30.0), None), -20.0);
-        assert_eq!(apply_depth_caps(-40.0, 10.0, Some(30.0), Some(-10.0)), -10.0);
+        assert_eq!(
+            apply_depth_caps(-40.0, 10.0, Some(30.0), Some(-10.0)),
+            -10.0
+        );
         assert_eq!(apply_depth_caps(-40.0, 10.0, None, None), -40.0);
     }
 
@@ -1715,7 +1871,10 @@ mod tests {
         assert_eq!(component_floor(&depths_a, 10), Some(10.0));
         assert_eq!(component_floor(&depths_a, 1), Some(18.0));
         // Lower-only flattening pulls the shallow side down.
-        assert_eq!(flatten_depths(&depths_a, 5, false), vec![14.0, 14.0, 14.0, 12.0, 10.0]);
+        assert_eq!(
+            flatten_depths(&depths_a, 5, false),
+            vec![14.0, 14.0, 14.0, 12.0, 10.0]
+        );
         assert_eq!(flatten_depths(&depths_a, 5, true), vec![14.0; 5]);
         // Components under 4 tiles are never flattened.
         assert_eq!(flatten_depths(&[3.0, 9.0], 5, false), vec![3.0, 9.0]);
@@ -1735,7 +1894,11 @@ mod tests {
         // removed; one origin at/above the ore gate saves it.
         let kept = filter_components(comps.clone(), &|_| 0.0, &purity_gate(1));
         assert_eq!(kept.len(), 1);
-        let kept = filter_components(comps, &|o| if o.0 >= 40 { 0.5 } else { 0.0 }, &purity_gate(1));
+        let kept = filter_components(
+            comps,
+            &|o| if o.0 >= 40 { 0.5 } else { 0.0 },
+            &purity_gate(1),
+        );
         assert_eq!(kept.len(), 2);
     }
 
@@ -1827,7 +1990,15 @@ mod tests {
         );
         // Cell 2 is planned as MINING here but reads back as a
         // dumping designation -> Different, not BandOnly.
-        assert_eq!(d, AddDiff { exact: 1, band_only: 0, different: 1, absent: 1 });
+        assert_eq!(
+            d,
+            AddDiff {
+                exact: 1,
+                band_only: 0,
+                different: 1,
+                absent: 1
+            }
+        );
         assert!(!d.all_landed());
     }
 

@@ -38,6 +38,7 @@ report (hand-enriched test data, not a real game state).
 
 Usage: python3 diagnose_live.py [live_dir] [out_md]
 """
+
 import json
 import sys
 from pathlib import Path
@@ -74,8 +75,10 @@ def main():
     synthetic = (LIVE / "SYNTHETIC.txt").exists()
 
     lines = []
-    lines.append("# Design diagnosis v1 — Philip's \"Expanding\" base (Dragon Isle)"
-                 + (" (SYNTHETIC enriched capture)" if synthetic else ""))
+    lines.append(
+        '# Design diagnosis v1 — Philip\'s "Expanding" base (Dragon Isle)'
+        + (" (SYNTHETIC enriched capture)" if synthetic else "")
+    )
     lines.append("")
     if synthetic:
         lines.append("⚠ **SYNTHETIC CAPTURE** — this directory is the real 2026-11-02")
@@ -118,14 +121,17 @@ def main():
     lines.append("")
     lines.append("Belts/pipes are placed per tile, so from == to is the ordinary shape of")
     lines.append("a one-tile segment. The only fault-relevant subset is the overlap with")
-    lines.append(f"§1 — single-tile AND not fully connected: **{len(both)}**"
-                 + (f" (ids {', '.join(str(t['id']) for t in both)})" if both else "")
-                 + ". Those are dead ends with nothing on either side.")
+    lines.append(
+        f"§1 — single-tile AND not fully connected: **{len(both)}**"
+        + (f" (ids {', '.join(str(t['id']) for t in both)})" if both else "")
+        + ". Those are dead ends with nothing on either side."
+    )
     lines.append("")
 
     # --- 3. Full storages with output disabled ---------------------------
-    stuck_all = [s for s in storages
-                 if pct_raw(s["percentFullRaw"]) >= 99.9 and s["logisticsOutDisabled"]]
+    stuck_all = [
+        s for s in storages if pct_raw(s["percentFullRaw"]) >= 99.9 and s["logisticsOutDisabled"]
+    ]
 
     def keep_full_explained(s):
         # v0.6.1 slider fields: ImportUntil ~100% means trucks are
@@ -139,10 +145,12 @@ def main():
 
     explained = [s for s in stuck_all if keep_full_explained(s)]
     stuck = [s for s in stuck_all if not keep_full_explained(s)]
-    full_open = [s for s in storages
-                 if pct_raw(s["percentFullRaw"]) >= 99.9 and not s["logisticsOutDisabled"]]
-    empty_in_off = [s for s in storages
-                    if s["quantity"] == 0 and s["logisticsInDisabled"]]
+    full_open = [
+        s
+        for s in storages
+        if pct_raw(s["percentFullRaw"]) >= 99.9 and not s["logisticsOutDisabled"]
+    ]
+    empty_in_off = [s for s in storages if s["quantity"] == 0 and s["logisticsInDisabled"]]
     lines.append("## 3. Storages full and stuck")
     lines.append("")
     lines.append(f"**Full (≥99.9%) with output logistics DISABLED: {len(stuck)}** — these can")
@@ -152,31 +160,44 @@ def main():
         lines.append("| id | proto | product | qty / cap |")
         lines.append("|---|---|---|---|")
         for s in sorted(stuck, key=lambda s: s["product"]):
-            lines.append(f"| {s['id']} | {s['proto']} | {s['product']} | "
-                         f"{s['quantity']} / {s['capacity']} |")
+            lines.append(
+                f"| {s['id']} | {s['proto']} | {s['product']} | {s['quantity']} / {s['capacity']} |"
+            )
         lines.append("")
     if explained:
-        lines.append(f"**Full with output disabled but EXPLAINED by a keep-full slider: "
-                     f"{len(explained)}** — their ImportUntil is ~100% (v0.6.1 slider")
+        lines.append(
+            f"**Full with output disabled but EXPLAINED by a keep-full slider: "
+            f"{len(explained)}** — their ImportUntil is ~100% (v0.6.1 slider"
+        )
         lines.append("fields): trucks are configured to keep them full, so the fill is")
         lines.append("the configuration working as set. Not counted as stuck above.")
         lines.append("")
         lines.append("| id | proto | product | qty / cap | ImportUntil |")
         lines.append("|---|---|---|---|---|")
         for s in sorted(explained, key=lambda s: s["product"]):
-            iu = (f"{pct_raw(s['importUntilPercentRaw']):.1f}%"
-                  if "importUntilPercentRaw" in s else f"step {s.get('importStep')}")
-            lines.append(f"| {s['id']} | {s['proto']} | {s['product']} | "
-                         f"{s['quantity']} / {s['capacity']} | {iu} |")
+            iu = (
+                f"{pct_raw(s['importUntilPercentRaw']):.1f}%"
+                if "importUntilPercentRaw" in s
+                else f"step {s.get('importStep')}"
+            )
+            lines.append(
+                f"| {s['id']} | {s['proto']} | {s['product']} | "
+                f"{s['quantity']} / {s['capacity']} | {iu} |"
+            )
         lines.append("")
-    backed_products = {pid for pid, p in stats.items()
-                       if p["storageCapacity"] > 0 and p["stored"] >= p["storageCapacity"]}
+    backed_products = {
+        pid
+        for pid, p in stats.items()
+        if p["storageCapacity"] > 0 and p["stored"] >= p["storageCapacity"]
+    }
     stuck_backed = sorted({s["product"] for s in stuck} & backed_products)
     lines.append("Caveat: output-disabled is a legitimate pattern for belt/pipe-drained")
     lines.append("buffers — a full, output-disabled storage is only a PROVEN fault when its")
-    lines.append("product is also backed up at product level (§4). That subset here: "
-                 + (", ".join(stuck_backed) if stuck_backed else "none")
-                 + ". The rest are configuration facts to eyeball, not proven faults.")
+    lines.append(
+        "product is also backed up at product level (§4). That subset here: "
+        + (", ".join(stuck_backed) if stuck_backed else "none")
+        + ". The rest are configuration facts to eyeball, not proven faults."
+    )
     lines.append("")
     lines.append(f"Full (≥99.9%) with output enabled: {len(full_open)} — normal buffers or")
     lines.append("backed-up products; see §4 for the product-level view.")
@@ -184,20 +205,28 @@ def main():
         prods = {}
         for s in full_open:
             prods[s["product"]] = prods.get(s["product"], 0) + 1
-        lines.append("By product: " + ", ".join(f"{p} ×{n}" for p, n in
-                                                 sorted(prods.items())) + ".")
+        lines.append(
+            "By product: " + ", ".join(f"{p} ×{n}" for p, n in sorted(prods.items())) + "."
+        )
     lines.append("")
-    lines.append(f"Empty storages with INPUT logistics disabled: {len(empty_in_off)} — "
-                 "they can never be filled by trucks either.")
+    lines.append(
+        f"Empty storages with INPUT logistics disabled: {len(empty_in_off)} — "
+        "they can never be filled by trucks either."
+    )
     lines.append("")
 
     # --- 4. Products backed up (stored >= capacity) ----------------------
-    over = [(pid, p) for pid, p in stats.items()
-            if p["storageCapacity"] > 0 and p["stored"] > p["storageCapacity"]]
-    backed = [(pid, p) for pid, p in stats.items()
-              if p["storageCapacity"] > 0 and p["stored"] == p["storageCapacity"]]
-    lines.append(f"## 4. Products backed up: {len(over)} OVER capacity, "
-                 f"{len(backed)} at capacity")
+    over = [
+        (pid, p)
+        for pid, p in stats.items()
+        if p["storageCapacity"] > 0 and p["stored"] > p["storageCapacity"]
+    ]
+    backed = [
+        (pid, p)
+        for pid, p in stats.items()
+        if p["storageCapacity"] > 0 and p["stored"] == p["storageCapacity"]
+    ]
+    lines.append(f"## 4. Products backed up: {len(over)} OVER capacity, {len(backed)} at capacity")
     lines.append("")
     if over:
         lines.append("**Stored EXCEEDS capacity** — the surplus can only be sitting in")
@@ -206,8 +235,10 @@ def main():
         lines.append("| product | stored | capacity | surplus | quantity |")
         lines.append("|---|---|---|---|---|")
         for pid, p in sorted(over):
-            lines.append(f"| {pid} | {p['stored']} | {p['storageCapacity']} | "
-                         f"{p['stored'] - p['storageCapacity']} | {p['quantity']} |")
+            lines.append(
+                f"| {pid} | {p['stored']} | {p['storageCapacity']} | "
+                f"{p['stored'] - p['storageCapacity']} | {p['quantity']} |"
+            )
         lines.append("")
     if backed:
         lines.append("Stored == capacity (storage exactly full). For bulk products this is")
@@ -220,19 +251,29 @@ def main():
         for pid, p in sorted(backed):
             lines.append(f"| {pid} | {p['stored']} | {p['quantity']} |")
         lines.append("")
-        lines.append("Bulk rows that matter most: "
-                     + ", ".join(pid for pid, p in sorted(backed)
-                                 if p["storageCapacity"] >= 500) + ".")
+        lines.append(
+            "Bulk rows that matter most: "
+            + ", ".join(pid for pid, p in sorted(backed) if p["storageCapacity"] >= 500)
+            + "."
+        )
     lines.append("")
 
     # --- 5. Machine clusters: starved / blocked ---------------------------
     lines.append("## 5. Machine clusters by state (census)")
     lines.append("")
-    lines.append("Totals across all machine protos: "
-               + ", ".join(f"{s} {n}" for s, n in sorted(
-                   {st: sum(m["states"].get(st, 0) for m in census["machines"].values())
-                    for st in ("Working", "NotEnoughInput", "OutputFull", "Paused")}.items()))
-               + ".")
+    lines.append(
+        "Totals across all machine protos: "
+        + ", ".join(
+            f"{s} {n}"
+            for s, n in sorted(
+                {
+                    st: sum(m["states"].get(st, 0) for m in census["machines"].values())
+                    for st in ("Working", "NotEnoughInput", "OutputFull", "Paused")
+                }.items()
+            )
+        )
+        + "."
+    )
     lines.append("")
     starved, blocked = [], []
     for proto, m in census["machines"].items():
@@ -268,8 +309,11 @@ def main():
     lines.append("")
 
     # --- 6. Production stopped this month --------------------------------
-    stopped = [(pid, p) for pid, p in stats.items()
-               if p["produced"][0] == 0 and p["produced"][1] > 0 and p["consumed"][0] > 0]
+    stopped = [
+        (pid, p)
+        for pid, p in stats.items()
+        if p["produced"][0] == 0 and p["produced"][1] > 0 and p["consumed"][0] > 0
+    ]
     lines.append(f"## 6. Production stopped this month, consumption continues: {len(stopped)}")
     lines.append("")
     lines.append("produced[thisMonth] == 0 while produced[lastMonth] > 0 and the product is")
@@ -290,9 +334,11 @@ def main():
         lines.append("## 7. Priorities (CoiBridge v0.6.1+ fields)")
         lines.append("")
         if census_prios:
-            lines.append(f"Census non-default general priorities: "
-                         f"**{len(census_prios)}** entities differ from their "
-                         "proto default:")
+            lines.append(
+                f"Census non-default general priorities: "
+                f"**{len(census_prios)}** entities differ from their "
+                "proto default:"
+            )
             lines.append("")
             lines.append("| entity | general priority |")
             lines.append("|---|---|")
@@ -300,27 +346,36 @@ def main():
                 lines.append(f"| {eid} | {val} |")
             lines.append("")
         if prio_rows:
-            dev = [s for s in prio_rows
-                   if s.get("importPriority", s["generalPriority"]) != s["generalPriority"]
-                   or s.get("exportPriority", s["generalPriority"]) != s["generalPriority"]]
-            lines.append(f"Storage rows carrying priority/slider fields: "
-                         f"{len(prio_rows)}; with import/export priority differing "
-                         f"from their general priority: {len(dev)}.")
+            dev = [
+                s
+                for s in prio_rows
+                if s.get("importPriority", s["generalPriority"]) != s["generalPriority"]
+                or s.get("exportPriority", s["generalPriority"]) != s["generalPriority"]
+            ]
+            lines.append(
+                f"Storage rows carrying priority/slider fields: "
+                f"{len(prio_rows)}; with import/export priority differing "
+                f"from their general priority: {len(dev)}."
+            )
             if dev:
                 lines.append("")
                 lines.append("| id | product | general | import | export |")
                 lines.append("|---|---|---|---|---|")
                 for s in sorted(dev, key=lambda s: s["id"]):
-                    lines.append(f"| {s['id']} | {s['product']} | "
-                                 f"{s['generalPriority']} | "
-                                 f"{s.get('importPriority')} | "
-                                 f"{s.get('exportPriority')} |")
+                    lines.append(
+                        f"| {s['id']} | {s['product']} | "
+                        f"{s['generalPriority']} | "
+                        f"{s.get('importPriority')} | "
+                        f"{s.get('exportPriority')} |"
+                    )
             lines.append("")
         if custom_prios:
             ents = custom_prios.get("entities", [])
-            lines.append(f"Custom priorities (v0.6.3 route): {len(ents)} entities "
-                         f"carry at least one visible custom priority id "
-                         f"(known ids: {', '.join(custom_prios.get('ids', []))}).")
+            lines.append(
+                f"Custom priorities (v0.6.3 route): {len(ents)} entities "
+                f"carry at least one visible custom priority id "
+                f"(known ids: {', '.join(custom_prios.get('ids', []))})."
+            )
             lines.append("")
 
     # --- 8. Power (v0.6.2+ route, only when captured) --------------------
@@ -329,21 +384,27 @@ def main():
         lines.append("")
         gen, con = power.get("generatedKw"), power.get("consumedKw")
         bal = power.get("balanceKw")
-        lines.append(f"Generated {gen} kW · consumed {con} kW · demanded "
-                     f"{power.get('demandedKw')} kW · capacity "
-                     f"{power.get('generationCapacityKw')} kW "
-                     f"(max {power.get('maxGenerationCapacityKw')}) · wasted "
-                     f"{power.get('wastedKw')} kW · **balance {bal} kW** · "
-                     f"{power.get('generators')} generators / "
-                     f"{power.get('consumers')} consumers.")
+        lines.append(
+            f"Generated {gen} kW · consumed {con} kW · demanded "
+            f"{power.get('demandedKw')} kW · capacity "
+            f"{power.get('generationCapacityKw')} kW "
+            f"(max {power.get('maxGenerationCapacityKw')}) · wasted "
+            f"{power.get('wastedKw')} kW · **balance {bal} kW** · "
+            f"{power.get('generators')} generators / "
+            f"{power.get('consumers')} consumers."
+        )
         lines.append("")
         if bal is not None and bal < 0:
-            lines.append(f"**POWER DEFICIT: consumption exceeds generation by "
-                         f"{-bal} kW** this tick — machines throttle or starve "
-                         "for power until generation catches up"
-                         + (f"; a further {power['surplusDemandedKw']} kW of "
-                            "demand is queued unsupplied."
-                            if power.get("surplusDemandedKw") else "."))
+            lines.append(
+                f"**POWER DEFICIT: consumption exceeds generation by "
+                f"{-bal} kW** this tick — machines throttle or starve "
+                "for power until generation catches up"
+                + (
+                    f"; a further {power['surplusDemandedKw']} kW of demand is queued unsupplied."
+                    if power.get("surplusDemandedKw")
+                    else "."
+                )
+            )
             lines.append("")
         averages = power.get("averages")
         if averages:
@@ -354,14 +415,18 @@ def main():
             for name in ("production", "consumption", "generationCapacity"):
                 a = averages.get(name)
                 if a:
-                    lines.append(f"| {name} | {a.get('lastDayKw')} | "
-                                 f"{a.get('lastMonthKw')} | {a.get('lastYearKw')} |")
+                    lines.append(
+                        f"| {name} | {a.get('lastDayKw')} | "
+                        f"{a.get('lastMonthKw')} | {a.get('lastYearKw')} |"
+                    )
             lines.append("")
             if power.get("averagesUnverified"):
-                lines.append("[unverified decoding] The bridge flags these "
-                             "averages `averagesUnverified` — the layout is "
-                             "assembly-verified but has had no live cross-check "
-                             "against the in-game Statistics window yet.")
+                lines.append(
+                    "[unverified decoding] The bridge flags these "
+                    "averages `averagesUnverified` — the layout is "
+                    "assembly-verified but has had no live cross-check "
+                    "against the in-game Statistics window yet."
+                )
                 lines.append("")
 
     # --- 9. Machine instances (v0.6.4 route, only when captured) --------
@@ -378,8 +443,7 @@ def main():
         def neighbour_desc(nid):
             s = stor_by_id.get(nid)
             if s:
-                return (f"storage {nid} ({s['product']}, "
-                        f"{s['quantity']}/{s['capacity']})")
+                return f"storage {nid} ({s['product']}, {s['quantity']}/{s['capacity']})"
             if nid in by_id:
                 r = by_id[nid]
                 return f"machine {nid} ({r['proto']}, {r['state']})"
@@ -409,50 +473,62 @@ def main():
         extra = sorted(set(row_protos) - set(census["machines"]))
         if extra:
             mismatches.append("protos in rows but not census: " + ", ".join(extra))
-        lines.append(f"Instance rows: **{len(rows)}**"
-                     + (f" · skipped at capture: {machines_cap['skippedRows']}"
-                        if machines_cap.get("skippedRows") else "")
-                     + f". Consistency vs census aggregates: "
-                     + ("**MATCH** — every proto's instance states reproduce "
-                        "the census splits." if not mismatches else
-                        "**MISMATCH** — " + "; ".join(mismatches) + "."))
+        lines.append(
+            f"Instance rows: **{len(rows)}**"
+            + (
+                f" · skipped at capture: {machines_cap['skippedRows']}"
+                if machines_cap.get("skippedRows")
+                else ""
+            )
+            + ". Consistency vs census aggregates: "
+            + (
+                "**MATCH** — every proto's instance states reproduce the census splits."
+                if not mismatches
+                else "**MISMATCH** — " + "; ".join(mismatches) + "."
+            )
+        )
         lines.append("")
         paused = [r for r in rows if r.get("isPaused")]
         disabled = [r for r in rows if r.get("isEnabled") is False]
         if paused or disabled:
-            lines.append(f"Paused instances: {len(paused)}; disabled "
-                         f"(isEnabled=false): {len(disabled)}.")
+            lines.append(
+                f"Paused instances: {len(paused)}; disabled (isEnabled=false): {len(disabled)}."
+            )
             for label, lst in (("paused", paused), ("disabled", disabled)):
                 if lst:
                     by_proto = {}
                     for r in lst:
                         by_proto.setdefault(r["proto"], []).append(str(r["id"]))
-                    lines.append(f"- {label}: " + "; ".join(
-                        f"{p} ids {', '.join(ids)}"
-                        for p, ids in sorted(by_proto.items())))
+                    lines.append(
+                        f"- {label}: "
+                        + "; ".join(
+                            f"{p} ids {', '.join(ids)}" for p, ids in sorted(by_proto.items())
+                        )
+                    )
             lines.append("")
             lines.append("A paused/disabled machine inside a starved or blocked")
             lines.append("cluster is a settings fact, not a supply fault — check it")
             lines.append("before redesigning anything around the cluster.")
             lines.append("")
-        for title, state in (("Starved", "NotEnoughInput"),
-                             ("Output-full", "OutputFull")):
-            flagged = [p for p, m in census["machines"].items()
-                       if sum(m["states"].values()) >= 2
-                       and m["states"].get(state, 0) * 2 >= sum(m["states"].values())]
-            inst_rows = [r for p in flagged for r in row_protos.get(p, [])
-                         if r["state"] == state]
-            lines.append(f"### {title} instances (from §5's flagged clusters): "
-                         f"{len(inst_rows)}")
+        for title, state in (("Starved", "NotEnoughInput"), ("Output-full", "OutputFull")):
+            flagged = [
+                p
+                for p, m in census["machines"].items()
+                if sum(m["states"].values()) >= 2
+                and m["states"].get(state, 0) * 2 >= sum(m["states"].values())
+            ]
+            inst_rows = [r for p in flagged for r in row_protos.get(p, []) if r["state"] == state]
+            lines.append(f"### {title} instances (from §5's flagged clusters): {len(inst_rows)}")
             lines.append("")
             if inst_rows:
                 lines.append("| id | proto | pos | recipes | connected neighbours |")
                 lines.append("|---|---|---|---|---|")
                 for r in sorted(inst_rows, key=lambda r: (r["proto"], r["id"])):
-                    nb = "; ".join(neighbour_desc(n)
-                                   for n in sorted(neighbours.get(r["id"], [])))
-                    lines.append(f"| {r['id']} | {r['proto']} | {r['pos']} | "
-                                 f"{', '.join(r['recipes'])} | {nb or '— none —'} |")
+                    nb = "; ".join(neighbour_desc(n) for n in sorted(neighbours.get(r["id"], [])))
+                    lines.append(
+                        f"| {r['id']} | {r['proto']} | {r['pos']} | "
+                        f"{', '.join(r['recipes'])} | {nb or '— none —'} |"
+                    )
                 lines.append("")
                 lines.append("[inference] Topology edges are undirected port")
                 lines.append("connections: a neighbour storage holding a product is a")

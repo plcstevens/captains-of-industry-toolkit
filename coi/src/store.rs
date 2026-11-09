@@ -72,8 +72,28 @@
 //!     -- per snapshot (bulky, and re-fetchable on demand); only
 //!     -- the deposit totals are queryable history.
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::Value;
+
+/// Row shapes returned by the snapshot / trend / productivity
+/// queries (field order is documented at each query fn). Aliased
+/// so signatures stay readable (clippy::type_complexity).
+pub type ProductTrendRow = (String, i64, i64, i64, i64, i64, i64, String);
+pub type MachineRow = (String, i64, i64, i64, i64, i64, i64, String);
+pub type MachineCounts = (i64, i64, i64, i64, i64, i64, String);
+pub type MachineInstanceRow = (String, String, Option<String>, Option<bool>, Option<bool>);
+pub type MachineStateRow = (i64, String, i64, i64, i64, i64, i64, i64, String);
+pub type ProdStateRow = (String, Option<String>, i64, Option<f64>);
+pub type ProdStatesRow = (
+    String,
+    String,
+    String,
+    Option<String>,
+    i64,
+    Option<f64>,
+    Option<String>,
+);
+pub type SnapshotSummaryRow = (i64, String, i64, i64, i64, i64);
 
 pub struct Store {
     conn: Connection,
@@ -266,10 +286,7 @@ impl Store {
         let game_id = game["gameId"].as_str().unwrap_or("");
         let tick = game["tick"].as_i64().unwrap_or(0);
         let taken = snap["takenAtUnix"].as_i64().unwrap_or(0);
-        let tx = self
-            .conn
-            .transaction()
-            .map_err(|e| format!("db tx: {e}"))?;
+        let tx = self.conn.transaction().map_err(|e| format!("db tx: {e}"))?;
         tx.execute(
             "INSERT INTO games(game_id, first_seen, last_seen) VALUES (?1, ?2, ?2)
              ON CONFLICT(game_id) DO UPDATE SET last_seen = MAX(last_seen, ?2)",
@@ -323,10 +340,7 @@ impl Store {
         }
         if let Some(map) = snap["history"]["products"].as_object() {
             for (pid, series) in map {
-                let n = series["quantity"]
-                    .as_array()
-                    .map(|a| a.len())
-                    .unwrap_or(0);
+                let n = series["quantity"].as_array().map(|a| a.len()).unwrap_or(0);
                 for idx in 0..n {
                     tx.execute(
                         "INSERT INTO product_history(snapshot_id, product_id, idx, produced, consumed, quantity)
@@ -348,7 +362,9 @@ impl Store {
         // from the snapshot's bridge payloads (absent when the bridge
         // was not reachable at capture time — no rows, and the
         // productivity layer will say INSUFFICIENT for this snapshot).
-        for (proto, working, nei, of, paused, other, instances, source) in snapshot_machine_rows(snap) {
+        for (proto, working, nei, of, paused, other, instances, source) in
+            snapshot_machine_rows(snap)
+        {
             tx.execute(
                 "INSERT INTO machine_state_proto(snapshot_id, proto, working, not_enough_input, output_full, paused, other, instances, source)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
@@ -402,7 +418,8 @@ impl Store {
         Ok(Some(sid))
     }
 
-    pub fn counts(&self) -> Result<(i64, i64, i64), String> {        let q = |sql: &str| self.conn.query_row(sql, [], |r| r.get::<_, i64>(0));
+    pub fn counts(&self) -> Result<(i64, i64, i64), String> {
+        let q = |sql: &str| self.conn.query_row(sql, [], |r| r.get::<_, i64>(0));
         Ok((
             q("SELECT COUNT(*) FROM snapshots").map_err(|e| e.to_string())?,
             q("SELECT COUNT(*) FROM product_stats").map_err(|e| e.to_string())?,
@@ -412,7 +429,7 @@ impl Store {
 
     /// (game_date, tick, quantity, prod_tm, prod_lm, cons_tm, cons_lm)
     /// for products whose name contains `filter`, oldest first.
-    pub fn trend(&self, filter: &str) -> Result<Vec<(String, i64, i64, i64, i64, i64, i64, String)>, String> {
+    pub fn trend(&self, filter: &str) -> Result<Vec<ProductTrendRow>, String> {
         let mut stmt = self
             .conn
             .prepare(
@@ -445,7 +462,10 @@ impl Store {
 }
 
 fn flow(p: &Value, key: &str, idx: usize) -> Option<i64> {
-    p[key].as_array().and_then(|a| a.get(idx)).and_then(|v| v.as_i64())
+    p[key]
+        .as_array()
+        .and_then(|a| a.get(idx))
+        .and_then(|v| v.as_i64())
 }
 
 // ---------------------------------------------------------------------------
@@ -550,20 +570,19 @@ fn parse_iso8601_utc(s: &str) -> Option<i64> {
     if bytes.len() < 20 {
         return None;
     }
-    let num = |from: usize, len: usize| -> Option<i64> {
-        s.get(from..from + len)?.parse::<i64>().ok()
-    };
-    if bytes.get(4) != Some(&b'-') || bytes.get(7) != Some(&b'-')
+    let num =
+        |from: usize, len: usize| -> Option<i64> { s.get(from..from + len)?.parse::<i64>().ok() };
+    if bytes.get(4) != Some(&b'-')
+        || bytes.get(7) != Some(&b'-')
         || (bytes.get(10) != Some(&b'T') && bytes.get(10) != Some(&b' '))
-        || bytes.get(13) != Some(&b':') || bytes.get(16) != Some(&b':')
+        || bytes.get(13) != Some(&b':')
+        || bytes.get(16) != Some(&b':')
     {
         return None;
     }
     let (year, month, day) = (num(0, 4)?, num(5, 2)?, num(8, 2)?);
     let (hour, min, sec) = (num(11, 2)?, num(14, 2)?, num(17, 2)?);
-    if !(1..=12).contains(&month) || !(1..=31).contains(&day)
-        || hour > 23 || min > 59 || sec > 60
-    {
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) || hour > 23 || min > 59 || sec > 60 {
         return None;
     }
     // Days from civil (Howard Hinnant's algorithm, inverse of the
@@ -638,9 +657,7 @@ impl Store {
             };
             let event_id = v["eventId"].as_str().unwrap_or("");
             let action = v["action"].as_str().unwrap_or("");
-            let ts = v["recordedAtUtc"]
-                .as_str()
-                .and_then(parse_iso8601_utc);
+            let ts = v["recordedAtUtc"].as_str().and_then(parse_iso8601_utc);
             if event_id.is_empty() || action.is_empty() || ts.is_none() {
                 stats.malformed += 1;
                 continue;
@@ -682,7 +699,11 @@ impl Store {
     }
 
     /// Count activity rows matching the Log page's filters.
-    pub fn activity_count(&self, source: Option<&str>, search: Option<&str>) -> Result<i64, String> {
+    pub fn activity_count(
+        &self,
+        source: Option<&str>,
+        search: Option<&str>,
+    ) -> Result<i64, String> {
         let (where_sql, like) = activity_filter(source, search);
         let sql = format!("SELECT COUNT(*) FROM activity_events{where_sql}");
         self.conn
@@ -742,7 +763,9 @@ fn activity_filter(_source: Option<&str>, search: Option<&str>) -> (String, Stri
     let like = match search.map(|s| s.trim()).filter(|s| !s.is_empty()) {
         Some(s) => format!(
             "%{}%",
-            s.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_")
+            s.replace('\\', "\\\\")
+                .replace('%', "\\%")
+                .replace('_', "\\_")
         ),
         None => "%".to_string(),
     };
@@ -790,12 +813,10 @@ pub fn snapshot_deposit_rows(snap: &Value) -> Vec<(String, String, i64, i64, i64
 /// summed into `other` — the in-game state vocabulary is not closed
 /// (QOL recon §5.2.5), so nothing is ever silently dropped or folded
 /// into the working/eligible buckets.
-pub fn snapshot_machine_rows(
-    snap: &Value,
-) -> Vec<(String, i64, i64, i64, i64, i64, i64, String)> {
+pub fn snapshot_machine_rows(snap: &Value) -> Vec<MachineRow> {
     use std::collections::BTreeMap;
     // (working, nei, output_full, paused, other, instances, source)
-    let mut by_proto: BTreeMap<String, (i64, i64, i64, i64, i64, i64, String)> = BTreeMap::new();
+    let mut by_proto: BTreeMap<String, MachineCounts> = BTreeMap::new();
 
     if let Some(machines) = snap["bridgeCensus"]["machines"].as_object() {
         for (proto, entry) in machines {
@@ -856,9 +877,7 @@ pub fn snapshot_machine_rows(
 /// Per-instance machine rows from the bridge machines route:
 /// (entity_id, proto, state, is_paused, is_enabled). Empty when the
 /// snapshot carries no machines-route payload.
-pub fn snapshot_machine_instances(
-    snap: &Value,
-) -> Vec<(String, String, Option<String>, Option<bool>, Option<bool>)> {
+pub fn snapshot_machine_instances(snap: &Value) -> Vec<MachineInstanceRow> {
     let mut out = Vec::new();
     if let Some(list) = snap["bridgeMachines"]["machines"].as_array() {
         for m in list {
@@ -897,9 +916,7 @@ impl Store {
             .conn
             .prepare("SELECT username, salt, pass_hash FROM web_users LIMIT 1")
             .map_err(|e| format!("db web_user prepare: {e}"))?;
-        let mut rows = stmt
-            .query([])
-            .map_err(|e| format!("db web_user: {e}"))?;
+        let mut rows = stmt.query([]).map_err(|e| format!("db web_user: {e}"))?;
         match rows.next().map_err(|e| format!("db web_user row: {e}"))? {
             Some(r) => Ok(Some((
                 r.get(0).map_err(|e| e.to_string())?,
@@ -911,7 +928,12 @@ impl Store {
     }
 
     #[allow(dead_code)]
-    pub fn create_web_user(&self, username: &str, salt_hex: &str, pass_hash_hex: &str) -> Result<(), String> {
+    pub fn create_web_user(
+        &self,
+        username: &str,
+        salt_hex: &str,
+        pass_hash_hex: &str,
+    ) -> Result<(), String> {
         self.conn
             .execute(
                 "INSERT INTO web_users(username, salt, pass_hash) VALUES (?1, ?2, ?3)",
@@ -962,7 +984,10 @@ impl Store {
             .prepare("SELECT game_id FROM games ORDER BY last_seen DESC LIMIT 1")
             .map_err(|e| format!("db latest game prepare: {e}"))?;
         let mut rows = stmt.query([]).map_err(|e| format!("db latest game: {e}"))?;
-        match rows.next().map_err(|e| format!("db latest game row: {e}"))? {
+        match rows
+            .next()
+            .map_err(|e| format!("db latest game row: {e}"))?
+        {
             Some(r) => Ok(Some(r.get(0).map_err(|e| e.to_string())?)),
             None => Ok(None),
         }
@@ -993,7 +1018,10 @@ impl Store {
         let mut rows = stmt
             .query(params![game_id])
             .map_err(|e| format!("db latest snap: {e}"))?;
-        match rows.next().map_err(|e| format!("db latest snap row: {e}"))? {
+        match rows
+            .next()
+            .map_err(|e| format!("db latest snap row: {e}"))?
+        {
             Some(r) => Ok(Some((
                 r.get(0).map_err(|e| e.to_string())?,
                 r.get::<_, Option<String>>(1)
@@ -1007,10 +1035,7 @@ impl Store {
     /// Per-snapshot machine-state aggregates for a game, oldest first:
     /// (tick, proto, working, not_enough_input, output_full, paused,
     /// other, instances, source).
-    pub fn machine_state_series(
-        &self,
-        game_id: &str,
-    ) -> Result<Vec<(i64, String, i64, i64, i64, i64, i64, i64, String)>, String> {
+    pub fn machine_state_series(&self, game_id: &str) -> Result<Vec<MachineStateRow>, String> {
         let mut stmt = self
             .conn
             .prepare(
@@ -1049,7 +1074,7 @@ impl Store {
         &self,
         game_id: &str,
         target: &str,
-    ) -> Result<Option<(String, Option<String>, i64, Option<f64>)>, String> {
+    ) -> Result<Option<ProdStateRow>, String> {
         let mut stmt = self
             .conn
             .prepare(
@@ -1073,10 +1098,7 @@ impl Store {
 
     /// All hysteresis rows for a game: (target, kind, status, cause,
     /// since_tick, value, evidence).
-    pub fn prod_states(
-        &self,
-        game_id: &str,
-    ) -> Result<Vec<(String, String, String, Option<String>, i64, Option<f64>, Option<String>)>, String> {
+    pub fn prod_states(&self, game_id: &str) -> Result<Vec<ProdStatesRow>, String> {
         let mut stmt = self
             .conn
             .prepare(
@@ -1132,7 +1154,8 @@ impl Store {
     }
 
     /// (id, game_date, tick, taken_unix, product_rows, issue_rows), newest first.
-    pub fn recent_snapshots(&self, limit: i64) -> Result<Vec<(i64, String, i64, i64, i64, i64)>, String> {        let mut stmt = self
+    pub fn recent_snapshots(&self, limit: i64) -> Result<Vec<SnapshotSummaryRow>, String> {
+        let mut stmt = self
             .conn
             .prepare(
                 "SELECT s.id, s.game_date, s.tick, s.taken_unix,
@@ -1159,6 +1182,37 @@ impl Store {
         }
         Ok(out)
     }
+
+    /// The most recent snapshot that recorded an issue with this
+    /// product + title: (snapshot_id, taken_unix, game_date).
+    /// Powers the issue detail's gone-state ("last seen in
+    /// snapshot …", DESIGN V3 §1.2). None when never recorded.
+    pub fn issue_last_seen(
+        &self,
+        product: &str,
+        title: &str,
+    ) -> Result<Option<(i64, i64, String)>, String> {
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT s.id, s.taken_unix, s.game_date FROM issues i
+                 JOIN snapshots s ON s.id = i.snapshot_id
+                 WHERE i.product = ?1 AND i.title = ?2
+                 ORDER BY s.id DESC LIMIT 1",
+            )
+            .map_err(|e| format!("db issue-seen prepare: {e}"))?;
+        let row = stmt
+            .query_row(params![product, title], |r| {
+                Ok((
+                    r.get::<_, i64>(0)?,
+                    r.get::<_, i64>(1)?,
+                    r.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                ))
+            })
+            .optional()
+            .map_err(|e| format!("db issue-seen: {e}"))?;
+        Ok(row)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1170,10 +1224,8 @@ mod tests {
     use super::*;
 
     fn temp_db(tag: &str) -> String {
-        let p = std::env::temp_dir().join(format!(
-            "coi-store-test-{}-{tag}.db",
-            std::process::id()
-        ));
+        let p =
+            std::env::temp_dir().join(format!("coi-store-test-{}-{tag}.db", std::process::id()));
         let s = p.to_string_lossy().to_string();
         for suffix in ["", "-wal", "-shm"] {
             let _ = std::fs::remove_file(format!("{s}{suffix}"));
@@ -1191,8 +1243,14 @@ mod tests {
     fn iso8601_utc_parsing() {
         // 2026-11-05T13:00:00Z, computed independently.
         assert_eq!(parse_iso8601_utc("2026-11-05T13:00:00Z"), Some(1793883600));
-        assert_eq!(parse_iso8601_utc("2026-11-05T13:00:00.1234567Z"), Some(1793883600));
-        assert_eq!(parse_iso8601_utc("2026-11-05T13:00:00+00:00"), Some(1793883600));
+        assert_eq!(
+            parse_iso8601_utc("2026-11-05T13:00:00.1234567Z"),
+            Some(1793883600)
+        );
+        assert_eq!(
+            parse_iso8601_utc("2026-11-05T13:00:00+00:00"),
+            Some(1793883600)
+        );
         assert_eq!(parse_iso8601_utc("not a date"), None);
         assert_eq!(parse_iso8601_utc("2026-13-05T13:00:00Z"), None);
         assert_eq!(parse_iso8601_utc(""), None);
@@ -1274,18 +1332,28 @@ mod tests {
         let stats = st.import_qos_feed(&feed).unwrap();
         assert_eq!(
             stats,
-            QosImportStats { imported: 2, skipped: 1, malformed: 2 }
+            QosImportStats {
+                imported: 2,
+                skipped: 1,
+                malformed: 2
+            }
         );
         // Second pass: everything valid is a duplicate now.
         let stats2 = st.import_qos_feed(&feed).unwrap();
         assert_eq!(
             stats2,
-            QosImportStats { imported: 0, skipped: 3, malformed: 2 }
+            QosImportStats {
+                imported: 0,
+                skipped: 3,
+                malformed: 2
+            }
         );
         assert_eq!(st.activity_count(Some("qos"), None).unwrap(), 2);
         assert_eq!(st.activity_count(Some("companion"), None).unwrap(), 0);
         assert_eq!(st.activity_count(None, Some("Navigated")).unwrap(), 1);
-        let rows = st.activity_recent(Some("qos"), Some("MoveAnimals"), 10, 0).unwrap();
+        let rows = st
+            .activity_recent(Some("qos"), Some("MoveAnimals"), 10, 0)
+            .unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].actor.as_deref(), Some("QoSChickens"));
         assert_eq!(rows[0].category.as_deref(), Some("command"));

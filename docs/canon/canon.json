@@ -1,0 +1,1009 @@
+{
+ "families": {
+  "board": {
+   "title": "The issues board",
+   "entries": [
+    {
+     "id": "board.quadrants",
+     "title": "The four quadrants",
+     "player": "Every finding lands in one of four groups. Fix now is important and urgent — act today. Fix later is important but has time. Watch is urgent but less central to keeping the factory alive. Ignore for now is neither, and the board keeps it visible so nothing is hidden from you.\n",
+     "rule": "Quadrant = f(importance, urgency) for every deficit-class finding: importance HIGH + urgent -> Fix now; importance HIGH -> Fix later; urgent -> Watch; otherwise Ignore for now. These four labels are THE player vocabulary for severity (canon/README.md); agent-side severity scales are never shown to players.\n",
+     "numbers": [],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "board.importance",
+     "title": "What counts as important",
+     "player": "Some products matter more than others. Steel, diesel, coal and the other backbone products are rated important; waste and fill products are rated low; everything else sits in the middle. Importance is fixed by the product, not by how much of it you happen to have.\n",
+     "rule": "importance(product): HIGH (3) for the listed backbone products, LOW (1) for the listed waste/fill products, otherwise 2. Matching is by substring on the product id, evaluated in code order.\n",
+     "numbers": [
+      {
+       "name": "high_count",
+       "value": 20,
+       "unit": "products",
+       "code": {
+        "file": "coi/src/main.rs",
+        "extractor": "importance_high"
+       }
+      },
+      {
+       "name": "low_count",
+       "value": 11,
+       "unit": "products",
+       "code": {
+        "file": "coi/src/main.rs",
+        "extractor": "importance_low"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "board.urgency",
+     "title": "What counts as urgent",
+     "player": "A finding is urgent when the stock on hand covers less than three months of use. Three months is roughly one bad quarter — short enough that a single breakdown or a missed delivery turns it into an outage.\n",
+     "rule": "urgent := cover_months < 3.0, where cover = quantity / last-month consumption.",
+     "numbers": [
+      {
+       "name": "urgent_cover_months",
+       "value": 3.0,
+       "unit": "months",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "cover < 3.0"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "board.stall-confirmation",
+     "title": "Stalled production",
+     "player": "A product is flagged as stalled when nothing was produced last month while the factory kept consuming it — and production was also zero in at least two of the last three finished months, so a one-month pause (a rebuild, a stockpile target met) doesn't trigger it. The flag only fires while the remaining stock lasts less than three years.\n",
+     "rule": "stalled := produced(last month) == 0 AND consumed(last month) > 0 AND NOT import-fed AND NOT seasonal AND cover < 36 months. Confirmed when production was zero in >= 2 of the last 3 finished months; with no monthly history yet, an unconfirmed stall is shown rather than hidden.\n",
+     "numbers": [
+      {
+       "name": "cover_max_months",
+       "value": 36,
+       "unit": "months",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "cover < 36.0"
+       }
+      },
+      {
+       "name": "confirm_zero_months",
+       "value": 2,
+       "unit": "of last 3 finished months",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "z >= 2"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "board.import-fed-products",
+     "title": "Products you import on purpose",
+     "player": "Some products are cheaper to import than to make, and a factory may deliberately produce none of them. Those products are never flagged as stalled — zero production is the plan, not a failure. Today the engine applies this to coal only.\n",
+     "rule": "The stall detector exempts import-fed products (import_fed). The current implementation exempts exactly one product, coal, hardcoded — recorded here as a known limitation, not hidden in a code comment. Making the list configurable (per-run, in coi.toml) is a recorded follow-up for the product owner; the exemption itself is deliberate and stays.\n",
+     "numbers": [],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "board.deficit-horizon",
+     "title": "Running a deficit",
+     "player": "A product is flagged when you used more than you made last month and the stock left covers less than two years at that rate. Two years sounds generous, but production chains take months to expand — the flag is your planning window, not a panic line.\n",
+     "rule": "deficit := net(last month) < 0 AND quantity > 0 AND NOT seasonal AND runway < 24 months.",
+     "numbers": [
+      {
+       "name": "runway_max_months",
+       "value": 24,
+       "unit": "months",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "months < 24.0"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "board.structural-horizon",
+     "title": "A slow structural deficit",
+     "player": "A second, slower alarm catches products that are bleeding gradually: a deficit last month, a stock trend pointing down over the long window, and less than ten years of cover. These are the deficits that feel fine for a year and then aren't.\n",
+     "rule": "structural := runway in [24, 120) months AND long-window trend declining AND net(this month) < 0 AND NOT seasonal. Quadrant: Fix later if importance HIGH, else Watch.\n",
+     "numbers": [
+      {
+       "name": "runway_max_months",
+       "value": 120,
+       "unit": "months",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "months < 120.0"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "board.seasonal-window",
+     "title": "Seasonal products",
+     "player": "Crops produce in bursts and sit idle between harvests, so a zero month is normal for them. A product counts as seasonal when at least half its finished months produced nothing but its peak month clearly outproduces its average use. Seasonal products are judged on their long-window balance instead of last month's.\n",
+     "rule": "is_seasonal := >= 4 finished months AND >= half of them zero-production AND total production > 0 AND peak month >= max(mean consumption, 1) AND peak >= 2x max(mean production, 1). Fallback without history: produced last year > 0 with this and last month both zero. Seasonal deficit := long-window net < 0 AND runway < 36 months -> Fix later (HIGH) or Watch.\n",
+     "numbers": [
+      {
+       "name": "seasonal_runway_max_months",
+       "value": 36,
+       "unit": "months",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "if months < 36.0"
+       }
+      },
+      {
+       "name": "min_finished_months",
+       "value": 4,
+       "unit": "months"
+      },
+      {
+       "name": "peak_vs_mean_factor",
+       "value": 2,
+       "unit": "x"
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "board.storage-full",
+     "title": "Storage full — a finding, not a warning colour",
+     "player": "When a storage is completely full and the product is still being made, that's a finding: production behind it will jam. A full storage whose product is no longer made or used is different — it reads as a filled buffer and lands in Ignore for now. Separately, storage bars turn amber at 90% full: that's an early flag on the Entities page, deliberately below the finding line, so you can see a fill coming before it jams anything.\n",
+     "rule": "Finding (storage-full) := stored >= capacity AND capacity >= 200 AND the product is still produced. Parked variant := full AND no production and no draw -> Ignore for now, explained as a filled buffer / war chest. Flag (Entities) := stored >= 90% of capacity. The 90% flag and the 100% finding are different things on purpose: flag vs finding.\n",
+     "numbers": [
+      {
+       "name": "finding_fill",
+       "value": 100,
+       "unit": "percent",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "stored >= cap"
+       }
+      },
+      {
+       "name": "flag_fill",
+       "value": 90,
+       "unit": "percent",
+       "code": {
+        "file": "coi/src/serve.rs",
+        "contains": ">= 90"
+       }
+      },
+      {
+       "name": "capacity_floor",
+       "value": 200,
+       "unit": "units",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "cap >= 200 && stored >= cap"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "board.overcap",
+     "title": "Stored above capacity",
+     "player": "If the game reports more stored than a storage's nominal capacity — mixed contents and rounding can do this — the board notes it under Watch. It is a data-hygiene signal, not an emergency.\n",
+     "rule": "overcap := stored > capacity AND capacity >= 200 -> Watch.",
+     "numbers": [
+      {
+       "name": "capacity_floor",
+       "value": 200,
+       "unit": "units",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "cap >= 200 && stored > cap"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    }
+   ]
+  },
+  "forecasts": {
+   "title": "Forecasts",
+   "entries": [
+    {
+     "id": "forecasts.runway-blend",
+     "title": "Runway: when a stock runs out",
+     "player": "Each product with a negative recent balance gets a runway: how many months the current stock lasts if the recent blend of this month and last month continues. Runways under three years are listed.\n",
+     "rule": "runway := quantity / -net where net blends this-month and last-month net (mean of the two); listed when net < 0 AND runway < 36 months.",
+     "numbers": [
+      {
+       "name": "horizon_months",
+       "value": 36,
+       "unit": "months",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "months < 36.0"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "forecasts.fill",
+     "title": "Fill: when a storage fills up",
+     "player": "The mirror image: a product being made faster than it's used gets a fill time for its storage. Fills under a year are listed — a year is enough lead time to expand storage or throttle production.\n",
+     "rule": "fill := headroom / net for capacity >= 200; listed when net > 0 AND months-to-full < 12.",
+     "numbers": [
+      {
+       "name": "horizon_months",
+       "value": 12,
+       "unit": "months",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "months < 12.0"
+       }
+      },
+      {
+       "name": "capacity_floor",
+       "value": 200,
+       "unit": "units",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "cap >= 200 && stored < cap"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "forecasts.slope",
+     "title": "Slope outlook for key products",
+     "player": "For the most important products there's a second, longer view: if the stock's recent trend continues, when does it run out — out to ten years. This is the early-warning line for slow declines that the 3-year runway can't see yet.\n",
+     "rule": "Slope runway := least-squares trend of quantity over history, evaluated for importance-HIGH products only; listed when the projected runway is < 120 months. Excludes coal (buffer semantics differ — see philosophy.coal-buffer) and seasonal products (own rule).\n",
+     "numbers": [
+      {
+       "name": "horizon_months",
+       "value": 120,
+       "unit": "months",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "months < 120.0 && imp == 3"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "forecasts.seasonal",
+     "title": "Seasonal runway",
+     "player": "Seasonal products get their runway from the long window — last year's balance — out to ten years, because month-to-month numbers swing with the harvest cycle.\n",
+     "rule": "seasonal runway := quantity / -(long-window monthly net); listed when < 120 months.",
+     "numbers": [
+      {
+       "name": "horizon_months",
+       "value": 120,
+       "unit": "months",
+       "code": {
+        "file": "coi/src/main.rs",
+        "contains": "if months < 120.0 {"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "forecasts.horizons-together",
+     "title": "All the horizons, in one place",
+     "player": "The engine watches five clocks: urgent findings under 3 months, deficit flags under 24 months, runways and seasonal deficits under 36 months, fills under 12 months, and slow structural or trend declines under 120 months. Shorter clock, louder alarm.\n",
+     "rule": "Horizon register: urgent 3 / fill 12 / deficit 24 / runway 36 / seasonal-deficit 36 / structural 120 / slope 120 / seasonal-runway 120 (months). The CLI forecast summary prints this same register; the two must not diverge (previously the summary line omitted the 120-month paths — reconciled in v3).\n",
+     "numbers": [],
+     "source": "code",
+     "status": "wired"
+    }
+   ]
+  },
+  "productivity": {
+   "title": "Machine productivity",
+   "entries": [
+    {
+     "id": "productivity.working-share",
+     "title": "When a machine type counts as unproductive",
+     "player": "The companion watches each type of machine across your snapshots. A type is flagged when the evidence says its machines spend under half their observed time actually working — and 'severe' when it's under a quarter. It never judges from a single look: the verdict needs the statistics to be confident, which is why new factories show 'not enough data' instead of verdicts.\n",
+     "rule": "Working share per machine prototype over the trailing 30 days of snapshots, Wilson 95% confidence interval. FIRE := CI upper < 0.50 AND point estimate < 0.45. SEVERE := point < 0.25 AND CI upper < 0.35. CLEAR := CI lower > 0.60. A borderline verdict must repeat in the second half of the window (second-half CI upper < 0.55) before it is confirmed.\n",
+     "numbers": [
+      {
+       "name": "fire_ci_upper",
+       "value": 0.5,
+       "unit": "share",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "fire_ci_upper: 0.50"
+       }
+      },
+      {
+       "name": "fire_point",
+       "value": 0.45,
+       "unit": "share",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "fire_point: 0.45"
+       }
+      },
+      {
+       "name": "severe_point",
+       "value": 0.25,
+       "unit": "share",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "severe_point: 0.25"
+       }
+      },
+      {
+       "name": "severe_ci_upper",
+       "value": 0.35,
+       "unit": "share",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "severe_ci_upper: 0.35"
+       }
+      },
+      {
+       "name": "clear_ci_lower",
+       "value": 0.6,
+       "unit": "share",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "clear_ci_lower: 0.60"
+       }
+      },
+      {
+       "name": "confirm_second_half_ci_upper",
+       "value": 0.55,
+       "unit": "share",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "confirm_second_half_ci_upper: 0.55"
+       }
+      },
+      {
+       "name": "window_days",
+       "value": 30,
+       "unit": "days"
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "productivity.causes",
+     "title": "Why it's idle matters more than that it's idle",
+     "player": "An idle machine is a symptom. The board names the cause when one dominates: starved (no inputs — look upstream), blocked (output can't leave — look downstream), parked (deliberately paused — not a problem), or mixed. A type whose machines are mostly parked is never flagged: paused on purpose is a decision, not a failure.\n",
+     "rule": "Cause shares over non-working observations: starved >= 0.30 -> INPUT-STARVED; blocked >= 0.30 -> OUTPUT-BLOCKED; parked >= 0.50 -> PARKED (suppresses the alert entirely); mixed >= 0.20 -> MIXED; else OTHER. Verdicts aggregate >= 80% of a prototype's instances (population share) with at least 3 instances before firing.\n",
+     "numbers": [
+      {
+       "name": "parked_share",
+       "value": 0.5,
+       "unit": "share",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "parked_share: 0.50"
+       }
+      },
+      {
+       "name": "starved_share",
+       "value": 0.3,
+       "unit": "share",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "starved_share: 0.30"
+       }
+      },
+      {
+       "name": "blocked_share",
+       "value": 0.3,
+       "unit": "share",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "blocked_share: 0.30"
+       }
+      },
+      {
+       "name": "mixed_share",
+       "value": 0.2,
+       "unit": "share",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "mixed_share: 0.20"
+       }
+      },
+      {
+       "name": "min_instances",
+       "value": 3,
+       "unit": "machines",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "min_instances: 3"
+       }
+      },
+      {
+       "name": "population_share",
+       "value": 0.8,
+       "unit": "share",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "population_share: 0.80"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "productivity.evidence-classes",
+     "title": "Measured, estimated, or not enough data",
+     "player": "Every verdict carries an evidence class. Measured means dense snapshots across most of a month. Estimated means sparser coverage — directionally trustworthy, not exact. Anything thinner shows as insufficient and produces no verdict at all. Taking snapshots regularly is what upgrades your evidence.\n",
+     "rule": "MEASURED := >= 96 samples AND span >= 27 days AND max gap <= 3 days. ESTIMATED := >= 30 samples AND span >= 24 days AND max gap <= 7 days. Otherwise INSUFFICIENT (no verdict). A second, stricter bar applies before a low-working-share verdict fires on estimated evidence alone.\n",
+     "numbers": [
+      {
+       "name": "measured_min_samples",
+       "value": 96,
+       "unit": "samples",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "measured_min_samples: 96"
+       }
+      },
+      {
+       "name": "estimated_min_samples",
+       "value": 30,
+       "unit": "samples",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "estimated_min_samples: 30"
+       }
+      },
+      {
+       "name": "measured_span_days",
+       "value": 27,
+       "unit": "days",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "measured_span_days: 27"
+       }
+      },
+      {
+       "name": "estimated_span_days",
+       "value": 24,
+       "unit": "days",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "estimated_span_days: 24"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "productivity.ramping",
+     "title": "New machines get time to ramp",
+     "player": "A machine type that's growing fast is forgiven its early low numbers — new machines spend their first days being built, connected and fed. Rapid growth (half again as many machines as the window started with) marks the type as ramping, and the board says so instead of flagging it.\n",
+     "rule": "ramping := instance count grew by factor >= 1.5 across the window.",
+     "numbers": [
+      {
+       "name": "ramp_growth",
+       "value": 1.5,
+       "unit": "x",
+       "code": {
+        "file": "coi/src/productivity.rs",
+        "contains": "ramp_growth: 1.5"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "productivity.configurable",
+     "title": "These thresholds are defaults, and they're yours",
+     "player": "Every number on this page is a default. You can tune them in the [productivity] section of coi.toml — stricter if you snapshot often, looser if you play in bursts. The Why pages always show the values actually in effect for your install, not just the defaults written here.\n",
+     "rule": "Thresholds load from coi.toml [productivity], falling back to the defaults in this file. Renderings of these rules must read the effective values live (the Why page does); the numbers here are the shipped defaults that check_canon.py pins to the code defaults.\n",
+     "numbers": [],
+     "source": "code",
+     "status": "wired"
+    }
+   ]
+  },
+  "priorities": {
+   "title": "Priorities",
+   "entries": [
+    {
+     "id": "priorities.scale",
+     "title": "The priority scale",
+     "player": "Every machine and storage has a priority that decides who gets served first when trucks, belts or power run short. The game's internal scale runs 0 to 14 and lower is served sooner: 0 is highest, 8 is high, 9 is the default almost everything ships with. The game shows the same numbers shifted by one (1–15).\n",
+     "rule": "Internal scale 0..14, lower = served sooner. Named points: HIGHEST = 0, HIGH = 8, DEFAULT = 9 (the game's GeneralPriorities table, verified by recon and recorded in the QoS actuator's source notes). The companion displays and writes internal values; the game's own UI displays internal + 1.\n",
+     "numbers": [
+      {
+       "name": "highest",
+       "value": 0,
+       "unit": "priority",
+       "code": {
+        "file": "qos/QoSPriorityActuator/PriorityActuatorService.cs",
+        "contains": "(GeneralPriorities: HIGHEST_PRIORITY 0, HIGH 8, DEFAULT 9,"
+       }
+      },
+      {
+       "name": "high",
+       "value": 8,
+       "unit": "priority",
+       "code": {
+        "file": "qos/QoSPriorityActuator/PriorityActuatorService.cs",
+        "contains": "(GeneralPriorities: HIGHEST_PRIORITY 0, HIGH 8, DEFAULT 9,"
+       }
+      },
+      {
+       "name": "default",
+       "value": 9,
+       "unit": "priority",
+       "code": {
+        "file": "qos/QoSPriorityActuator/PriorityActuatorService.cs",
+        "contains": "(GeneralPriorities: HIGHEST_PRIORITY 0, HIGH 8, DEFAULT 9,"
+       }
+      },
+      {
+       "name": "scale_max",
+       "value": 14,
+       "unit": "priority"
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "priorities.manual-groups",
+     "title": "The four manual groups (a house convention)",
+     "player": "If you use the QoS manual-group buttons, storages and machines are sorted into four groups — General, Import, Export, Generator — with sensible starting priorities. These numbers are this toolkit's convention, not the game's: the game ships no groups at all. Generators get fed by marking their fuel storage Import; there is deliberately no separate generator-machine group.\n",
+     "rule": "Group defaults (internal): General 9, Import 8, Export 8, Generator 9. Applying a group writes BOTH the global priority and the per-machine / per-storage priority (the game's per-entity value only takes effect when it differs from the global one for its class). Status note: the groups are a documented convention (BEHAVIOURS, the QoS policy doc); they are applied through the QoS tooling, not a website control.\n",
+     "numbers": [
+      {
+       "name": "general",
+       "value": 9,
+       "unit": "priority"
+      },
+      {
+       "name": "import",
+       "value": 8,
+       "unit": "priority"
+      },
+      {
+       "name": "export",
+       "value": 8,
+       "unit": "priority"
+      },
+      {
+       "name": "generator",
+       "value": 9,
+       "unit": "priority"
+      }
+     ],
+     "source": "docs",
+     "status": "verified"
+    },
+    {
+     "id": "priorities.actuator",
+     "title": "The QoS actuator's rules (if you enable it)",
+     "player": "The optional QoS Priority Actuator nudges starved machines up the queue automatically — slowly and reversibly. A machine must be starved three days running before its first nudge; it can be nudged at most two steps from its normal priority; and anything you set yourself is never touched. It ships switched off.\n",
+     "rule": "Actuator (ships disabled): after persistence_days = 3 consecutive starved daily passes, step priority -1 (toward higher precedence), at most max_nudge_steps = 2 steps below the prototype default; cooldown 2 days between nudges of the same machine; at most 10 actions per in-game day; restores step back toward the default while the machine works, only for values the actuator itself could have set. BLOCKED machines are never priority problems and are never nudged; PARKED machines are never touched.\n",
+     "numbers": [
+      {
+       "name": "persistence_days",
+       "value": 3,
+       "unit": "days",
+       "code": {
+        "file": "qos/QoSPriorityActuator/PriorityActuatorService.cs",
+        "contains": "GetInt(\"persistence_days\", 3)"
+       }
+      },
+      {
+       "name": "max_nudge_steps",
+       "value": 2,
+       "unit": "steps",
+       "code": {
+        "file": "qos/QoSPriorityActuator/PriorityActuatorService.cs",
+        "contains": "GetInt(\"max_nudge_steps\", 2)"
+       }
+      },
+      {
+       "name": "cooldown_days",
+       "value": 2,
+       "unit": "days",
+       "code": {
+        "file": "qos/QoSPriorityActuator/PriorityActuatorService.cs",
+        "contains": "GetInt(\"cooldown_days\", 2)"
+       }
+      },
+      {
+       "name": "max_actions_per_day",
+       "value": 10,
+       "unit": "actions",
+       "code": {
+        "file": "qos/QoSPriorityActuator/PriorityActuatorService.cs",
+        "contains": "GetInt(\"max_actions_per_day\", 10)"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "priorities.groups-xor-actuator",
+     "title": "Manual groups or the actuator — never both on one field",
+     "player": "Pick one system per storage field or machine group: the manual groups (you set it, it stays) or the actuator (it adjusts within its band). Running both on the same entities means they fight — each reads the other's change as a reason to change it back.\n",
+     "rule": "Per entity field, exactly one of {manual groups, QoS actuator} may own priorities. Mixed ownership is a configuration error, not a strategy.\n",
+     "numbers": [],
+     "source": "docs",
+     "status": "verified"
+    }
+   ]
+  },
+  "earthworks": {
+   "title": "Earthworks & designations",
+   "entries": [
+    {
+     "id": "earthworks.cells-and-steps",
+     "title": "Designation cells and the one-step rule",
+     "player": "Mining and dumping designations live on a fixed grid of 4x4-tile cells that never moves. Neighbouring cells can differ in height by at most one tile — dig or dump one step at a time and the land stays stable; ask for a cliff and the game will refuse cells or collapse them.\n",
+     "rule": "Designations snap to a global 4x4-tile cell grid. Adjacent cell heights differ by 0 or +/-1 tile. Heightmaps sampled per tile from the bridge are exact (CoiBridge 0.6.5+); verdicts after applying a job are exact per-cell read-backs (0.6.6+).\n",
+     "numbers": [
+      {
+       "name": "cell_size",
+       "value": 4,
+       "unit": "tiles"
+      },
+      {
+       "name": "max_neighbour_step",
+       "value": 1,
+       "unit": "tiles"
+      }
+     ],
+     "source": "code",
+     "status": "verified"
+    },
+    {
+     "id": "earthworks.spike-filter",
+     "title": "The spike filter",
+     "player": "Real terrain has survey noise. Before judging a deposit, the planner ignores any single tile whose rock top sits far below all eight of its neighbours — a lone pit is a data spike, not a digging plan. 'Far' means more than 4 tiles below the neighbours' middle value.\n",
+     "rule": "A centre cell is a spike when its bedrock-top height is more than 4.0 tiles below the median of its 8 neighbours' bedrock tops, with all 8 neighbours present. Pinned definition (used everywhere in this canon): for an even count, the median is the mean of the two middle values.\n",
+     "numbers": [
+      {
+       "name": "spike_residual",
+       "value": 4.0,
+       "unit": "tiles",
+       "code": {
+        "file": "coi/src/designate.rs",
+        "contains": "SPIKE_ALLOWED_BEDROCK_RESIDUAL: f64 = 4.0"
+       }
+      },
+      {
+       "name": "spike_neighbours",
+       "value": 8,
+       "unit": "neighbours",
+       "code": {
+        "file": "coi/src/designate.rs",
+        "contains": "SPIKE_MIN_BEDROCK_NEIGHBOURS: usize = 8"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "earthworks.purity-gates",
+     "title": "How pure is pure enough — the L0–L4 gates",
+     "player": "When the planner extends a mine, it grades candidate ground in five purity levels. L1 is 'mostly the right rock near the top', L4 is a strict standard: thick ore, dense at the bottom, in a large connected seam. Looser gates dig sooner with more waste rock mixed in; stricter gates wait for better ground.\n",
+     "rule": "Purity gates (min ore height in tiles / min bottom-layer density / min component size in cells): L0 0 / 0 / 0 (permissive), L1 0.25 / 0.05 / 2, L2 0.75 / 0.20 / 6, L3 2.0 / 0.50 / 20, L4 3.0 / 0.75 / 40. The component floor height is a percentile depth into the seam; strength 5 reads the median depth.\n",
+     "numbers": [
+      {
+       "name": "l1_min_ore_height",
+       "value": 0.25,
+       "unit": "tiles",
+       "code": {
+        "file": "coi/src/designate.rs",
+        "contains": "min_ore_height: 0.25"
+       }
+      },
+      {
+       "name": "l2_min_ore_height",
+       "value": 0.75,
+       "unit": "tiles",
+       "code": {
+        "file": "coi/src/designate.rs",
+        "contains": "min_ore_height: 0.75"
+       }
+      },
+      {
+       "name": "l3_min_ore_height",
+       "value": 2.0,
+       "unit": "tiles",
+       "code": {
+        "file": "coi/src/designate.rs",
+        "contains": "min_ore_height: 2.0"
+       }
+      },
+      {
+       "name": "l4_min_ore_height",
+       "value": 3.0,
+       "unit": "tiles",
+       "code": {
+        "file": "coi/src/designate.rs",
+        "contains": "min_ore_height: 3.0"
+       }
+      },
+      {
+       "name": "l4_component",
+       "value": 40,
+       "unit": "cells",
+       "code": {
+        "file": "coi/src/designate.rs",
+        "contains": "min_component_size: 40"
+       }
+      }
+     ],
+     "source": "code",
+     "status": "wired"
+    },
+    {
+     "id": "earthworks.smoothing",
+     "title": "Smoothing and deepen-only",
+     "player": "The pit planner smooths a dig plan so no step asks for more than the one-tile neighbour rule allows, and it only ever digs deeper — it never raises a floor you've already dug. What you excavated stays excavated.\n",
+     "rule": "Plans clamp inter-cell height differences to MaxHeightDiff = 1 tile, applied deepen-only: planned floors never exceed the current terrain.\n",
+     "numbers": [
+      {
+       "name": "max_height_diff",
+       "value": 1,
+       "unit": "tiles"
+      }
+     ],
+     "source": "code",
+     "status": "verified"
+    },
+    {
+     "id": "earthworks.collapse-bands",
+     "title": "How dumped material settles",
+     "player": "Dumped material doesn't stack vertically — each material settles at its own slope. Loose fill spreads wide (roughly 2 tiles out for every 5 up); rock holds a steeper face. The earthworks guide carries the full table; plan dumps with the spread in mind or the pile walks into your roads.\n",
+     "rule": "Retaining-wall-free collapse rates (horizontal per vertical), from the game's assemblies: landfill 0.4–1.5 band by material — Dirt 0.4, Sand/Gravel/Compost 0.5, Rock/Slag/ore 0.6–0.8, molten and liquid fills higher. Ocean dumping tops out at height 0. The guide's table is the player rendering; this entry pins the shape of the rule.\n",
+     "numbers": [],
+     "source": "docs",
+     "status": "verified"
+    }
+   ]
+  },
+  "plans": {
+   "title": "Plans",
+   "entries": [
+    {
+     "id": "plans.gates-fresh-start",
+     "title": "The fresh-start plan's phase gates",
+     "player": "The bundled fresh-start plan advances in phases, and each phase ends at a gate: a stock or flow your factory must actually reach before the plan moves on. The headline gates: 100 iron banked before industry expands, 200 coal before the power phase, 100 concrete slabs before the big build-out, 300 diesel before trains, and three months of food on hand before the plan calls the settlement secure.\n",
+     "rule": "fresh-start-v1 exit gates (plans/fresh-start-v1.yaml): product.quantity Product_Iron >= 100; Product_Coal >= 200; Product_ConcreteSlab >= 100; Product_Diesel >= 300 (with diesel produced last month > 0); product.net_flow Product_ConstructionParts (lastMonth) >= 0; settlement.months_of_food >= 3 sustained for 1 month. Gates are checked against observed state only — never against projections.\n",
+     "numbers": [
+      {
+       "name": "iron_stock",
+       "value": 100,
+       "unit": "units",
+       "code": {
+        "file": "plans/fresh-start-v1.yaml",
+        "contains": "product: Product_Iron, op: \">=\", value: 100"
+       }
+      },
+      {
+       "name": "coal_stock",
+       "value": 200,
+       "unit": "units",
+       "code": {
+        "file": "plans/fresh-start-v1.yaml",
+        "contains": "product: Product_Coal, op: \">=\", value: 200"
+       }
+      },
+      {
+       "name": "concrete_stock",
+       "value": 100,
+       "unit": "units",
+       "code": {
+        "file": "plans/fresh-start-v1.yaml",
+        "contains": "product: Product_ConcreteSlab, op: \">=\", value: 100"
+       }
+      },
+      {
+       "name": "diesel_stock",
+       "value": 300,
+       "unit": "units",
+       "code": {
+        "file": "plans/fresh-start-v1.yaml",
+        "contains": "product: Product_Diesel, op: \">=\", value: 300"
+       }
+      },
+      {
+       "name": "months_of_food",
+       "value": 3,
+       "unit": "months",
+       "code": {
+        "file": "plans/fresh-start-v1.yaml",
+        "contains": "settlement.months_of_food, op: \">=\", value: 3"
+       }
+      }
+     ],
+     "source": "plan",
+     "status": "wired"
+    },
+    {
+     "id": "plans.food-floor",
+     "title": "Three months of food is the security line",
+     "player": "Across the plan — and in the companion's own balance checks — three months of food in storage is the line between 'fed' and 'one bad harvest from trouble'. Below one month, the plan treats food as an emergency regardless of what phase you're in.\n",
+     "rule": "settlement.months_of_food >= 3 := secure; < 2 triggers plan warnings; < 1 is an emergency entry condition (fresh-start-v1 settlement guards).\n",
+     "numbers": [
+      {
+       "name": "secure_months",
+       "value": 3,
+       "unit": "months"
+      },
+      {
+       "name": "emergency_months",
+       "value": 1,
+       "unit": "months"
+      }
+     ],
+     "source": "plan",
+     "status": "verified"
+    },
+    {
+     "id": "plans.runner-holds",
+     "title": "The runner holds what it cannot prove",
+     "player": "When a plan step asks for research you already have, the runner doesn't fail and doesn't fake it — it holds the step, says why, and moves on. A plan run should read as a faithful rehearsal: what would happen, in order, with the awkward steps named rather than skipped silently.\n",
+     "rule": "Research orders whose node is already researched at prepare time are HELD with the reason recorded (there is no idempotent research-start command in the game). All other orders prepare normally; nothing is applied without the §12 confirm step.\n",
+     "numbers": [],
+     "source": "plan",
+     "status": "verified"
+    }
+   ]
+  },
+  "philosophy": {
+   "title": "Play philosophy",
+   "entries": [
+    {
+     "id": "philosophy.triage-order",
+     "title": "The order to fix things in",
+     "player": "When everything is on fire, work this order: food, water and power first — a settlement without them unwinds in days. Then fuel and maintenance, the slow stranglers. Then whatever the board ranks Fix now. Expansion comes last: a bigger factory with a broken backbone dies faster, not slower.\n",
+     "rule": "Agent triage legs map onto the board, they do not compete with it: SURVIVE (food/water/power deficits) -> board Fix now on those products; STRANGLERS (diesel incl. reforming draw, maintenance, power capacity) -> Fix now / Fix later plus forecasts; SLOPES -> the 120-month slope and structural entries. The board quadrant is what the player sees; the triage leg explains why a class of finding outranks another.\n",
+     "numbers": [],
+     "source": "mixed",
+     "status": "verified"
+    },
+    {
+     "id": "philosophy.death-spiral",
+     "title": "The death spiral: fuel, maintenance, power",
+     "player": "Factories rarely die of one failure. They die of the triangle: fuel runs short, so machines stop; maintenance lapses, so machines break; power dips, so everything slows — and each leg makes the other two worse. The board watches the fuel leg directly. The maintenance leg has no product to watch, so it is covered by the Maintenance guide and by watching your depots' output, not by a board finding.\n",
+     "rule": "The engine detects fuel/product legs (board + forecasts). There is deliberately NO maintenance detector: maintenance has no stockpile product to trend. The gap is documented here and in the Maintenance guide rather than papered over with a proxy metric.\n",
+     "numbers": [],
+     "source": "mixed",
+     "status": "verified"
+    },
+    {
+     "id": "philosophy.maintenance-floor",
+     "title": "Maintenance below 75% starts breaking machines",
+     "player": "Machines wear out. A machine's maintenance level falls when its depot can't keep up, and below 75% breakdowns begin; at zero maintenance a machine breaks down roughly every other month. There is no board finding for this — check your depots when breakdowns start clustering.\n",
+     "rule": "Breakdown risk begins below 75% maintenance and rises as it falls (~50% monthly breakdown chance at 0%). The three maintenance tiers are not interchangeable — a depot only repairs its own tier. Figures from the game's data; player chapter = the Maintenance guide.\n",
+     "numbers": [
+      {
+       "name": "breakdown_threshold",
+       "value": 75,
+       "unit": "percent"
+      },
+      {
+       "name": "breakdown_chance_at_zero",
+       "value": 50,
+       "unit": "percent per month"
+      }
+     ],
+     "source": "docs",
+     "status": "verified"
+    },
+    {
+     "id": "philosophy.section12",
+     "title": "Nothing changes without prepare, confirm, audit",
+     "player": "The companion never changes your game silently. Every change is first prepared — you see the exact command and what it will do — then confirmed by you, then written to the audit log with the game's own answer. One command family, the raw game console, is excluded entirely: it can do anything, so the companion won't touch it at any setting.\n",
+     "rule": "§12 invariant: prepare -> confirm -> apply -> audit-log, for every mutating route, no exceptions in v3. Command catalogue posture at ship time: 15 verified live / 224 wired-but-unverified / 1 excluded (GameConsoleCmd, policy exclusion).\n",
+     "numbers": [
+      {
+       "name": "verified_commands",
+       "value": 15,
+       "unit": "commands"
+      },
+      {
+       "name": "excluded_commands",
+       "value": 1,
+       "unit": "commands"
+      }
+     ],
+     "source": "code",
+     "status": "verified"
+    },
+    {
+     "id": "philosophy.research-queue",
+     "title": "Research queue discipline",
+     "player": "Research is a queue, not a shopping list. Keep it short and ordered: unlocks that unblock construction first, capacity second, luxuries last. Two traps the game sets: some nodes look queued but aren't (always check the actual queue), and starting a node you can't feed yet just parks your labs. The Research guide carries the worked starter order.\n",
+     "rule": "Queue discipline: prefer research that removes a current blocker; defer nodes whose inputs the factory cannot yet supply. The site's Research page shows researched/current/queued from the bridge only — there is no snapshot fallback for research state.\n",
+     "numbers": [],
+     "source": "docs",
+     "status": "verified"
+    },
+    {
+     "id": "philosophy.steel-sizing",
+     "title": "Sizing steel: the 24-per-minute rule of thumb",
+     "player": "When the board suggests expanding steel, it uses a rule of thumb: one blast-furnace + caster line makes about 24 steel per minute. Treat it as a sizing hint for 'how many lines do I add', not a promise — your mileage varies with ore quality and uptime.\n",
+     "rule": "The steel expansion hint in issue copy assumes ~24 steel/min per furnace+caster line. Status: HEURISTIC — inherited from layout practice; no assembly-verified ratio has been recorded for it yet. Recorded here so the number has a stated provenance (it previously existed only inside fix-hint text).\n",
+     "numbers": [
+      {
+       "name": "steel_per_line_per_min",
+       "value": 24,
+       "unit": "steel/min"
+      }
+     ],
+     "source": "code",
+     "status": "heuristic"
+    },
+    {
+     "id": "philosophy.coal-buffer",
+     "title": "The coal buffer: two hours of draw",
+     "player": "If you import coal, keep a buffer: the board's coal advice assumes an import buffer of at least 120 minutes of your power plant's draw, so a late ship is an inconvenience, not a blackout. Like the steel rule, this is a practice heuristic — tune it to your ship schedule.\n",
+     "rule": "Coal import buffer >= 120 minutes of draw at plant scale (issue-copy heuristic, previously unsourced inside fix-hint text; recorded here with its status). Related: forecasts exclude coal from the slope outlook because buffer-managed products follow delivery rhythm, not trend.\n",
+     "numbers": [
+      {
+       "name": "buffer_minutes",
+       "value": 120,
+       "unit": "minutes"
+      }
+     ],
+     "source": "code",
+     "status": "heuristic"
+    },
+    {
+     "id": "philosophy.unma-not-adopted",
+     "title": "One severity vocabulary, deliberately",
+     "player": "You may see other tools grade problems on their own scales. This companion uses exactly one: the four quadrants. A single vocabulary means a finding means the same thing on every page, in every guide, and in the plan runner's reports.\n",
+     "rule": "DELIBERATE NON-ADOPTION: the four-level advisory severity scale used in the hosting agent's internal UNMA audit (CRITICAL/HIGH/MEDIUM/LOW) is not a canon input and is never rendered to players. The board quadrants (board.quadrants) are the only severity vocabulary.\n",
+     "numbers": [],
+     "source": "mixed",
+     "status": "deliberate-none"
+    },
+    {
+     "id": "philosophy.guide-gaps-closed",
+     "title": "Coverage: maintenance, research, earthworks",
+     "player": "Three topics the reasoning depends on now have player chapters: maintenance (the death spiral's invisible leg), research discipline, and earthworks. They live under Learn the game alongside the other guides.\n",
+     "rule": "Closes the v3 audit's coverage gap (no Maintenance guide; the research and earthworks guide documents existed in the repo but were never rendered into the site). Canon entries philosophy.maintenance-floor and philosophy.research-queue are the auditable cores of those chapters.\n",
+     "numbers": [],
+     "source": "mixed",
+     "status": "verified"
+    }
+   ]
+  }
+ }
+}

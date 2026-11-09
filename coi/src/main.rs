@@ -5,8 +5,8 @@ mod guides;
 mod plan;
 mod productivity;
 mod saveinfo;
-mod store;
 mod serve;
+mod store;
 mod terrain;
 
 use client::Client;
@@ -41,11 +41,18 @@ fn main() {
         match args[i].as_str() {
             "--db" => {
                 i += 1;
-                db_path = args.get(i).cloned().unwrap_or_else(|| die("--db needs a value"));
+                db_path = args
+                    .get(i)
+                    .cloned()
+                    .unwrap_or_else(|| die("--db needs a value"));
             }
             "--game-url" => {
                 i += 1;
-                cli_game_url = Some(args.get(i).cloned().unwrap_or_else(|| die("--game-url needs a value")));
+                cli_game_url = Some(
+                    args.get(i)
+                        .cloned()
+                        .unwrap_or_else(|| die("--game-url needs a value")),
+                );
             }
             "--proxy" => {
                 i += 1;
@@ -69,8 +76,12 @@ fn main() {
         .or_else(|| env::var("COI_GAME_URL").ok())
         .or(toml_url)
         .unwrap_or_else(|| "http://127.0.0.1:3073".into());
-    let proxy = cli_proxy.or_else(|| env::var("COI_PROXY").ok()).or(toml_proxy);
-    let host_header = cli_host_header.or_else(|| env::var("COI_HOST_HEADER").ok()).or(toml_host_header);
+    let proxy = cli_proxy
+        .or_else(|| env::var("COI_PROXY").ok())
+        .or(toml_proxy);
+    let host_header = cli_host_header
+        .or_else(|| env::var("COI_HOST_HEADER").ok())
+        .or(toml_host_header);
 
     let authority = parse_authority(&game_url);
     let host_header = host_header.unwrap_or_else(|| authority.clone());
@@ -111,8 +122,8 @@ fn main() {
     exit(code);
 }
 
-/// Bare launch — no subcommand (e.g. double-clicking `coi.exe`):
-/// start the companion website with default serve options and open
+/// Bare launch — no subcommand (e.g. double-clicking `superintendent.exe`):
+/// start the website with default serve options and open
 /// it in the default browser. Explicit subcommands never come here.
 /// If port 8484 is already in use the companion is almost certainly
 /// already running: say so, still open the browser, and exit 0
@@ -123,7 +134,7 @@ fn cmd_bare_launch(cfg: &Config, db_path: &str) -> i32 {
     match std::net::TcpListener::bind("127.0.0.1:8484") {
         Ok(listener) => drop(listener),
         Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
-            println!("CoI Companion appears to be already running at {URL}");
+            println!("Superintendent appears to be already running at {URL}");
             println!("Opening it in your browser instead of starting a second copy.");
             open_browser(URL);
             return 0;
@@ -133,7 +144,7 @@ fn cmd_bare_launch(cfg: &Config, db_path: &str) -> i32 {
             // its bind error is the one that surfaces.
         }
     }
-    println!("CoI Companion — starting the companion website at {URL}");
+    println!("Superintendent — starting the website at {URL}");
     println!("Opening it in your browser (no login — the site is loopback-only).");
     println!("Keep this window open while you use it (Ctrl-C to stop).");
     open_browser(URL);
@@ -167,9 +178,9 @@ fn open_browser(url: &str) {
 
 fn usage() {
     eprintln!(
-        "coi — Captain of Industry companion\n\n\
-         USAGE:\n  coi [--game-url URL] [--proxy host:port|env] [--host-header H] [command]\n\n\
-         With no command, coi starts the companion website at http://127.0.0.1:8484/ and opens it in your browser (if it is already running, it just opens the browser).\n\n\
+        "superintendent — Superintendent, the Captain of Industry companion\n\n\
+         USAGE:\n  superintendent [--game-url URL] [--proxy host:port|env] [--host-header H] [command]\n\n\
+         With no command, superintendent starts the website at http://127.0.0.1:8484/ and opens it in your browser (if it is already running, it just opens the browser).\n\n\
          COMMANDS:\n  (none)   Start the companion website and open it in your browser\n  probe    Check the game web API and print server/game info\n  status   One-screen summary of the running game\n  snapshot Write a full snapshot JSON (arg: output path); also stored in the DB
   watch    Poll the game clock and snapshot on every tick change (opts: --every 60s|5m, --count N)
   trend    Quantity/flow trend from the DB (arg: product name filter)
@@ -303,7 +314,10 @@ fn cmd_probe(cfg: &Config) -> i32 {
                 sv(&game["gameId"]),
                 sv(&game["sessionId"])
             );
-            println!("  routes: {} routes registered", routes.as_array().map(|a| a.len()).unwrap_or(0));
+            println!(
+                "  routes: {} routes registered",
+                routes.as_array().map(|a| a.len()).unwrap_or(0)
+            );
             0
         }
         Err(e) => {
@@ -383,7 +397,9 @@ fn cmd_status(cfg: &Config) -> i32 {
 
 /// String value without JSON quotes; other values via Display.
 pub(crate) fn sv(v: &Value) -> String {
-    v.as_str().map(|s| s.to_string()).unwrap_or_else(|| v.to_string())
+    v.as_str()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| v.to_string())
 }
 
 /// Flow arrays are [thisMonth, lastMonth, thisYear, lastYear, lifetime].
@@ -613,7 +629,9 @@ fn take_snapshot(live: &Live, out: Option<String>, db_path: &str) -> i32 {
             match store::Store::open(db_path) {
                 Ok(mut st) => {
                     let th = productivity::Thresholds::load(db_path);
-                    for line in productivity::evaluate_snapshot(&mut st, &snap, live, &mut issues, &th) {
+                    for line in
+                        productivity::evaluate_snapshot(&mut st, &snap, live, &mut issues, &th)
+                    {
                         println!("{line}");
                     }
                     match st.insert_snapshot(&snap, &issues) {
@@ -650,7 +668,10 @@ fn cmd_watch(cfg: &Config, db_path: &str, args: &[String]) -> i32 {
             // as an alias because SPEC §9 writes it that way.
             "--every" | "--interval" => {
                 i += 1;
-                let raw = args.get(i).map(|s| s.as_str()).unwrap_or_else(|| die("--every needs a value (e.g. 60s, 5m)"));
+                let raw = args
+                    .get(i)
+                    .map(|s| s.as_str())
+                    .unwrap_or_else(|| die("--every needs a value (e.g. 60s, 5m)"));
                 interval_secs = parse_duration_secs(raw);
             }
             "--count" => {
@@ -668,9 +689,7 @@ fn cmd_watch(cfg: &Config, db_path: &str, args: &[String]) -> i32 {
         i += 1;
     }
     let c = make_client(cfg);
-    println!(
-        "watch: polling every {interval_secs}s, snapshotting on tick change (Ctrl-C to stop)"
-    );
+    println!("watch: polling every {interval_secs}s, snapshotting on tick change (Ctrl-C to stop)");
     let mut last_tick: Option<i64> = None;
     let mut taken: usize = 0;
     loop {
@@ -727,9 +746,18 @@ fn cmd_products(cfg: &Config, filter: Option<String>) -> i32 {
     );
     if let Some(map) = live.stats["products"].as_object() {
         let mut ids: Vec<&String> = map.keys().collect();
-        ids.sort_by_key(|id| live.names.get(*id).cloned().unwrap_or_else(|| id.to_string()));
+        ids.sort_by_key(|id| {
+            live.names
+                .get(*id)
+                .cloned()
+                .unwrap_or_else(|| id.to_string())
+        });
         for id in ids {
-            let name = live.names.get(id).cloned().unwrap_or_else(|| id.to_string());
+            let name = live
+                .names
+                .get(id)
+                .cloned()
+                .unwrap_or_else(|| id.to_string());
             let kind = live.kinds.get(id).cloned().unwrap_or_default();
             if kind == "virtual" && filter.is_none() {
                 continue;
@@ -764,15 +792,42 @@ pub(crate) fn flow_at(v: &Value, idx: usize) -> i64 {
         .unwrap_or(0)
 }
 
+// canon: board.importance
 pub(crate) fn importance(id: &str) -> u8 {
     const HIGH: &[&str] = &[
-        "Steel", "Diesel", "Coal", "CrudeOil", "FuelGas", "Hydrogen", "Fertilizer",
-        "Bread", "FoodPack", "ConstructionParts", "ConcreteSlab", "IronOre", "Iron",
-        "Wheat", "Soybean", "Potato", "Vegetables", "Tofu", "Electronics", "Water",
+        "Steel",
+        "Diesel",
+        "Coal",
+        "CrudeOil",
+        "FuelGas",
+        "Hydrogen",
+        "Fertilizer",
+        "Bread",
+        "FoodPack",
+        "ConstructionParts",
+        "ConcreteSlab",
+        "IronOre",
+        "Iron",
+        "Wheat",
+        "Soybean",
+        "Potato",
+        "Vegetables",
+        "Tofu",
+        "Electronics",
+        "Water",
     ];
     const LOW: &[&str] = &[
-        "Dirt", "Rock", "Sand", "Gravel", "Slag", "Waste", "Biomass", "Woodchips",
-        "Compost", "Acid", "Exhaust",
+        "Dirt",
+        "Rock",
+        "Sand",
+        "Gravel",
+        "Slag",
+        "Waste",
+        "Biomass",
+        "Woodchips",
+        "Compost",
+        "Acid",
+        "Exhaust",
     ];
     if HIGH.iter().any(|h| id.contains(h)) {
         3
@@ -807,9 +862,16 @@ pub(crate) fn is_seasonal(live: &Live, id: &str, s: &Value) -> bool {
     if let Some(a) = prod.as_array() {
         let finished = &a[..a.len().saturating_sub(1)];
         if finished.len() >= 4 {
-            let zeros = finished.iter().filter(|v| v.as_i64().unwrap_or(0) == 0).count();
+            let zeros = finished
+                .iter()
+                .filter(|v| v.as_i64().unwrap_or(0) == 0)
+                .count();
             let total: i64 = finished.iter().map(|v| v.as_i64().unwrap_or(0)).sum();
-            let peak = finished.iter().map(|v| v.as_i64().unwrap_or(0)).max().unwrap_or(0);
+            let peak = finished
+                .iter()
+                .map(|v| v.as_i64().unwrap_or(0))
+                .max()
+                .unwrap_or(0);
             let mean = total as f64 / finished.len() as f64;
             let cons_avg = live.history["products"][id]["consumed"]
                 .as_array()
@@ -880,7 +942,11 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
             if kind == "virtual" {
                 continue;
             }
-            let name = live.names.get(id).cloned().unwrap_or_else(|| id.to_string());
+            let name = live
+                .names
+                .get(id)
+                .cloned()
+                .unwrap_or_else(|| id.to_string());
             let qty = s["quantity"].as_i64().unwrap_or(0);
             let stored = s["stored"].as_i64().unwrap_or(0);
             let cap = s["storageCapacity"].as_i64().unwrap_or(0);
@@ -910,17 +976,27 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                 let p = &live.history["products"][id]["produced"];
                 p.as_array().map(|a| {
                     let finished = &a[..a.len().saturating_sub(1)];
-                    finished.iter().rev().take(3).filter(|v| v.as_i64().unwrap_or(0) == 0).count()
+                    finished
+                        .iter()
+                        .rev()
+                        .take(3)
+                        .filter(|v| v.as_i64().unwrap_or(0) == 0)
+                        .count()
                 })
             };
-            // Coal is import-fed by design in this run: zero production
-            // is not a stall.
+            // Import-fed products are exempt from the stall detector:
+            // zero production is the plan, not a failure. canon:
+            // board.import-fed-products — the rule is explicit there,
+            // including its current limitation: the exemption list is
+            // exactly one product (coal). Widening it is a canon change
+            // first, a code change second.
             let import_fed = id == "Product_Coal";
             // Farms and ship-borne supply produce in bursts; they get
             // the yearly-balance treatment below, never the monthly
             // stall/deficit detectors.
             let seasonal = is_seasonal(live, id, s);
 
+            // canon: board.overcap
             if cap >= 200 && stored > cap {
                 issues.push(Issue {
                     quadrant: "Watch",
@@ -937,10 +1013,11 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                 // least 2 of the last 3 finished months (farms harvest
                 // in bursts, so one zero month is not a stall), and
                 // less than ~3 years of cover.
+                // canon: board.stall-confirmation
                 let confirmed = prod_zeros_recent.map(|z| z >= 2).unwrap_or(true);
                 if confirmed && cover < 36.0 {
-                let urgent = cover < 3.0;
-                issues.push(Issue {
+                    let urgent = cover < 3.0;
+                    issues.push(Issue {
                     quadrant: if imp == 3 && urgent {
                         "Fix now"
                     } else if imp == 3 {
@@ -962,7 +1039,9 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                 }
             } else if net_lm < 0 && qty > 0 && !seasonal {
                 let months = qty as f64 / (-net_lm) as f64;
-                if months < 24.0 {                    let urgent = months < 3.0;
+                // canon: board.deficit-horizon / board.urgency
+                if months < 24.0 {
+                    let urgent = months < 3.0;
                     issues.push(Issue {
                         quadrant: if imp == 3 && urgent {
                             "Fix now"
@@ -982,6 +1061,7 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                         fix: fix_hint(id, "deficit"),
                     });
                 } else if trend_declining && prod_tm - cons_tm < 0 && months < 120.0 {
+                    // canon: board.structural-horizon
                     // Structural deficit: no near-term cliff, but the
                     // stock falls every month and this month is also
                     // negative — a slow leak worth planning around.
@@ -1005,12 +1085,13 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                 let (net_m, basis) = seasonal_net(live, id, s);
                 if net_m < 0.0 {
                     let months = qty as f64 / (-net_m);
+                    // canon: board.seasonal-window
                     if months < 36.0 {
                         issues.push(Issue {
                             quadrant: if imp == 3 { "Fix later" } else { "Watch" },
                             product: name.clone(),
                             title: "Seasonal producer in deficit on the long-window balance".into(),
-                    class: "seasonal",
+                            class: "seasonal",
                             evidence: format!(
                                 "{basis}; stock {qty} ≈ {months:.1} months at that average rate"
                             ),
@@ -1019,6 +1100,7 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                     }
                 }
             }
+            // canon: board.storage-full
             if cap >= 200 && stored >= cap {
                 if prod_lm > 0 {
                     issues.push(Issue {
@@ -1067,6 +1149,8 @@ pub(crate) struct Forecast {
     pub(crate) stored: i64,
 }
 
+// canon: forecasts.runway-blend, forecasts.fill, forecasts.seasonal
+// (all horizons stated together in forecasts.horizons-together)
 pub(crate) fn compute_forecasts(live: &Live) -> Vec<Forecast> {
     let mut out: Vec<Forecast> = Vec::new();
     // Stats payloads come in two shapes: /api/v1/products/stats nests the
@@ -1083,7 +1167,11 @@ pub(crate) fn compute_forecasts(live: &Live) -> Vec<Forecast> {
             if kind_of == "virtual" {
                 continue;
             }
-            let name = live.names.get(id).cloned().unwrap_or_else(|| id.to_string());
+            let name = live
+                .names
+                .get(id)
+                .cloned()
+                .unwrap_or_else(|| id.to_string());
             let qty = s["quantity"].as_i64().unwrap_or(0);
             let stored = s["stored"].as_i64().unwrap_or(0);
             let cap = s["storageCapacity"].as_i64().unwrap_or(0);
@@ -1122,7 +1210,7 @@ pub(crate) fn compute_forecasts(live: &Live) -> Vec<Forecast> {
                         let fin = &a[..a.len() - 1];
                         let f = fin.first().and_then(|v| v.as_i64()).unwrap_or(0);
                         let l = fin.last().and_then(|v| v.as_i64()).unwrap_or(0);
-Some(((l - f) as f64 / (fin.len() - 1) as f64, fin.len()))
+                        Some(((l - f) as f64 / (fin.len() - 1) as f64, fin.len()))
                     } else {
                         None
                     }
@@ -1130,8 +1218,15 @@ Some(((l - f) as f64 / (fin.len() - 1) as f64, fin.len()))
             };
             let seasonal = is_seasonal(live, id, s);
             if let Some((sl, n_fin)) = slope_finished {
-                if sl < 0.0 && qty > 0 && net <= 0 && net > -120 && id != "Product_Coal" && !seasonal {
+                if sl < 0.0
+                    && qty > 0
+                    && net <= 0
+                    && net > -120
+                    && id != "Product_Coal"
+                    && !seasonal
+                {
                     let months = qty as f64 / (-sl);
+                    // canon: forecasts.slope
                     if months < 120.0 && imp == 3 {
                         out.push(Forecast {
                             product: name.clone(),
@@ -1197,6 +1292,7 @@ Some(((l - f) as f64 / (fin.len() - 1) as f64, fin.len()))
                     });
                 }
             } else if net > 0 && cap >= 200 && stored < cap {
+                // canon: forecasts.fill
                 let headroom = (cap - stored) as f64;
                 let months = headroom / (net as f64 / 2.0);
                 if months < 12.0 {
@@ -1216,7 +1312,11 @@ Some(((l - f) as f64 / (fin.len() - 1) as f64, fin.len()))
             }
         }
     }
-    out.sort_by(|a, b| a.months.partial_cmp(&b.months).unwrap_or(std::cmp::Ordering::Equal));
+    out.sort_by(|a, b| {
+        a.months
+            .partial_cmp(&b.months)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     out
 }
 
@@ -1326,9 +1426,7 @@ fn cmd_forecast(cfg: &Config, file: Option<String>) -> i32 {
                     for cand in ["hist-keys.json", "history.json"] {
                         if let Ok(t) = std::fs::read_to_string(dir.join(cand)) {
                             if let Ok(v) = serde_json::from_str::<Value>(&t) {
-                                if v["products"].is_object()
-                                    && v["tick"] == stats["tick"]
-                                {
+                                if v["products"].is_object() && v["tick"] == stats["tick"] {
                                     history = v;
                                     break;
                                 }
@@ -1368,7 +1466,7 @@ fn cmd_forecast(cfg: &Config, file: Option<String>) -> i32 {
     };
     let forecasts = compute_forecasts(&live);
     if forecasts.is_empty() {
-        println!("forecast: nothing inside the outlook horizons (runways < 36 months, fills < 12 months)");
+        println!("forecast: nothing inside the outlook horizons (runways < 36 months, fills < 12 months, slope/seasonal outlooks < 120 months — canon: forecasts.horizons-together)");
     } else {
         print!("{}", render_forecasts_md(&forecasts));
     }
@@ -1466,6 +1564,8 @@ fn history_trend(history: &Value, id: &str) -> String {
     String::new()
 }
 
+// canon: philosophy.steel-sizing (24/min per caster line, heuristic),
+// philosophy.coal-buffer (>=120 min import buffer, heuristic)
 fn fix_hint(id: &str, kind: &str) -> String {
     match (id, kind) {
         ("Product_Steel", "stalled") => "Steel line is not running: check furnace charge (iron/coal), oxygen supply and caster state; size the line from the casters (24 steel/min per caster line).".into(),
@@ -1478,12 +1578,11 @@ fn fix_hint(id: &str, kind: &str) -> String {
     }
 }
 
-
 fn cmd_trend(db_path: &str, filter: Option<String>) -> i32 {
     let filter = match filter {
         Some(f) => f,
         None => {
-            eprintln!("usage: coi trend <product name filter>");
+            eprintln!("usage: superintendent trend <product name filter>");
             return 2;
         }
     };
@@ -1564,7 +1663,7 @@ fn cmd_db(db_path: &str, args: &[String]) -> i32 {
             let file = match args.get(1) {
                 Some(f) => f.clone(),
                 None => {
-                    eprintln!("usage: coi db import <snapshot.json>");
+                    eprintln!("usage: superintendent db import <snapshot.json>");
                     return 2;
                 }
             };
@@ -1587,20 +1686,22 @@ fn cmd_db(db_path: &str, args: &[String]) -> i32 {
                 return 1;
             }
             match store::Store::open(db_path) {
-                Ok(mut st) => match st.insert_snapshot(&snap, &[]) {
-                    Ok(Some(id)) => {
-                        println!("imported {file} as snapshot #{id} (issues not recomputed for imports)");
-                        0
+                Ok(mut st) => {
+                    match st.insert_snapshot(&snap, &[]) {
+                        Ok(Some(id)) => {
+                            println!("imported {file} as snapshot #{id} (issues not recomputed for imports)");
+                            0
+                        }
+                        Ok(None) => {
+                            println!("import: this game tick is already stored");
+                            0
+                        }
+                        Err(e) => {
+                            eprintln!("import failed: {e}");
+                            1
+                        }
                     }
-                    Ok(None) => {
-                        println!("import: this game tick is already stored");
-                        0
-                    }
-                    Err(e) => {
-                        eprintln!("import failed: {e}");
-                        1
-                    }
-                },
+                }
                 Err(e) => {
                     eprintln!("{e}");
                     1
@@ -1608,7 +1709,7 @@ fn cmd_db(db_path: &str, args: &[String]) -> i32 {
             }
         }
         _ => {
-            eprintln!("usage: coi db <info|import <snapshot.json>>");
+            eprintln!("usage: superintendent db <info|import <snapshot.json>>");
             2
         }
     }

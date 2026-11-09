@@ -1,15 +1,17 @@
-//! Built-in guides for the companion website.
+//! Built-in guides for the Superintendent website.
 //!
 //! Each guide is organized around the failure modes it prevents —
 //! the same failures the triage detectors watch for — rather than
 //! around game systems in the abstract. Content rules: no invented
 //! numbers. Mechanics and figures come from the official wiki,
 //! Captain's Diary posts, the official translation hub (exact
-//! in-game strings), convergent community practice, the verified
-//! planner dataset (0.8.7d), the relocation plan, and this run's
-//! live data. Player-established mechanics are labelled as such;
-//! disputed figures are flagged, not hidden. Full digest with a
-//! source per claim: guides-research.md in the project folder.
+//! in-game strings), convergent community practice, and the verified
+//! planner dataset (0.8.7d). Worked examples drawn from a real
+//! factory are framed as examples, never presented as the reader's
+//! own factory (canon provenance rule: docs/canon/README.md).
+//! Player-established mechanics are labelled as such; disputed
+//! figures are flagged, not hidden. Full digest with a source per
+//! claim: docs/guides-research.md.
 
 pub(crate) struct GuideSection {
     pub heading: &'static str,
@@ -20,6 +22,12 @@ pub(crate) struct Guide {
     pub id: &'static str,
     pub title: &'static str,
     pub blurb: &'static str,
+    /// Wiki link-out (DESIGN V3 §2.2 policy): Some((page title, url))
+    /// only when the wiki page is current for this version AND the
+    /// topic is reference-shaped AND this guide adds no verified
+    /// correction. Rendered as a labelled external block at the
+    /// guide's foot, never inline.
+    pub wiki: Option<(&'static str, &'static str)>,
     pub sections: &'static [GuideSection],
 }
 
@@ -32,6 +40,7 @@ pub(crate) const GUIDES: &[Guide] = &[
         id: "transport",
         title: "Transport — belts, pipes & trucks",
         blurb: "What transport failures look like before they cascade: saturated trunks, balancer-free merges, contradictory truck settings, and ship bursts hitting pipe-sized drains.",
+        wiki: None,
         sections: &[
             GuideSection {
                 heading: "The failure this prevents: the silent backup",
@@ -59,18 +68,19 @@ pub(crate) const GUIDES: &[Guide] = &[
         id: "trains",
         title: "Trains — networks that don't jam",
         blurb: "Lines for continuous bulk, the Network for intermittent freight, stations that never block the through route — and the dispatch arithmetic that decides how many trains actually move.",
+        wiki: None,
         sections: &[
             GuideSection {
                 heading: "The dispatch gate: full load, full unload, or no departure",
                 body: "<p>On a Train <b>Network</b>, a train is only dispatched when the source can <i>fully load</i> it and the destination can <i>fully unload</i> it — with cargo already in transit counted against the destination's space (player-established, with converging worked examples). The consequence is buffer arithmetic: concurrent trains ≈ station capacity ÷ train capacity. A 4,000-unit station pair with 1,500-unit trains runs at most 2–3 trains in motion no matter how many wait in the bay. If trains sit idle, the fix is more linked storage at both ends, not more trains.</p>",
             },
             GuideSection {
-                heading: "Lines for bulk, Network for the rest — this run's split",
-                body: "<p><b>Train Lines</b> run a fixed schedule and suit continuous single-purpose flows; <b>Networks</b> dispatch jobs dynamically, one resource per job, from a shared pool — excellent for varied, intermittent freight, wrong for mine-to-smelter volume. That is exactly this run's architecture (relocation plan): dedicated consists on lines for <b>oil</b>, <b>coal</b> and the new <b>iron-ore shuttle</b>; everything else on the general network. Bulk mixed into the network starves the small urgent jobs behind it.</p>",
+                heading: "Lines for bulk, Network for the rest",
+                body: "<p><b>Train Lines</b> run a fixed schedule and suit continuous single-purpose flows; <b>Networks</b> dispatch jobs dynamically, one resource per job, from a shared pool — excellent for varied, intermittent freight, wrong for mine-to-smelter volume. The architecture that works at scale: dedicated consists on lines for the big continuous flows (<b>oil</b>, <b>coal</b>, <b>iron ore</b> are the usual three); everything else on the general network. Bulk mixed into the network starves the small urgent jobs behind it.</p>",
             },
             GuideSection {
                 heading: "Stations: sidings, sizing, and the 4.3 arrival rules",
-                body: "<p>Stations sit on sidings off the through route: trains reserve their path, so one train waiting at a station on the main line freezes everything behind it. Size stations for the longest consist using them, set train limits deliberately, and group parallel stations into one stop (a train picks highest priority, then nearest, at departure — it does not re-check en route). <b>Update 4.3 changed arrival conditions</b> to per-product rules with percentage thresholds — and a station can no longer load <i>and</i> unload the same product, so combined stations from older saves need splitting (this run's plan already splits them). Link storages to stations: linked stock counts toward dispatch decisions, an unlinked silo beside the station does not.</p>",
+                body: "<p>Stations sit on sidings off the through route: trains reserve their path, so one train waiting at a station on the main line freezes everything behind it. Size stations for the longest consist using them, set train limits deliberately, and group parallel stations into one stop (a train picks highest priority, then nearest, at departure — it does not re-check en route). <b>Update 4.3 changed arrival conditions</b> to per-product rules with percentage thresholds — and a station can no longer load <i>and</i> unload the same product, so combined stations from older saves need splitting into separate load and unload stops. Link storages to stations: linked stock counts toward dispatch decisions, an unlinked silo beside the station does not.</p>",
             },
             GuideSection {
                 heading: "Fuel is a network role, not an afterthought",
@@ -82,6 +92,7 @@ pub(crate) const GUIDES: &[Guide] = &[
         id: "priorities",
         title: "Priorities — telling the factory what matters first",
         blurb: "Three different systems share one word. What each actually steers, the spiral that makes them useless, and the small set of exceptions that makes them work.",
+        wiki: None,
         sections: &[
             GuideSection {
                 heading: "First, the map: three systems, one word",
@@ -105,6 +116,7 @@ pub(crate) const GUIDES: &[Guide] = &[
         id: "storage",
         title: "Storage & buffers — decoupling the chain",
         blurb: "Buffers are what let bursty producers and steady consumers coexist. Sizing them to the burst, parking them deliberately, and reading the 'storage full' cascade correctly.",
+        wiki: None,
         sections: &[
             GuideSection {
                 heading: "The failure this prevents: full storage blocks the chain",
@@ -120,7 +132,7 @@ pub(crate) const GUIDES: &[Guide] = &[
             },
             GuideSection {
                 heading: "Parked storage is a strategy (the war chest)",
-                body: "<p>A full storage with no production and no draw is not automatically a problem: this run's Construction Parts I & II stockpiles are a deliberate war chest for the relocation phases, parked so nothing drains them early. The issue board files exactly that pattern under 'Ignore for now'. The logistics toggles (Entities page, per storage) are how you park — and unpark — a buffer on purpose. And set the game's storage <i>alerts</i> on the handful of buffers whose failure cascades (fuel, food, the current bottleneck's input): a slow drain should page you months before the tank is empty.</p><p class=\"sub\">Sources: wiki Pipe/storage pages; translation hub (slider strings); Steam slag/byproduct thread; train dispatch arithmetic (see Trains).</p>",
+                body: "<p>A full storage with no production and no draw is not automatically a problem. Worked example from a real factory: a player stockpiled Construction Parts I & II ahead of a large planned expansion and parked the storages so nothing drained them early — a deliberate war chest, built on purpose and spent on schedule. The issue board files exactly that pattern — full, no production, no draw — under 'Ignore for now', and the fix text says why. The same pattern with no plan behind it is just a sink you forgot: the difference is intent, and only you know yours. The logistics toggles (Entities page, per storage) are how you park — and unpark — a buffer on purpose. And set the game's storage <i>alerts</i> on the handful of buffers whose failure cascades (fuel, food, the current bottleneck's input): a slow drain should page you months before the tank is empty.</p><p class=\"sub\">Sources: wiki Pipe/storage pages; translation hub (slider strings); Steam slag/byproduct thread; train dispatch arithmetic (see Trains). War-chest framing: canon provenance rule — an example, not a target for your factory.</p>",
             },
         ],
     },
@@ -128,6 +140,7 @@ pub(crate) const GUIDES: &[Guide] = &[
         id: "power",
         title: "Power — keeping the grid ahead of demand",
         blurb: "Brownouts cascade worse than any product shortage, and the cause is usually shaft arithmetic or spin-up inertia, not nameplate capacity. Dispatch order makes the reserve visible.",
+        wiki: Some(("Power", "https://wiki.coigame.com/index.php?title=Power")),
         sections: &[
             GuideSection {
                 heading: "The failure this prevents: the brownout spiral",
@@ -151,18 +164,19 @@ pub(crate) const GUIDES: &[Guide] = &[
         id: "farming",
         title: "Farming — plan by the season, not the month",
         blurb: "Farms produce in bursts, yields drift with rotation and fertility, and belts jam by crop type. Judged monthly, farms always look broken; judged on the cycle, the truth comes out.",
+        wiki: Some(("Farming", "https://wiki.coigame.com/index.php?title=Farming")),
         sections: &[
             GuideSection {
                 heading: "The failure this prevents: fixing a farm that isn't broken",
-                body: "<p>A farm produces nothing for most of its cycle and a whole cycle's yield in one harvest event, so monthly production swings between zero and a huge spike. Any monthly detector — 'production stalled', 'net deficit' — fires falsely on that pattern, and acting on it spends real resources on an imaginary fault. This run's potatoes are the textbook case: one 81-unit harvest across 7 finished months against ~33/month of steady consumption. The companion classifies bursty producers from their history and judges them on the long window only; food security is <i>stock months of consumption</i>, never this month's production.</p>",
+                body: "<p>A farm produces nothing for most of its cycle and a whole cycle's yield in one harvest event, so monthly production swings between zero and a huge spike. Any monthly detector — 'production stalled', 'net deficit' — fires falsely on that pattern, and acting on it spends real resources on an imaginary fault. A textbook case, from a real factory: one 81-unit potato harvest across 7 finished months against ~33/month of steady consumption — healthy on the cycle, alarming on the month. The companion classifies bursty producers from their history and judges them on the long window only; food security is <i>stock months of consumption</i>, never this month's production.</p>",
             },
             GuideSection {
                 heading: "Rotation: never follow a crop with itself — including around the wrap",
-                body: "<p>After Crop Rotation is researched, a crop that follows <i>itself</i> in the rotation takes a <b>50% fertility penalty</b> — and the calendar wraps, so the last slot and the first slot are adjacent. Always run at least two different crops per farm; if only one food crop is unlocked, alternate it with Green Manure as a stopgap (but count Green Manure slots as fertility tools, not food — they produce no calories that cycle). The companion's seasonal runway for this run's potatoes — ≈38 months at the long-window rate — is the right shape of answer: a planting decision, not an emergency.</p>",
+                body: "<p>After Crop Rotation is researched, a crop that follows <i>itself</i> in the rotation takes a <b>50% fertility penalty</b> — and the calendar wraps, so the last slot and the first slot are adjacent. Always run at least two different crops per farm; if only one food crop is unlocked, alternate it with Green Manure as a stopgap (but count Green Manure slots as fertility tools, not food — they produce no calories that cycle). When the companion reports a seasonal runway — a figure like ≈38 months at the long-window rate — read it as the right shape of answer: a planting decision, not an emergency.</p>",
             },
             GuideSection {
                 heading: "Fertility equilibrium: recipe yields are the ceiling, not the plan",
-                body: "<p>Every crop consumes fertility as it grows, and natural replenishment only balances that at an <i>equilibrium</i> — corn's is ≈58% fertility, and yield scales linearly with fertility, so unfertilized corn plans at ~58% of recipe forever. Either budget food production at equilibrium yields, or pipe fertilizer and set a fertility target — knowing that holding a target above 100% costs disproportionately more (a 200% demand multiplier, and natural replenishment turns negative up there). High-need crops (soybean) gain most from fertilizer; potatoes least. This is why the relocation plan builds the fertilizer chain <i>before</i> the new farm district.</p>",
+                body: "<p>Every crop consumes fertility as it grows, and natural replenishment only balances that at an <i>equilibrium</i> — corn's is ≈58% fertility, and yield scales linearly with fertility, so unfertilized corn plans at ~58% of recipe forever. Either budget food production at equilibrium yields, or pipe fertilizer and set a fertility target — knowing that holding a target above 100% costs disproportionately more (a 200% demand multiplier, and natural replenishment turns negative up there). High-need crops (soybean) gain most from fertilizer; potatoes least. This is why fertilizer capacity belongs <i>before</i> a farm expansion, not after it.</p>",
             },
             GuideSection {
                 heading: "Pair crops by belt type; prefer two small farms",
@@ -174,22 +188,23 @@ pub(crate) const GUIDES: &[Guide] = &[
         id: "oil-diesel",
         title: "Oil & diesel — closing the silent deficit",
         blurb: "Diesel rarely fails loudly. It drains a few percent a month for quarters while every month looks explainable — and the refinery itself is often the biggest consumer.",
+        wiki: None,
         sections: &[
             GuideSection {
                 heading: "The failure this prevents: the structural drain",
-                body: "<p>This run's diesel is the archetype: production 84–120/month against consumption 140–195/month, seven straight months, stock sliding 6,432 → 5,992. No single month is a crisis and the runway is years — which is precisely why it never gets fixed. Track diesel as a <i>balance</i>, not a level: produced vs consumed per month, and the multi-month quantity slope. The Outlook's slope forecast exists for this shape — ≈110 months at the 7-month slope is a planning item today, not a surprise in year 397. Beware 'peak diesel' builds: output sized via cracking can silently depend on byproduct streams, and starves when those products idle.</p>",
+                body: "<p>The archetype, from a real factory: diesel production 84–120/month against consumption 140–195/month, seven straight months, stock sliding 6,432 → 5,992. No single month is a crisis and the runway is years — which is precisely why it never gets fixed. Track diesel as a <i>balance</i>, not a level: produced vs consumed per month, and the multi-month quantity slope. The Outlook's slope forecast exists for this shape — ≈110 months at a 7-month slope is a planning item today, not a surprise years later. Beware 'peak diesel' builds: output sized via cracking can silently depend on byproduct streams, and starves when those products idle.</p>",
             },
             GuideSection {
                 heading: "Find the real consumer first — it may be the refinery",
-                body: "<p>Before adding capacity, split the consumption (the product page's Sources table, this month and last). In this run, of 161 diesel consumed in a month, <b>112 was the hydrocracker's DieselReforming</b> — diesel converted onward to naphtha and fuel gas — and only 49 was vehicle fuel. Cracking <i>into</i> diesel (naphtha/heavy oil + hydrogen → diesel) is the intended direction; reforming <i>out of</i> diesel is a tool for byproduct-heavy states, not a default. A 'diesel shortage' that is really a refining decision is fixed at the cracker — pause it, deprioritize it, or keep it with eyes open — not at the distillery.</p>",
+                body: "<p>Before adding capacity, split the consumption (the product page's Sources table, this month and last). Worked example from a real factory: of 161 diesel consumed in one month, <b>112 was a hydrocracker's DieselReforming</b> — diesel converted onward to naphtha and fuel gas — and only 49 was vehicle fuel. Cracking <i>into</i> diesel (naphtha/heavy oil + hydrogen → diesel) is the intended direction; reforming <i>out of</i> diesel is a tool for byproduct-heavy states, not a default. A 'diesel shortage' that is really a refining decision is fixed at the cracker — pause it, deprioritize it, or keep it with eyes open — not at the distillery. Run the same split on your own factory before believing any diesel headline, yours or the board's.</p>",
             },
             GuideSection {
                 heading: "Every fraction needs a sink, in the right order",
-                body: "<p>Distillation makes a fixed slate, not a product: if heavy oil (or naphtha, or fuel gas) has no sink, the column stops and crude backs up behind it — this run's crude sits <i>above</i> nominal capacity while diesel drains, so supply was never the constraint. Default sink order for heavy oil: <b>burn for steam first</b>; crack to diesel when diesel is the goal; crack to naphtha almost never (the Update 4 refinery analysis is blunt: it costs hydrogen and is 'almost never worth it'). Use priority routing as a pressure valve — naphtha and fuel gas flow to diesel-making only when their other destinations back up — rather than as a fixed route. Judge the oil chain by all its outputs' runways together, never one product's.</p>",
+                body: "<p>Distillation makes a fixed slate, not a product: if heavy oil (or naphtha, or fuel gas) has no sink, the column stops and crude backs up behind it. The tell-tale shape — crude stored <i>above</i> nominal capacity while diesel drains — means supply was never the constraint. Default sink order for heavy oil: <b>burn for steam first</b>; crack to diesel when diesel is the goal; crack to naphtha almost never (the Update 4 refinery analysis is blunt: it costs hydrogen and is 'almost never worth it'). Use priority routing as a pressure valve — naphtha and fuel gas flow to diesel-making only when their other destinations back up — rather than as a fixed route. Judge the oil chain by all its outputs' runways together, never one product's.</p>",
             },
             GuideSection {
                 heading: "Diesel generators: the hidden second fleet",
-                body: "<p>Diesel is the lifeblood — ship, cargo ships, vehicles, rubber production and diesel generators all drink from the same tank. Generators added as 'backup' quietly become a leading consumer, coupling the grid to the fuel logistics needs: power trouble eats the fuel, fuel shortage slows logistics, slower logistics deepens the power trouble. Keep diesel generators <b>last in generation priority</b> (true peaking units), their buffer separate and alarmed, and treat any month where generators lead diesel consumption as a power-design bug, not a fuel-supply bug. Longer term, this run's hydrogen backbone (fertilizer, Electronics II, long-haul trains) shrinks diesel to vehicle and ship duty — trucks, excavators and the ship have no hydrogen option, so a diesel floor never goes away.</p><p class=\"sub\">Sources: wiki Diesel and Heavy Oil pages; Update 4 refinery analysis (mw-stanley) for sink discipline and cracking verdicts; consumption split from this run's live game data.</p>",
+                body: "<p>Diesel is the lifeblood — ship, cargo ships, vehicles, rubber production and diesel generators all drink from the same tank. Generators added as 'backup' quietly become a leading consumer, coupling the grid to the fuel logistics needs: power trouble eats the fuel, fuel shortage slows logistics, slower logistics deepens the power trouble. Keep diesel generators <b>last in generation priority</b> (true peaking units), their buffer separate and alarmed, and treat any month where generators lead diesel consumption as a power-design bug, not a fuel-supply bug. Longer term, a hydrogen backbone (fertilizer, Electronics II, long-haul trains) shrinks diesel toward vehicle and ship duty — but trucks, excavators and the ship have no hydrogen option, so a diesel floor never goes away.</p><p class=\"sub\">Sources: wiki Diesel and Heavy Oil pages; Update 4 refinery analysis (mw-stanley) for sink discipline and cracking verdicts; worked examples framed per the canon provenance rule (docs/canon).</p>",
             },
         ],
     },
@@ -197,6 +212,7 @@ pub(crate) const GUIDES: &[Guide] = &[
         id: "contracts-trade",
         title: "Contracts & trade — the world market without surprises",
         blurb: "Contracts are standing ship-borne commitments paid in a product you must keep producing, and quick trades get more expensive every time you repeat them. Read the terms the companion can actually see before either one surprises you.",
+        wiki: None,
         sections: &[
             GuideSection {
                 heading: "The failure this prevents: a contract that eats its payment line",
@@ -224,6 +240,7 @@ pub(crate) const GUIDES: &[Guide] = &[
         id: "loans",
         title: "Loans — borrowed product, repaid product",
         blurb: "A loan delivers a product now and takes scheduled payments in that same product for years. The failures are timing and kind: a payment landing in a crisis month, and owing a product you no longer produce.",
+        wiki: None,
         sections: &[
             GuideSection {
                 heading: "The failure this prevents: the payment that lands in the crisis month",
@@ -247,6 +264,7 @@ pub(crate) const GUIDES: &[Guide] = &[
         id: "edicts",
         title: "Edicts — enabled is not the same as active",
         blurb: "The companion can see every edict's enabled and active state and the game's own reasons when something is off — but it cannot switch an edict. Toggling stays in-game, for a stated reason.",
+        wiki: None,
         sections: &[
             GuideSection {
                 heading: "The failure this prevents: trusting the toggle you set",
@@ -262,7 +280,79 @@ pub(crate) const GUIDES: &[Guide] = &[
             },
             GuideSection {
                 heading: "The actuation caveat: the companion cannot toggle edicts",
-                body: "<p><b>Read this before looking for a button that is not there.</b> A toggle command does exist inside the game — <b>ToggleEdictEnabledCmd</b>, an input command processed by the EdictsManager — but it is <b>not in the web API's command registry</b>: the captured inventory of 240 commands contains zero edict commands, so the companion's prepare → confirm → audit flow cannot prepare it, and the Trade page's edicts table is deliberately read-only. Toggling therefore stays <b>in-game</b> until that channel is proven. The proof path already exists and is deliberately conservative: <b>SANDBOX-PROTOCOLS.md Protocol B</b> — run only on a throwaway sandbox save (never the live one; it carries a hard game-id abort guard), it tests whether the /command endpoint accepts a type absent from its own inventory, captures the exact request/response envelope, and verifies any flip independently through /coi/v1/edicts before the result is trusted. Until Protocol B has been run and passed, any edict change you want happens in the game's own panel — the companion will show you the resulting state, which is the half of the loop that is already verified.</p><p class=\"sub\">Sources: CoiBridge BridgeRoutesV6.cs (edicts route and its class comment on ToggleEdictEnabledCmd's absence from the web API inventory); SPEC Addendum VII (the inventory finding and the sandbox-first ruling); SANDBOX-PROTOCOLS.md Protocol B (test design, selection rule, abort guard); companion Trade page (read-only edicts table and its not-wired note).</p>",
+                body: "<p><b>Read this before looking for a button that is not there.</b> A toggle command does exist inside the game — <b>ToggleEdictEnabledCmd</b>, an input command processed by the EdictsManager — but it is <b>not in the web API's command registry</b>: the captured inventory of 240 commands contains zero edict commands, so the companion's prepare → confirm → audit flow cannot prepare it, and the edicts status table (in this guide's live panel) is deliberately read-only. Toggling therefore stays <b>in-game</b> until that channel is proven. The proof path already exists and is deliberately conservative: <b>SANDBOX-PROTOCOLS.md Protocol B</b> (in the toolkit repo, under .llms/) — run only on a throwaway sandbox save (never the live one; it carries a hard game-id abort guard), it tests whether the /command endpoint accepts a type absent from its own inventory, captures the exact request/response envelope, and verifies any flip independently through /coi/v1/edicts before the result is trusted. Until Protocol B has been run and passed, any edict change you want happens in the game's own panel — the companion will show you the resulting state, which is the half of the loop that is already verified.</p><p class=\"sub\">Sources: CoiBridge BridgeRoutesV6.cs (edicts route and its class comment on ToggleEdictEnabledCmd's absence from the web API inventory); SPEC Addendum VII (the inventory finding and the sandbox-first ruling); SANDBOX-PROTOCOLS.md Protocol B (test design, selection rule, abort guard).</p>",
+            },
+        ],
+    },
+    Guide {
+        id: "maintenance",
+        title: "Maintenance — the invisible leg of the death spiral",
+        blurb: "Machines wear out whether you watch or not. The 75% line, the three tiers that never substitute for each other, and why there is no board finding for the failure that ends most factories.",
+        wiki: None,
+        sections: &[
+            GuideSection {
+                heading: "The failure this prevents: the breakdown spiral",
+                body: "<p>Every machine consumes maintenance as it works, supplied by depots. When a depot can't keep up, the machine's maintenance level falls — and below <b>75%</b> breakdowns begin. A broken machine produces nothing and still queues for repair, so its chain starves, its neighbours idle, and the depots fall further behind: the spiral feeds itself. At <b>zero maintenance a machine breaks down roughly every other month</b>. Most dead factories didn't run out of anything dramatic — they wore out.</p>",
+            },
+            GuideSection {
+                heading: "Three tiers, no substitutions",
+                body: "<p>Maintenance comes in three tiers (I, II, III) matched to machine generations, and they are <b>not interchangeable</b>: a tier-II machine cannot consume tier-I maintenance. Each tier has its own depot and its own supply chain, and the usual failure is building the new machine generation before its depot tier exists — the shiny machines then wear out at full speed with no way to repair them. Sequence rule: depot tier first, machines second, every generation.</p>",
+            },
+            GuideSection {
+                heading: "Why the board can't watch this for you",
+                body: "<p>Every other board finding trends a product: stock, flow, runway. Maintenance has no stockpile product to trend — it lives inside each machine's state. So there is deliberately <b>no maintenance finding</b> (the reasoning is recorded in the canon, under Play philosophy). What you can watch: your depots' output and uptime (a depot that is itself starved of parts is the spiral's first link), the breakdown messages, and the Entities census — a machine type sliding into low working share with no input/output cause is often a maintenance story. When breakdowns start clustering, check depot supply before replacing machines.</p>",
+            },
+            GuideSection {
+                heading: "Triage when it happens anyway",
+                body: "<p>Unity can repair broken machines instantly — spend it on the machines whose stoppage cascades (power, fuel, the depot chain itself), not on whichever broke first. Then fix the supply: depots need their input parts flowing with priority during a maintenance crunch (see Priorities — maintenance production is one of the standing exceptions). Finally, ask the sizing question honestly: maintenance demand scales with machine count and tier, so every expansion is also a maintenance commitment. Budget the depot capacity in the same plan as the machines it will serve.</p><p class=\"sub\">Numbers (75% threshold, ~50%/month at zero) from the game's data as recorded in the canon (philosophy.maintenance-floor); tier non-substitution and depot sequencing are mechanics of the maintenance system. The Statue of Maintenance — a Unity-generating monument fed by surplus maintenance — is the late-game sink for overproduction, not a starter goal.</p>",
+            },
+        ],
+    },
+    Guide {
+        id: "research",
+        title: "Research — queue discipline",
+        blurb: "Labs are a queue, not a shopping list. What to run first, the two traps the queue sets, and how the companion's plan runner treats research it finds already done.",
+        wiki: None,
+        sections: &[
+            GuideSection {
+                heading: "The failure this prevents: the parked lab",
+                body: "<p>Research points are produced by labs consuming equipment and workers. Queue a node whose prerequisites your factory can't supply yet and the lab doesn't speed up — it idles at the gate while costing upkeep. The queue is therefore an ordering problem: at any moment, the front of the queue should be research whose unlock you can <i>build and feed today</i>.</p>",
+            },
+            GuideSection {
+                heading: "The order that works: unblock, then capacity, then luxury",
+                body: "<p>First, unlocks that remove a current blocker (the depot tier your new machines need, the storage tier your buffer plan assumes). Second, capacity and efficiency for chains already running. Last, luxuries and late-game branches. The bundled fresh-start plan queues its starter order up front for exactly this reason — the full list is worked out once, in dependency order, instead of being re-decided node by node. When in doubt between two nodes, pick the one whose buildings you will place this session.</p>",
+            },
+            GuideSection {
+                heading: "Two traps",
+                body: "<p><b>Trap one: the queue that isn't.</b> What looks queued in one view may not be in the actual research queue — verify against the Research page, which reads the game's own researched / current / queued state. <b>Trap two: the finished node in a plan.</b> The game's research-start command fails on an already-researched node, so the companion's plan runner <i>holds</i> such steps and records why, rather than failing the run (canon: plans.runner-holds). A held step is information, not an error.</p>",
+            },
+            GuideSection {
+                heading: "Feed the labs like a chain",
+                body: "<p>Lab equipment is a production chain like any other: when research 'mysteriously slows', check the equipment supply and lab working share before blaming the queue. Research state on this site is bridge-only data — the Research page says so on its face — because snapshots don't carry it; with the game closed, the page shows the remedy instead of stale state.</p><p class=\"sub\">Discipline rules recorded in the canon (philosophy.research-queue); starter queue and phase gates in plans/fresh-start-v1.yaml.</p>",
+            },
+        ],
+    },
+    Guide {
+        id: "earthworks",
+        title: "Earthworks — dump, flatten, mine",
+        blurb: "The land rules that decide whether a designation works: the 4x4 cell grid, the one-step neighbour rule, how dumped material settles, and how the Designate planner grades ore ground.",
+        wiki: None,
+        sections: &[
+            GuideSection {
+                heading: "The failure this prevents: the designation the land refuses",
+                body: "<p>Designations live on a fixed global grid of <b>4x4-tile cells</b>, and neighbouring cells can differ in height by at most <b>one tile</b>. Ask for a cliff and cells get refused or collapse — quietly, which is why the Designate page reads every applied job back cell by cell and reports a verdict instead of trusting the apply call. Plan in steps of one and the land cooperates.</p>",
+            },
+            GuideSection {
+                heading: "Dumping: material settles at its own slope",
+                body: "<p>Dumped material does not stack vertically. Each material settles at a characteristic slope — loose fill spreads wide, rock holds a steeper face — and a pile that outgrows its footprint walks into whatever is downhill of it: roads, belts, the mine you're digging. Ocean dumping tops out at height 0. Site dump pads with the <i>final</i> footprint in mind, not the first week's, and keep the spread direction away from infrastructure.</p>",
+            },
+            GuideSection {
+                heading: "Flattening: a building's floor is the terrain at its tile",
+                body: "<p>A building's height is the terrain height at its footprint, so a pad is only as flat as its least-flat tile. Flatten to a single target height across the whole pad, verify with the Terrain page's heightmap before placing, and remember the one-step rule applies to the pad's edge too: a perfectly flat pad on a steep hillside still needs stepped or retained edges. The full placement-and-snapping procedure lives in the toolkit's earthworks document (docs/guides-earthworks.md in the repo).</p>",
+            },
+            GuideSection {
+                heading: "Mining: grade the ground before you commit the fleet",
+                body: "<p>The Designate planner grades candidate ground in five purity levels, <b>L0–L4</b>: how thick the ore layer is, how dense it runs at the bottom, and how large the connected seam is (canon: earthworks.purity-gates). Looser gates start digging sooner with more waste rock mixed in; stricter gates wait for better ground. A lone deep tile far below its neighbours is treated as a data spike, not a plan (canon: earthworks.spike-filter). The planner only ever digs deeper — it never raises a floor you've already excavated.</p><p class=\"sub\">Full treatment: docs/guides-earthworks.md in the toolkit repo (dump / flatten / mine procedures, collapse table, vehicle rules), grounded in the game's assemblies; the numbers the planner runs on are pinned in the canon (docs/canon/earthworks.yaml).</p>",
             },
         ],
     },

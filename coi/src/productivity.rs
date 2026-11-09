@@ -94,6 +94,11 @@ pub struct Thresholds {
     pub hot_share: f64,
 }
 
+// canon: productivity.working-share, productivity.causes,
+// productivity.evidence-classes — the defaults below are the shipped
+// values check_canon.py pins to docs/canon/productivity.yaml. Users may
+// override them via [productivity] in coi.toml (canon:
+// productivity.configurable); renderings must show effective values.
 impl Default for Thresholds {
     fn default() -> Self {
         Thresholds {
@@ -365,7 +370,9 @@ pub fn eval_protos(
             }
         }
         let span_days = match (present_ticks.first(), present_ticks.last()) {
-            (Some(&a), Some(&b)) if present_ticks.len() > 1 => (b - a) as f64 / TICKS_PER_DAY as f64,
+            (Some(&a), Some(&b)) if present_ticks.len() > 1 => {
+                (b - a) as f64 / TICKS_PER_DAY as f64
+            }
             _ => 0.0,
         };
         let max_gap_days = present_ticks
@@ -378,8 +385,8 @@ pub fn eval_protos(
         } else {
             0.0
         };
-        let gate_ok = !counted.is_empty()
-            && (gate_hits as f64 / counted.len() as f64) >= th.population_share;
+        let gate_ok =
+            !counted.is_empty() && (gate_hits as f64 / counted.len() as f64) >= th.population_share;
 
         let (p_hat, ci) = if elig > 0 {
             let p = w as f64 / elig as f64;
@@ -521,8 +528,12 @@ pub fn b_verdict(finished: &[i64], th: &Thresholds) -> (Verdict, f64, Option<f64
         .map(|v| *v as f64 / best as f64);
     let verdict = if last > th.b_clear_u {
         Verdict::Clear
-    } else if last < th.b_fire_u_single || (last < th.b_fire_u && prev.map(|p| p < th.b_fire_u).unwrap_or(false)) {
-        Verdict::Fire { severe: last < th.b_fire_u_single }
+    } else if last < th.b_fire_u_single
+        || (last < th.b_fire_u && prev.map(|p| p < th.b_fire_u).unwrap_or(false))
+    {
+        Verdict::Fire {
+            severe: last < th.b_fire_u_single,
+        }
     } else {
         Verdict::DeadZone
     };
@@ -596,7 +607,13 @@ pub enum Transition {
 /// Prior state as stored: (status, cause, since_tick, value).
 type Prior = (String, Option<String>, i64, Option<f64>);
 
-pub fn transition(prior: Option<&Prior>, raw: Verdict, cause: Option<&str>, tick: i64, th: &Thresholds) -> Transition {
+pub fn transition(
+    prior: Option<&Prior>,
+    raw: Verdict,
+    cause: Option<&str>,
+    tick: i64,
+    th: &Thresholds,
+) -> Transition {
     match raw {
         Verdict::Fire { .. } => match prior {
             Some((status, pcause, since, _)) if status == "fired" => {
@@ -684,12 +701,18 @@ pub fn evaluate_snapshot(
     }
     if let Ok(rows) = store.machine_state_series(&game_id) {
         for (t, proto, w, n, o, p, ot, inst, _src) in rows {
-            series.entry(proto).or_default().push((t, w, n, o, p, ot, inst));
+            series
+                .entry(proto)
+                .or_default()
+                .push((t, w, n, o, p, ot, inst));
         }
     }
     // Pending snapshot's aggregates (parsed exactly as insert will).
     for (proto, w, n, o, p, ot, inst, _src) in crate::store::snapshot_machine_rows(snap) {
-        series.entry(proto).or_default().push((tick, w, n, o, p, ot, inst));
+        series
+            .entry(proto)
+            .or_default()
+            .push((tick, w, n, o, p, ot, inst));
     }
     if !all_ticks.contains(&tick) {
         all_ticks.push(tick);
@@ -707,8 +730,15 @@ pub fn evaluate_snapshot(
                 match transition(prior.as_ref(), ev.verdict, Some(cause), tick, th) {
                     Transition::EmitNew { since } | Transition::EmitOngoing { since } => {
                         let _ = store.prod_state_put(
-                            &game_id, &ev.proto, "proto", "fired", Some(cause), since,
-                            ev.p_hat, &ev.label, tick,
+                            &game_id,
+                            &ev.proto,
+                            "proto",
+                            "fired",
+                            Some(cause),
+                            since,
+                            ev.p_hat,
+                            &ev.label,
+                            tick,
                         );
                         let imp = importance(&ev.proto);
                         issues.push(Issue {
@@ -734,7 +764,10 @@ pub fn evaluate_snapshot(
                                 _ => "prod-unclassified",
                             },
                         });
-                        log.push(format!("productivity (a): FIRE {} — {}", ev.proto, ev.label));
+                        log.push(format!(
+                            "productivity (a): FIRE {} — {}",
+                            ev.proto, ev.label
+                        ));
                     }
                     Transition::Suppress => {
                         log.push(format!(
@@ -757,10 +790,20 @@ pub fn evaluate_snapshot(
                     // Keep since_tick = the fire tick (cooldown anchor).
                     let since = prior.as_ref().map(|p| p.2).unwrap_or(tick);
                     let _ = store.prod_state_put(
-                        &game_id, &ev.proto, "proto", "cleared", Some(cause), since,
-                        ev.p_hat, &ev.label, tick,
+                        &game_id,
+                        &ev.proto,
+                        "proto",
+                        "cleared",
+                        Some(cause),
+                        since,
+                        ev.p_hat,
+                        &ev.label,
+                        tick,
                     );
-                    log.push(format!("productivity (a): CLEAR {} — {}", ev.proto, ev.label));
+                    log.push(format!(
+                        "productivity (a): CLEAR {} — {}",
+                        ev.proto, ev.label
+                    ));
                 } else if matches!(ev.verdict, Verdict::Hot) {
                     log.push(format!(
                         "productivity (a): {} running hot (p̂={:.2}) — digest note, not an alert",
@@ -775,8 +818,15 @@ pub fn evaluate_snapshot(
                     transition(prior.as_ref(), ev.verdict, Some(cause), tick, th)
                 {
                     let _ = store.prod_state_put(
-                        &game_id, &ev.proto, "proto", "fired", Some(cause), since,
-                        ev.p_hat, &ev.label, tick,
+                        &game_id,
+                        &ev.proto,
+                        "proto",
+                        "fired",
+                        Some(cause),
+                        since,
+                        ev.p_hat,
+                        &ev.label,
+                        tick,
                     );
                     issues.push(Issue {
                         quadrant: "Watch",
@@ -815,8 +865,15 @@ pub fn evaluate_snapshot(
                 match transition(prior.as_ref(), ev.verdict, Some("below-baseline"), tick, th) {
                     Transition::EmitNew { since } | Transition::EmitOngoing { since } => {
                         let _ = store.prod_state_put(
-                            &game_id, &ev.id, "product", "fired", Some("below-baseline"), since,
-                            Some(ev.u_last), &ev.label, tick,
+                            &game_id,
+                            &ev.id,
+                            "product",
+                            "fired",
+                            Some("below-baseline"),
+                            since,
+                            Some(ev.u_last),
+                            &ev.label,
+                            tick,
                         );
                         // Compose into an existing stall/deficit issue
                         // for the same product rather than duplicating.
@@ -827,10 +884,8 @@ pub fn evaluate_snapshot(
                         });
                         match host {
                             Some(h) => {
-                                h.evidence.push_str(&format!(
-                                    " Productivity evidence: {}.",
-                                    ev.label
-                                ));
+                                h.evidence
+                                    .push_str(&format!(" Productivity evidence: {}.", ev.label));
                                 log.push(format!(
                                     "productivity (b): {} evidence composed into existing issue '{}'",
                                     ev.id, h.title
@@ -877,8 +932,15 @@ pub fn evaluate_snapshot(
                 {
                     let since = prior.as_ref().map(|p| p.2).unwrap_or(tick);
                     let _ = store.prod_state_put(
-                        &game_id, &ev.id, "product", "cleared", Some("below-baseline"), since,
-                        Some(ev.u_last), &ev.label, tick,
+                        &game_id,
+                        &ev.id,
+                        "product",
+                        "cleared",
+                        Some("below-baseline"),
+                        since,
+                        Some(ev.u_last),
+                        &ev.label,
+                        tick,
                     );
                     log.push(format!("productivity (b): CLEAR {} — {}", ev.id, ev.label));
                 }
@@ -909,7 +971,10 @@ pub fn report_lines(store: &Store, th: &Thresholds) -> Result<Vec<String>, Strin
     let ticks = store.snapshot_ticks(&game_id)?;
     let mut series: std::collections::BTreeMap<String, Vec<AggRow>> = Default::default();
     for (t, proto, w, n, o, p, ot, inst, _src) in store.machine_state_series(&game_id)? {
-        series.entry(proto).or_default().push((t, w, n, o, p, ot, inst));
+        series
+            .entry(proto)
+            .or_default()
+            .push((t, w, n, o, p, ot, inst));
     }
     if series.is_empty() {
         lines.push(format!(
@@ -1010,7 +1075,10 @@ mod tests {
     }
 
     /// Daily snapshots for `days` days, one proto, constant state mix.
-    fn series(days: i64, per_day: (i64, i64, i64, i64, i64, i64)) -> (std::collections::BTreeMap<String, Vec<AggRow>>, Vec<i64>) {
+    fn series(
+        days: i64,
+        per_day: (i64, i64, i64, i64, i64, i64),
+    ) -> (std::collections::BTreeMap<String, Vec<AggRow>>, Vec<i64>) {
         let mut m: std::collections::BTreeMap<String, Vec<AggRow>> = Default::default();
         let mut ticks = Vec::new();
         for d in 0..days {
@@ -1033,7 +1101,11 @@ mod tests {
         let e = &ev[0];
         assert_eq!(e.class, "MEASURED", "label: {}", e.label);
         assert_eq!(e.cause, Some("starved"));
-        assert!(matches!(e.verdict, Verdict::Fire { .. }), "verdict: {}", e.label);
+        assert!(
+            matches!(e.verdict, Verdict::Fire { .. }),
+            "verdict: {}",
+            e.label
+        );
     }
 
     #[test]
@@ -1053,7 +1125,11 @@ mod tests {
         let (m, ticks) = series(31, (0, 0, 0, 8, 0, 8));
         let end = *ticks.last().unwrap();
         let ev = eval_protos(&m, &ticks, end, &th());
-        assert!(matches!(ev[0].verdict, Verdict::Parked), "label: {}", ev[0].label);
+        assert!(
+            matches!(ev[0].verdict, Verdict::Parked),
+            "label: {}",
+            ev[0].label
+        );
     }
 
     #[test]
@@ -1062,7 +1138,11 @@ mod tests {
         let (m, ticks) = series(31, (5, 0, 0, 5, 0, 10));
         let end = *ticks.last().unwrap();
         let ev = eval_protos(&m, &ticks, end, &th());
-        assert!(matches!(ev[0].verdict, Verdict::Parked), "label: {}", ev[0].label);
+        assert!(
+            matches!(ev[0].verdict, Verdict::Parked),
+            "label: {}",
+            ev[0].label
+        );
     }
 
     #[test]
@@ -1071,7 +1151,11 @@ mod tests {
         let (m, ticks) = series(31, (9, 1, 0, 0, 0, 10));
         let end = *ticks.last().unwrap();
         let ev = eval_protos(&m, &ticks, end, &th());
-        assert!(matches!(ev[0].verdict, Verdict::Hot), "label: {}", ev[0].label);
+        assert!(
+            matches!(ev[0].verdict, Verdict::Hot),
+            "label: {}",
+            ev[0].label
+        );
     }
 
     #[test]
@@ -1102,7 +1186,12 @@ mod tests {
             transition(None, fire, Some("starved"), 1000, &th),
             Transition::EmitNew { .. }
         ));
-        let fired = ("fired".to_string(), Some("starved".to_string()), 1000, Some(0.3));
+        let fired = (
+            "fired".to_string(),
+            Some("starved".to_string()),
+            1000,
+            Some(0.3),
+        );
         // Same cause while fired → ongoing, original since kept.
         match transition(Some(&fired), fire, Some("starved"), 2000, &th) {
             Transition::EmitOngoing { since } => assert_eq!(since, 1000),
@@ -1119,14 +1208,25 @@ mod tests {
             Transition::Cleared
         ));
         // Re-fire same cause within cooldown of the fire → suppressed.
-        let cleared = ("cleared".to_string(), Some("starved".to_string()), 1000, Some(0.3));
+        let cleared = (
+            "cleared".to_string(),
+            Some("starved".to_string()),
+            1000,
+            Some(0.3),
+        );
         assert!(matches!(
             transition(Some(&cleared), fire, Some("starved"), 1000 + 1000, &th),
             Transition::Suppress
         ));
         // …but after the cooldown it is a fresh alert.
         assert!(matches!(
-            transition(Some(&cleared), fire, Some("starved"), 1000 + TICKS_PER_MONTH + 1, &th),
+            transition(
+                Some(&cleared),
+                fire,
+                Some("starved"),
+                1000 + TICKS_PER_MONTH + 1,
+                &th
+            ),
             Transition::EmitNew { .. }
         ));
         // Dead zone holds a fired alert, does nothing otherwise.
@@ -1145,10 +1245,7 @@ mod tests {
         // Regression guard for the insert path itself: a snapshot
         // carrying bridge payloads must land in the v2 tables, with
         // the machines route taking precedence over the census.
-        let path = std::env::temp_dir().join(format!(
-            "coi-prod-test-{}.db",
-            std::process::id()
-        ));
+        let path = std::env::temp_dir().join(format!("coi-prod-test-{}.db", std::process::id()));
         let path = path.to_str().unwrap();
         let _ = std::fs::remove_file(path);
         let mut st = Store::open(path).unwrap();
@@ -1177,10 +1274,13 @@ mod tests {
         // superseded by the instances source for that proto.
         assert_eq!(rows.len(), 2, "rows: {rows:?}");
         let furn = rows.iter().find(|r| r.1 == "FurnaceT1").unwrap();
-        assert_eq!((furn.2, furn.3, furn.7, furn.8.as_str()), (1, 1, 2, "instances"));
+        assert_eq!(
+            (furn.2, furn.3, furn.7, furn.8.as_str()),
+            (1, 1, 2, "instances")
+        );
         let press = rows.iter().find(|r| r.1 == "PressT1").unwrap();
         assert_eq!((press.5, press.7), (1, 1)); // paused=1, instances=1
-        // Duplicate tick rejected.
+                                                // Duplicate tick rejected.
         assert!(st.insert_snapshot(&snap, &[]).unwrap().is_none());
         let _ = std::fs::remove_file(path);
     }

@@ -51,10 +51,10 @@ pub fn cmd(args: &[String]) -> i32 {
     let info = parse_save(&bytes);
     if let Some(out) = &shot_out {
         match info.screenshot_range {
-            Some((off, len)) => {
+            Some((_off, len)) => {
                 // Screenshot bytes live in the decompressed payload; re-derive.
                 match extract_screenshot(&bytes) {
-                    Some(jpeg) if jpeg.len() == len && off == off => {
+                    Some(jpeg) if jpeg.len() == len => {
                         if let Err(e) = std::fs::write(out, &jpeg) {
                             eprintln!("saveinfo: cannot write screenshot: {e}");
                             return 1;
@@ -99,7 +99,11 @@ fn crc32(bytes: &[u8]) -> u32 {
         for n in 0..256u32 {
             let mut c = n;
             for _ in 0..8 {
-                c = if c & 1 != 0 { 0xEDB8_8320 ^ (c >> 1) } else { c >> 1 };
+                c = if c & 1 != 0 {
+                    0xEDB8_8320 ^ (c >> 1)
+                } else {
+                    c >> 1
+                };
             }
             TABLE[n as usize] = c;
         }
@@ -387,7 +391,8 @@ fn yn(b: bool) -> &'static str {
 fn gunzip(stream: &[u8]) -> R<Vec<u8>> {
     let mut d = flate2::read::GzDecoder::new(stream);
     let mut out = Vec::new();
-    d.read_to_end(&mut out).map_err(|e| format!("gzip failed: {e}"))?;
+    d.read_to_end(&mut out)
+        .map_err(|e| format!("gzip failed: {e}"))?;
     Ok(out)
 }
 
@@ -464,7 +469,14 @@ fn parse_payload_head(
     let soi = jpeg.len() >= 2 && jpeg[0] == 0xFF && jpeg[1] == 0xD8;
     let eoi = jpeg.len() >= 2 && jpeg[jpeg.len() - 2] == 0xFF && jpeg[jpeg.len() - 1] == 0xD9;
     let dims = jpeg_dims(jpeg);
-    Ok((mods, ty, counter, game_version, map_name, (jstart, jlen, dims, soi, eoi)))
+    Ok((
+        mods,
+        ty,
+        counter,
+        game_version,
+        map_name,
+        (jstart, jlen, dims, soi, eoi),
+    ))
 }
 
 fn jpeg_dims(j: &[u8]) -> Option<(u32, u32)> {
@@ -502,19 +514,13 @@ fn parse_save(bytes: &[u8]) -> SaveInfo {
     }
     res.magic_ok = ascii(bytes, 0, 8) == "evaSiFaM";
     if !res.magic_ok {
-        res.errors.push("Magic mismatch: not a Captain of Industry save (expected \"evaSiFaM\").".into());
+        res.errors
+            .push("Magic mismatch: not a Captain of Industry save (expected \"evaSiFaM\").".into());
     }
     let mut r = Reader::new(bytes);
     r.o = 8;
     let header = (|| -> R<(u32, u32, u64, u32, u64, u32)> {
-        Ok((
-            r.u32()?,
-            r.u32()?,
-            r.u64()?,
-            r.u32()?,
-            r.u64()?,
-            r.u32()?,
-        ))
+        Ok((r.u32()?, r.u32()?, r.u64()?, r.u32()?, r.u64()?, r.u32()?))
     })();
     let (format_version, field12, comp_size, stream_crc, payload_size_decl, payload_crc) =
         match header {
@@ -541,7 +547,8 @@ fn parse_save(bytes: &[u8]) -> SaveInfo {
     res.payload_size = Some(payload.len());
     res.payload_size_ok = payload_size_decl == payload.len() as u64;
     res.payload_crc_ok = crc32(&payload) == payload_crc;
-    res.save_stop_ok = payload.len() >= 8 && ascii(&payload, payload.len() - 8, payload.len()) == "potSevaS";
+    res.save_stop_ok =
+        payload.len() >= 8 && ascii(&payload, payload.len() - 8, payload.len()) == "potSevaS";
 
     match parse_payload_head(&payload) {
         Ok((mods, ty, counter, gv, map, (off, len, dims, soi, eoi))) => {
@@ -587,9 +594,7 @@ fn scan_difficulty(payload: &[u8]) -> Option<String> {
                         || rest.starts_with(b"Description")
                         || rest.starts_with(b"Explanation")
                     {
-                        return Some(
-                            payload[start..split].iter().map(|&b| b as char).collect(),
-                        );
+                        return Some(payload[start..split].iter().map(|&b| b as char).collect());
                     }
                 }
             }
@@ -605,7 +610,10 @@ fn scan_map_seed(payload: &[u8]) -> Option<String> {
     while i + 14 <= limit {
         if payload[i] == 0x04 && payload[i + 1] == 0x0C {
             let cand = &payload[i + 2..i + 14];
-            if cand.iter().all(|&b| b.is_ascii_lowercase() || b.is_ascii_digit()) {
+            if cand
+                .iter()
+                .all(|&b| b.is_ascii_lowercase() || b.is_ascii_digit())
+            {
                 return Some(cand.iter().map(|&b| b as char).collect());
             }
         }
@@ -651,9 +659,7 @@ fn extract_vocab_counts(payload: &[u8]) -> (usize, usize, usize, usize) {
         .collect();
     let research: Vec<String> = scan_tokens(payload, b"Research")
         .into_iter()
-        .filter(|s| {
-            s.len() > 8 && s.as_bytes()[8].is_ascii_uppercase() && s != "ResearchManager"
-        })
+        .filter(|s| s.len() > 8 && s.as_bytes()[8].is_ascii_uppercase() && s != "ResearchManager")
         .collect();
     let goals = scan_tokens(payload, b"Goal_");
     let mut contracts = scan_tokens(payload, b"Contract_");
@@ -687,10 +693,7 @@ fn extract_research(payload: &[u8]) -> R<Option<Value>> {
                 if let Ok((slim, after1)) = leb_at(payload, end) {
                     if let Ok((_tail, _)) = leb_at(payload, after1) {
                         if (1500..=8000).contains(&slim) {
-                            cand.push((
-                                slim,
-                                payload[i..end].iter().map(|&b| b as char).collect(),
-                            ));
+                            cand.push((slim, payload[i..end].iter().map(|&b| b as char).collect()));
                         }
                     }
                 }
@@ -792,7 +795,12 @@ fn parse_research_directory(payload: &[u8], mut o: usize, catalogue: &[String]) 
                     }
                 }
             }
-            if okk && vs.len() == 6 && vs[1] == vs[0] + 18 && vs[3] == vs[2] + 18 && vs[5] == vs[4] + 18 {
+            if okk
+                && vs.len() == 6
+                && vs[1] == vs[0] + 18
+                && vs[3] == vs[2] + 18
+                && vs[5] == vs[4] + 18
+            {
                 triples = Some((vs[0], vs[2], vs[4]));
             }
         }

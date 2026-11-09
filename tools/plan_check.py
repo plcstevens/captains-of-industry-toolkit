@@ -63,8 +63,7 @@ TRUE = "TRUE"
 FALSE = "FALSE"
 UNEVALUABLE = "UNEVALUABLE"
 
-WINDOWS = {"thisMonth": 0, "lastMonth": 1, "thisYear": 2,
-           "lastYear": 3, "lifetime": 4}
+WINDOWS = {"thisMonth": 0, "lastMonth": 1, "thisYear": 2, "lastYear": 3, "lifetime": 4}
 
 NON_COMMAND_KINDS = {"place-blueprint", "manual-step", "observe-only", "wait"}
 
@@ -75,13 +74,14 @@ class Unevaluable(Exception):
 
 # ---------------------------------------------------------------- state
 
+
 def _load_json(path):
     if not path.exists():
         return None
     try:
         return json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
-        raise Unevaluable(f"capture {path.name} unreadable: {exc}")
+        raise Unevaluable(f"capture {path.name} unreadable: {exc}") from exc
 
 
 class State:
@@ -94,14 +94,14 @@ class State:
         plist = catalogue.get("products", []) if isinstance(catalogue, dict) else []
         self.catalogue = {p["id"]: p for p in plist if isinstance(p, dict) and "id" in p}
         pinned = _load_json(live_dir / "pinned.json") or {}
-        self.pinned = set((pinned.get("products") or {}).keys()) \
-            if isinstance(pinned, dict) else set()
+        self.pinned = (
+            set((pinned.get("products") or {}).keys()) if isinstance(pinned, dict) else set()
+        )
         self.status = _load_json(live_dir / "bridge-status.json") or {}
         self.research = _load_json(live_dir / "bridge-research.json") or {}
         self.census = _load_json(live_dir / "bridge-census.json") or {}
         storages = _load_json(live_dir / "bridge-storages.json") or {}
-        self.storages = storages.get("storages", []) \
-            if isinstance(storages, dict) else []
+        self.storages = storages.get("storages", []) if isinstance(storages, dict) else []
         trains = _load_json(live_dir / "bridge-trains.json") or {}
         self.train_lines = trains.get("lines") if isinstance(trains, dict) else None
 
@@ -118,11 +118,14 @@ def load_sequence(seq_dir):
     if (seq_dir / "game-info.json").exists():
         dirs = [seq_dir]
     else:
-        dirs = sorted(d for d in seq_dir.iterdir()
-                      if d.is_dir() and (d / "game-info.json").exists())
+        dirs = sorted(
+            d for d in seq_dir.iterdir() if d.is_dir() and (d / "game-info.json").exists()
+        )
     if not dirs:
-        return None, (f"clean error: no snapshot state dirs (each holding "
-                      f"game-info.json) found under {seq_dir}")
+        return None, (
+            f"clean error: no snapshot state dirs (each holding "
+            f"game-info.json) found under {seq_dir}"
+        )
     states = [State(d) for d in dirs]
     try:
         states.sort(key=lambda s: _abs_day(s.game_info))
@@ -130,17 +133,20 @@ def load_sequence(seq_dir):
         return None, f"clean error: sequence snapshot date unusable: {exc}"
     ids = {s.game_info.get("gameId") for s in states}
     if len(ids) > 1:
-        return None, (f"clean error: state sequence mixes gameIds {ids} — "
-                      f"a §4.3.1 sequence is one run (one gameId)")
+        return None, (
+            f"clean error: state sequence mixes gameIds {ids} — "
+            f"a §4.3.1 sequence is one run (one gameId)"
+        )
     return states, None
 
 
 # ---------------------------------------------------------------- results
 
+
 class Result:
     def __init__(self, value, evidence):
-        self.value = value          # TRUE / FALSE / UNEVALUABLE
-        self.evidence = evidence    # concrete numbers / reason string
+        self.value = value  # TRUE / FALSE / UNEVALUABLE
+        self.evidence = evidence  # concrete numbers / reason string
 
     def __repr__(self):
         return f"{self.value} ({self.evidence})"
@@ -188,7 +194,7 @@ def compare(actual, op, expected):
         if op == ">=":
             return actual >= expected
     except TypeError:
-        raise Unevaluable(f"cannot compare {actual!r} {op} {expected!r}")
+        raise Unevaluable(f"cannot compare {actual!r} {op} {expected!r}") from None
     raise Unevaluable(f"unknown operator {op!r}")
 
 
@@ -199,7 +205,7 @@ def _parse_date(s):
     try:
         return tuple(int(p) for p in parts)
     except ValueError:
-        raise Unevaluable(f"unparseable in-game date {s!r}")
+        raise Unevaluable(f"unparseable in-game date {s!r}") from None
 
 
 def _node_name(node):
@@ -211,6 +217,7 @@ def _node_name(node):
 
 
 # ---------------------------------------------------------------- leaves
+
 
 def eval_leaf(pred, st):
     """Evaluate a leaf predicate dict. Returns Result. Never raises."""
@@ -236,19 +243,22 @@ def eval_leaf(pred, st):
                 actual = row.get("isUnlocked")
                 if actual is None:
                     raise Unevaluable(f"{pid} has no isUnlocked in catalogue")
-                return Result(TRUE if compare(actual, op, expected) else FALSE,
-                              f"{pid}.isUnlocked = {actual} (products.json)")
+                return Result(
+                    TRUE if compare(actual, op, expected) else FALSE,
+                    f"{pid}.isUnlocked = {actual} (products.json)",
+                )
             if metric == "product.pinned":
                 if not st.pinned:
                     raise Unevaluable("pinned.json capture empty/missing")
                 actual = pid in st.pinned
-                return Result(TRUE if compare(actual, op, expected) else FALSE,
-                              f"{pid} in pinned set = {actual} "
-                              f"(pinned.json lists {len(st.pinned)} pinned products)")
+                return Result(
+                    TRUE if compare(actual, op, expected) else FALSE,
+                    f"{pid} in pinned set = {actual} "
+                    f"(pinned.json lists {len(st.pinned)} pinned products)",
+                )
             row = st.stats.get(pid)
             if row is None:
-                raise Unevaluable(f"{pid} not in stats.json products "
-                                  f"(selector matched zero rows)")
+                raise Unevaluable(f"{pid} not in stats.json products (selector matched zero rows)")
             if metric == "product.quantity":
                 actual = row["quantity"]
                 ev = f"{pid}.quantity = {actual}"
@@ -271,12 +281,16 @@ def eval_leaf(pred, st):
                     actual = cons
                 else:
                     actual = prod - cons
-                ev = (f"{pid} window={window}: produced {prod} - consumed {cons} "
-                      f"= net {prod - cons}" if metric == "product.net_flow"
-                      else f"{pid} {metric.split('.')[1]}[{window}] = {actual}")
+                ev = (
+                    f"{pid} window={window}: produced {prod} - consumed {cons} = net {prod - cons}"
+                    if metric == "product.net_flow"
+                    else f"{pid} {metric.split('.')[1]}[{window}] = {actual}"
+                )
             else:
-                raise Unevaluable(f"metric {metric!r} not in §4.1 vocabulary / "
-                                  f"no capture source (closed-vocabulary violation)")
+                raise Unevaluable(
+                    f"metric {metric!r} not in §4.1 vocabulary / "
+                    f"no capture source (closed-vocabulary violation)"
+                )
             return Result(TRUE if compare(actual, op, expected) else FALSE, ev)
 
         # ---- game -----------------------------------------------------
@@ -284,21 +298,20 @@ def eval_leaf(pred, st):
             if "isPaused" not in st.game_info:
                 raise Unevaluable("game-info.json has no isPaused")
             actual = st.game_info["isPaused"]
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"isPaused = {actual}")
+            return Result(TRUE if compare(actual, op, expected) else FALSE, f"isPaused = {actual}")
         if metric == "game.speed":
             if "speed" not in st.game_info:
                 raise Unevaluable("game-info.json has no speed")
             actual = st.game_info["speed"]
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"speed = {actual}")
+            return Result(TRUE if compare(actual, op, expected) else FALSE, f"speed = {actual}")
         if metric == "game.date":
             if "date" not in st.game_info:
                 raise Unevaluable("game-info.json has no date")
             actual = _parse_date(st.game_info["date"])
             exp = _parse_date(expected)
-            return Result(TRUE if compare(actual, op, exp) else FALSE,
-                          f"date = {st.game_info['date']}")
+            return Result(
+                TRUE if compare(actual, op, exp) else FALSE, f"date = {st.game_info['date']}"
+            )
 
         # ---- settlement -----------------------------------------------
         settle = {
@@ -314,8 +327,10 @@ def eval_leaf(pred, st):
             if field not in st.status:
                 raise Unevaluable(f"bridge-status.json has no {field}")
             actual = st.status[field]
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"{field} = {actual} (bridge-status.json)")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE,
+                f"{field} = {actual} (bridge-status.json)",
+            )
 
         # ---- research -------------------------------------------------
         if metric == "research.completed":
@@ -323,29 +338,37 @@ def eval_leaf(pred, st):
             if placeholder is not None:
                 raise Unevaluable(
                     f"node is a §4.5 placeholder ({placeholder}) — manual-only, "
-                    f"never auto-evaluated")
+                    f"never auto-evaluated"
+                )
             if node is None:
                 raise Unevaluable("research.completed: node selector missing")
             if "researched" not in st.research:
                 raise Unevaluable(
                     "bridge-research.json (pre-v0.6.2 capture) has no "
                     "`researched` completed-node list — format G1; "
-                    "executor-observed completions are not in the captures")
+                    "executor-observed completions are not in the captures"
+                )
             actual = node in st.research["researched"]
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"{node} in researched list = {actual}")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE,
+                f"{node} in researched list = {actual}",
+            )
         if metric == "research.current":
             cur = st.research.get("current")
             actual = cur.get("id") if isinstance(cur, dict) else None
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"research.current = {actual if actual else 'none'}")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE,
+                f"research.current = {actual if actual else 'none'}",
+            )
         if metric == "research.current_progress_pct":
             cur = st.research.get("current")
             if not isinstance(cur, dict) or "progressPerc" not in cur:
                 raise Unevaluable("no active research node in capture")
             actual = cur["progressPerc"] / 1000.0
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"progressPerc {cur['progressPerc']} / 1000 = {actual:.3f}%")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE,
+                f"progressPerc {cur['progressPerc']} / 1000 = {actual:.3f}%",
+            )
         if metric == "research.queue_contains":
             node, placeholder = _node_name(pred.get("node"))
             if placeholder is not None:
@@ -354,27 +377,32 @@ def eval_leaf(pred, st):
             if queue is None:
                 raise Unevaluable("bridge-research.json has no queue")
             actual = node in queue
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"queue = {queue}; contains {node} = {actual}")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE,
+                f"queue = {queue}; contains {node} = {actual}",
+            )
         if metric == "research.queue_length":
             queue = st.research.get("queue")
             if queue is None:
                 raise Unevaluable("bridge-research.json has no queue")
             actual = len(queue)
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"len(queue) = {actual} {queue}")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE, f"len(queue) = {actual} {queue}"
+            )
         if metric == "research.researched_count":
             if "researchedCount" not in st.research:
                 raise Unevaluable("bridge-research.json has no researchedCount")
             actual = st.research["researchedCount"]
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"researchedCount = {actual}")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE, f"researchedCount = {actual}"
+            )
         if metric == "research.has_active_lab":
             if "hasActiveLab" not in st.research:
                 raise Unevaluable("bridge-research.json has no hasActiveLab")
             actual = st.research["hasActiveLab"]
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"hasActiveLab = {actual}")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE, f"hasActiveLab = {actual}"
+            )
 
         # ---- census ---------------------------------------------------
         if metric == "census.proto_count":
@@ -382,9 +410,11 @@ def eval_leaf(pred, st):
             by = st.census.get("byProto")
             if by is None:
                 raise Unevaluable("bridge-census.json has no byProto")
-            actual = by.get(proto, 0)   # format: absent proto = 0
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"byProto[{proto}] = {actual} (absent proto counts 0)")
+            actual = by.get(proto, 0)  # format: absent proto = 0
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE,
+                f"byProto[{proto}] = {actual} (absent proto counts 0)",
+            )
         if metric in ("census.machine_state_count", "census.machine_state_share"):
             proto = pred.get("proto")
             state = pred.get("state")
@@ -392,10 +422,8 @@ def eval_leaf(pred, st):
             if machines is None:
                 raise Unevaluable("bridge-census.json has no machines")
             if proto == "*":
-                count = sum(m.get("states", {}).get(state, 0)
-                            for m in machines.values())
-                total = sum(sum(m.get("states", {}).values())
-                            for m in machines.values())
+                count = sum(m.get("states", {}).get(state, 0) for m in machines.values())
+                total = sum(sum(m.get("states", {}).values()) for m in machines.values())
                 scope = "all machine protos"
             else:
                 entry = machines.get(proto)
@@ -406,13 +434,17 @@ def eval_leaf(pred, st):
                     total = sum(entry.get("states", {}).values())
                 scope = proto
             if metric == "census.machine_state_count":
-                return Result(TRUE if compare(count, op, expected) else FALSE,
-                              f"{scope}: state {state} count = {count}")
+                return Result(
+                    TRUE if compare(count, op, expected) else FALSE,
+                    f"{scope}: state {state} count = {count}",
+                )
             if total == 0:
                 raise Unevaluable(f"{scope}: total machine-state count is 0")
             actual = count / total
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"{scope}: {state} {count}/{total} = {actual:.3f}")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE,
+                f"{scope}: {state} {count}/{total} = {actual:.3f}",
+            )
         if metric == "census.transports_fully_connected_ratio":
             tr = st.census.get("transports")
             if not isinstance(tr, dict) or "total" not in tr:
@@ -420,66 +452,80 @@ def eval_leaf(pred, st):
             if tr["total"] == 0:
                 raise Unevaluable("transports.total = 0 (ratio undefined, §4.1)")
             actual = tr["fullyConnected"] / tr["total"]
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"fullyConnected {tr['fullyConnected']}/{tr['total']} "
-                          f"= {actual:.4f}")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE,
+                f"fullyConnected {tr['fullyConnected']}/{tr['total']} = {actual:.4f}",
+            )
 
         # ---- storages -------------------------------------------------
         if metric == "storage.percent_full":
             rows = _storage_rows(pred, st)
             if not rows:
-                raise Unevaluable("storage selector matched zero rows in "
-                                  "bridge-storages.json")
+                raise Unevaluable("storage selector matched zero rows in bridge-storages.json")
             cap = sum(r.get("capacity", 0) for r in rows)
             if cap == 0:
                 raise Unevaluable("matching storage rows have zero total capacity")
             qty = sum(r.get("quantity", 0) for r in rows)
             # capacity-weighted mean of percentFullRaw/1000 (§4.1)
-            actual = sum((r.get("percentFullRaw", 0) / 1000.0) * r.get("capacity", 0)
-                         for r in rows) / cap
-            ev = (f"{len(rows)} matching row(s): quantity {qty}/{cap} capacity, "
-                  f"capacity-weighted percentFull = {actual:.1f}%")
+            actual = (
+                sum((r.get("percentFullRaw", 0) / 1000.0) * r.get("capacity", 0) for r in rows)
+                / cap
+            )
+            ev = (
+                f"{len(rows)} matching row(s): quantity {qty}/{cap} capacity, "
+                f"capacity-weighted percentFull = {actual:.1f}%"
+            )
             pid = pred.get("product")
             if isinstance(pid, str) and pid in st.stats:
                 srow = st.stats[pid]
-                ev += (f"; cross-ref stats.json: stored {srow['stored']}/"
-                       f"{srow['storageCapacity']} (stats totals include "
-                       f"stock outside the bridge storage rows)")
+                ev += (
+                    f"; cross-ref stats.json: stored {srow['stored']}/"
+                    f"{srow['storageCapacity']} (stats totals include "
+                    f"stock outside the bridge storage rows)"
+                )
             return Result(TRUE if compare(actual, op, expected) else FALSE, ev)
-        if metric in ("storage.logistics_in_disabled",
-                      "storage.logistics_out_disabled"):
+        if metric in ("storage.logistics_in_disabled", "storage.logistics_out_disabled"):
             sid = pred.get("storage_id")
             row = next((r for r in st.storages if r.get("id") == sid), None)
             if row is None:
                 raise Unevaluable(f"no storage row with id {sid!r}")
-            field = ("logisticsInDisabled" if metric.endswith("in_disabled")
-                     else "logisticsOutDisabled")
+            field = (
+                "logisticsInDisabled" if metric.endswith("in_disabled") else "logisticsOutDisabled"
+            )
             actual = row.get(field)
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"storage {sid}.{field} = {actual}")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE,
+                f"storage {sid}.{field} = {actual}",
+            )
 
         # ---- trains ---------------------------------------------------
         if metric == "trains.line_count":
             if st.train_lines is None:
                 raise Unevaluable("bridge-trains.json has no lines list")
             actual = len(st.train_lines)
-            return Result(TRUE if compare(actual, op, expected) else FALSE,
-                          f"len(bridge-trains lines) = {actual}")
+            return Result(
+                TRUE if compare(actual, op, expected) else FALSE,
+                f"len(bridge-trains lines) = {actual}",
+            )
 
         # ---- sources with no capture: UNEVALUABLE by design -----------
         if metric.startswith("power."):
             raise Unevaluable(
                 f"{metric}: no power capture exists — the captures predate "
                 f"CoiBridge v0.6.2's /coi/v1/power route (format G2); "
-                f"field {metric} is absent from every capture file")
+                f"field {metric} is absent from every capture file"
+            )
         if metric.startswith(("contracts.", "loans.", "edicts.")):
             raise Unevaluable(f"{metric}: no v0.6 trade capture in live/")
         if metric.startswith("time."):
             raise Unevaluable(
                 f"{metric}: no executor run anchor (plan-start date/tick) "
-                f"exists in the captures — dry-run has no run history")
-        raise Unevaluable(f"metric {metric!r} not in §4.1 vocabulary / no "
-                          f"capture source (closed-vocabulary violation)")
+                f"exists in the captures — dry-run has no run history"
+            )
+        raise Unevaluable(
+            f"metric {metric!r} not in §4.1 vocabulary / no "
+            f"capture source (closed-vocabulary violation)"
+        )
     except Unevaluable as exc:
         return Result(UNEVALUABLE, str(exc))
     except Exception as exc:  # never panic on a malformed predicate
@@ -497,6 +543,7 @@ def _storage_rows(pred, st):
 
 
 # ---------------------------------------------------------------- composite
+
 
 def _abs_day(game_info):
     """Absolute in-game day index (§4.3.1: 12 months x 30 days)."""
@@ -527,8 +574,9 @@ def _eval_core(core, st, seq):
         return _combine_any(subs)
     if "not" in core:
         sub = eval_predicate(core["not"], st, seq)
-        return Result({TRUE: FALSE, FALSE: TRUE}.get(sub.value, UNEVALUABLE),
-                      f"not({sub.evidence})")
+        return Result(
+            {TRUE: FALSE, FALSE: TRUE}.get(sub.value, UNEVALUABLE), f"not({sub.evidence})"
+        )
     return eval_leaf(core, st)
 
 
@@ -540,8 +588,7 @@ def _eval_duration_seq(core, duration, seq):
     try:
         days = [_abs_day(s.game_info) for s in seq]
     except Unevaluable as exc:
-        return Result(UNEVALUABLE,
-                      f"sequence snapshot date unusable: {exc} [for: {duration}]")
+        return Result(UNEVALUABLE, f"sequence snapshot date unusable: {exc} [for: {duration}]")
     if kind == "months":
         months = duration["months"]
         boundary = days[-1] - 30 * months
@@ -551,60 +598,76 @@ def _eval_duration_seq(core, duration, seq):
                 anchor = i
         window = [i for i, d in enumerate(days) if d > boundary]
         if anchor is not None:
-            window = [anchor] + window
-        results = [(i, _eval_core(core, seq[i], seq[:i + 1])) for i in window]
+            window = [anchor, *window]
+        results = [(i, _eval_core(core, seq[i], seq[: i + 1])) for i in window]
         span = (days[-1] - days[window[0]]) / 30.0
         for i, r in results:
             if r.value == FALSE:
-                return Result(FALSE,
-                              f"{r.evidence} [for: {duration} — inner predicate "
-                              f"FALSE at {_date_of(seq[i])} inside the trailing "
-                              f"{months}-month window, so the duration did "
-                              f"not hold]")
+                return Result(
+                    FALSE,
+                    f"{r.evidence} [for: {duration} — inner predicate "
+                    f"FALSE at {_date_of(seq[i])} inside the trailing "
+                    f"{months}-month window, so the duration did "
+                    f"not hold]",
+                )
         for i, r in results:
             if r.value == UNEVALUABLE:
-                return Result(UNEVALUABLE,
-                              f"{r.evidence} [for: {duration} — inner predicate "
-                              f"UNEVALUABLE at {_date_of(seq[i])} inside the "
-                              f"window; the hold cannot be proven]")
+                return Result(
+                    UNEVALUABLE,
+                    f"{r.evidence} [for: {duration} — inner predicate "
+                    f"UNEVALUABLE at {_date_of(seq[i])} inside the "
+                    f"window; the hold cannot be proven]",
+                )
         if anchor is None:
-            return Result(UNEVALUABLE,
-                          f"inner predicate TRUE at all {len(results)} "
-                          f"snapshot(s) in the trailing window "
-                          f"({_date_of(seq[window[0]])} .. {_date_of(latest)}) "
-                          f"[for: {duration} — UNEVALUABLE: history begins "
-                          f"inside the window, no anchor snapshot at or "
-                          f"before the window start; observed span "
-                          f"{span:.2f} months < {months}]")
-        return Result(TRUE,
-                      f"inner predicate TRUE at every snapshot in the "
-                      f"trailing {months}-month window (anchor "
-                      f"{_date_of(seq[anchor])}, {len(results)} snapshot(s), "
-                      f"span {span:.2f} months) [for: {duration}]")
+            return Result(
+                UNEVALUABLE,
+                f"inner predicate TRUE at all {len(results)} "
+                f"snapshot(s) in the trailing window "
+                f"({_date_of(seq[window[0]])} .. {_date_of(latest)}) "
+                f"[for: {duration} — UNEVALUABLE: history begins "
+                f"inside the window, no anchor snapshot at or "
+                f"before the window start; observed span "
+                f"{span:.2f} months < {months}]",
+            )
+        return Result(
+            TRUE,
+            f"inner predicate TRUE at every snapshot in the "
+            f"trailing {months}-month window (anchor "
+            f"{_date_of(seq[anchor])}, {len(results)} snapshot(s), "
+            f"span {span:.2f} months) [for: {duration}]",
+        )
     if kind == "evaluations":
         n = duration["evaluations"]
         if len(seq) < n:
-            return Result(UNEVALUABLE,
-                          f"sequence holds {len(seq)} snapshot(s) < the "
-                          f"{n} evaluations required [for: {duration}]")
+            return Result(
+                UNEVALUABLE,
+                f"sequence holds {len(seq)} snapshot(s) < the "
+                f"{n} evaluations required [for: {duration}]",
+            )
         window = list(range(len(seq) - n, len(seq)))
-        results = [(i, _eval_core(core, seq[i], seq[:i + 1])) for i in window]
+        results = [(i, _eval_core(core, seq[i], seq[: i + 1])) for i in window]
         for i, r in results:
             if r.value == FALSE:
-                return Result(FALSE,
-                              f"{r.evidence} [for: {duration} — inner predicate "
-                              f"FALSE at {_date_of(seq[i])} within the last "
-                              f"{n} evaluations]")
+                return Result(
+                    FALSE,
+                    f"{r.evidence} [for: {duration} — inner predicate "
+                    f"FALSE at {_date_of(seq[i])} within the last "
+                    f"{n} evaluations]",
+                )
         for i, r in results:
             if r.value == UNEVALUABLE:
-                return Result(UNEVALUABLE,
-                              f"{r.evidence} [for: {duration} — inner predicate "
-                              f"UNEVALUABLE at {_date_of(seq[i])} within the "
-                              f"last {n} evaluations]")
-        return Result(TRUE,
-                      f"inner predicate TRUE at each of the last {n} "
-                      f"evaluations ({_date_of(seq[window[0]])} .. "
-                      f"{_date_of(latest)}) [for: {duration}]")
+                return Result(
+                    UNEVALUABLE,
+                    f"{r.evidence} [for: {duration} — inner predicate "
+                    f"UNEVALUABLE at {_date_of(seq[i])} within the "
+                    f"last {n} evaluations]",
+                )
+        return Result(
+            TRUE,
+            f"inner predicate TRUE at each of the last {n} "
+            f"evaluations ({_date_of(seq[window[0]])} .. "
+            f"{_date_of(latest)}) [for: {duration}]",
+        )
     return Result(UNEVALUABLE, f"unknown duration shape {duration!r}")
 
 
@@ -619,24 +682,31 @@ def eval_predicate(pred, st, seq=None):
         return Result(UNEVALUABLE, f"predicate is not a mapping: {pred!r}")
     duration = pred.get("for")
     core = {k: v for k, v in pred.items() if k != "for"}
-    if (duration is not None and seq is not None and len(seq) > 1
-            and _duration_kind(duration) is not None):
+    if (
+        duration is not None
+        and seq is not None
+        and len(seq) > 1
+        and _duration_kind(duration) is not None
+    ):
         return _eval_duration_seq(core, duration, seq)
     res = _eval_core(core, st, seq)
     if duration is not None:
         # §4.3: TRUE only after holding TRUE on every evaluation spanning
         # the duration. A single snapshot cannot prove a duration.
         if res.value == FALSE:
-            return Result(FALSE, f"{res.evidence} [for: {duration} — currently "
-                                 f"false, so the duration cannot hold]")
+            return Result(
+                FALSE,
+                f"{res.evidence} [for: {duration} — currently false, so the duration cannot hold]",
+            )
         if res.value == TRUE:
-            return Result(UNEVALUABLE,
-                          f"{res.evidence} [for: {duration} — instantaneous "
-                          f"value is TRUE but duration is UNEVALUABLE from a "
-                          f"single snapshot: no executor evaluation history "
-                          f"in the captures]")
-        return Result(UNEVALUABLE,
-                      f"{res.evidence} [for: {duration}]")
+            return Result(
+                UNEVALUABLE,
+                f"{res.evidence} [for: {duration} — instantaneous "
+                f"value is TRUE but duration is UNEVALUABLE from a "
+                f"single snapshot: no executor evaluation history "
+                f"in the captures]",
+            )
+        return Result(UNEVALUABLE, f"{res.evidence} [for: {duration}]")
     return res
 
 
@@ -671,6 +741,7 @@ def eval_gate(pred_list, st, seq=None):
 
 # ---------------------------------------------------------------- rendering
 
+
 def render_predicate(pred):
     if not isinstance(pred, dict):
         return repr(pred)
@@ -685,8 +756,7 @@ def render_predicate(pred):
     else:
         metric = pred.get("metric", "?")
         sel = []
-        for key in ("product", "proto", "state", "window", "node",
-                    "storage_id", "edict"):
+        for key in ("product", "proto", "state", "window", "node", "storage_id", "edict"):
             if key in pred:
                 v = pred[key]
                 if isinstance(v, dict) and "placeholder" in v:
@@ -731,11 +801,11 @@ def render_order(order, st, gate_status, seq=None):
         held_reasons.append(f"preconditions {pre_res.value}: {pre_res.evidence}")
     if _contains_placeholder(order.get("args")):
         # a placeholder in the command args makes the order manual-only (§4.5)
-        held_reasons.append("§4.5 placeholder id in args — manual-only "
-                            "until a human sources the id")
+        held_reasons.append(
+            "§4.5 placeholder id in args — manual-only until a human sources the id"
+        )
     if order.get("requires_sandbox_validation"):
-        held_reasons.append("requires_sandbox_validation — manual-only on a "
-                            "real save (§6.1/G3)")
+        held_reasons.append("requires_sandbox_validation — manual-only on a real save (§6.1/G3)")
     if order.get("enabled") == "on-fallback":
         held_reasons.append("enabled: on-fallback — not due in normal flow")
 
@@ -745,8 +815,8 @@ def render_order(order, st, gate_status, seq=None):
                 f"place-blueprint `{order.get('blueprint_ref', '?')}`"
                 f" district={order.get('district', '?')}"
                 + (f" count={order['count']}" if "count" in order else "")
-                + (f" asset_status={order['asset_status']}"
-                   if "asset_status" in order else "")),
+                + (f" asset_status={order['asset_status']}" if "asset_status" in order else "")
+            ),
             "manual-step": f"manual-step: {str(order.get('step', '')).strip()}",
             "observe-only": f"observe-only: {str(order.get('observe', '')).strip()}",
             "wait": f"wait until: {order.get('until')}",
@@ -755,9 +825,15 @@ def render_order(order, st, gate_status, seq=None):
     else:
         args = order.get("args") or {}
         rendered = f"command `{do}` args={json.dumps(args, default=str)}"
-    status = "HELD — " + "; ".join(held_reasons) if held_reasons else \
-        ("WOULD PREPARE (command, §12 prepare step — not sent)" if do not in NON_COMMAND_KINDS
-         else "WOULD PRESENT (human/agent task — not executed)")
+    status = (
+        "HELD — " + "; ".join(held_reasons)
+        if held_reasons
+        else (
+            "WOULD PREPARE (command, §12 prepare step — not sent)"
+            if do not in NON_COMMAND_KINDS
+            else "WOULD PRESENT (human/agent task — not executed)"
+        )
+    )
     lines.append(f"- **{oid}** — {status}")
     lines.append(f"  - {rendered}")
     if order.get("note"):
@@ -772,6 +848,7 @@ def render_order(order, st, gate_status, seq=None):
 
 
 # ---------------------------------------------------------------- report
+
 
 def derive_statuses(phase_eval):
     """§7/§9 status derivation from evaluated entry/exit gates.
@@ -808,76 +885,102 @@ def build_report(plan_path, st, seq=None):
     out = []
     out.append("# DRY RUN — nothing was executed")
     out.append("")
-    out.append("> **DRY RUN — nothing was executed.** This report is a "
-               "read-only evaluation of a plan file against local state "
-               "captures. No command was prepared, confirmed, applied or "
-               "sent anywhere; no game was contacted. Orders below are "
-               "what a supervised executor *would* prepare next.")
+    out.append(
+        "> **DRY RUN — nothing was executed.** This report is a "
+        "read-only evaluation of a plan file against local state "
+        "captures. No command was prepared, confirmed, applied or "
+        "sent anywhere; no game was contacted. Orders below are "
+        "what a supervised executor *would* prepare next."
+    )
     out.append("")
     out.append(f"# Plan dry-run: {meta.get('id', '?')} v{meta.get('version', '?')}")
     out.append("")
     out.append(f"- Title: {meta.get('title', '?')}")
-    out.append(f"- Map/difficulty (plan): {meta.get('map')} — executor "
-               f"map/difficulty/version match is a live check (§3.1) and "
-               f"cannot be settled from captures; not asserted here.")
+    out.append(
+        f"- Map/difficulty (plan): {meta.get('map')} — executor "
+        f"map/difficulty/version match is a live check (§3.1) and "
+        f"cannot be settled from captures; not asserted here."
+    )
     out.append(f"- Plan game_version: {meta.get('game_version')}")
     out.append(f"- Requires bridge: {(meta.get('requires') or {}).get('bridge')}")
-    out.append(f"- State source: `{st.live_dir}` capture files — game-info "
-               f"date **{gi.get('date')}**, tick **{gi.get('tick')}**, "
-               f"gameId `{gi.get('gameId')}`, paused={gi.get('isPaused')}, "
-               f"speed={gi.get('speed')}")
+    out.append(
+        f"- State source: `{st.live_dir}` capture files — game-info "
+        f"date **{gi.get('date')}**, tick **{gi.get('tick')}**, "
+        f"gameId `{gi.get('gameId')}`, paused={gi.get('isPaused')}, "
+        f"speed={gi.get('speed')}"
+    )
     if seq is not None and len(seq) > 1:
-        out.append(f"- **Sequence mode (§4.3.1):** {len(seq)} snapshots, "
-                   f"{_date_of(seq[0])} .. {_date_of(seq[-1])}, one gameId "
-                   f"`{gi.get('gameId')}`. `for:` durations evaluate over "
-                   f"this history; all other predicates read the latest "
-                   f"snapshot. Per-prefix phase history is tabulated "
-                   f"below.")
-    out.append(f"- Population {st.status.get('population')}, housing "
-               f"{st.status.get('totalHousingCapacity')} (free "
-               f"{st.status.get('freeHousingCapacity')}, homeless "
-               f"{st.status.get('numberOfHomeless')}), monthsOfFood "
-               f"{st.status.get('monthsOfFood')}, starving "
-               f"{st.status.get('arePeopleStarving')}; researchedCount "
-               f"{st.research.get('researchedCount')}, current research "
-               f"{(st.research.get('current') or {}).get('id')}")
+        out.append(
+            f"- **Sequence mode (§4.3.1):** {len(seq)} snapshots, "
+            f"{_date_of(seq[0])} .. {_date_of(seq[-1])}, one gameId "
+            f"`{gi.get('gameId')}`. `for:` durations evaluate over "
+            f"this history; all other predicates read the latest "
+            f"snapshot. Per-prefix phase history is tabulated "
+            f"below."
+        )
+    out.append(
+        f"- Population {st.status.get('population')}, housing "
+        f"{st.status.get('totalHousingCapacity')} (free "
+        f"{st.status.get('freeHousingCapacity')}, homeless "
+        f"{st.status.get('numberOfHomeless')}), monthsOfFood "
+        f"{st.status.get('monthsOfFood')}, starving "
+        f"{st.status.get('arePeopleStarving')}; researchedCount "
+        f"{st.research.get('researchedCount')}, current research "
+        f"{(st.research.get('current') or {}).get('id')}"
+    )
     out.append("")
     out.append("## State-source mapping used by this evaluator")
     out.append("")
-    out.append("- `product.*` quantity/stored/capacity/flows ← `stats.json` "
-               "(`Product_`-prefixed ids, exactly as plans name them); "
-               "windows thisMonth=0, lastMonth=1, thisYear=2, lastYear=3, "
-               "lifetime=4; `net_flow` = produced − consumed.")
-    out.append("- `product.unlocked` ← `products.json` catalogue; "
-               "`product.pinned` ← membership of `pinned.json`'s product "
-               "keys (the pinned=true view, captured in stats shape).")
-    out.append("- `game.*` ← `game-info.json`; `settlement.*` ← "
-               "`bridge-status.json`; `research.*` ← `bridge-research.json` "
-               "(progressPerc ÷ 1000); `census.*` ← `bridge-census.json`; "
-               "`storage.*` ← `bridge-storages.json` (percentFullRaw ÷ 1000, "
-               "capacity-weighted over matching rows); `trains.line_count` "
-               "← `bridge-trains.json`.")
+    out.append(
+        "- `product.*` quantity/stored/capacity/flows ← `stats.json` "
+        "(`Product_`-prefixed ids, exactly as plans name them); "
+        "windows thisMonth=0, lastMonth=1, thisYear=2, lastYear=3, "
+        "lifetime=4; `net_flow` = produced − consumed."
+    )
+    out.append(
+        "- `product.unlocked` ← `products.json` catalogue; "
+        "`product.pinned` ← membership of `pinned.json`'s product "
+        "keys (the pinned=true view, captured in stats shape)."
+    )
+    out.append(
+        "- `game.*` ← `game-info.json`; `settlement.*` ← "
+        "`bridge-status.json`; `research.*` ← `bridge-research.json` "
+        "(progressPerc ÷ 1000); `census.*` ← `bridge-census.json`; "
+        "`storage.*` ← `bridge-storages.json` (percentFullRaw ÷ 1000, "
+        "capacity-weighted over matching rows); `trains.line_count` "
+        "← `bridge-trains.json`."
+    )
     _researched = st.research.get("researched")
     if isinstance(_researched, list):
-        _research_note = (f"`research.completed` reads the capture's "
-                          f"v0.6.2 `researched` list ({len(_researched)} "
-                          f"nodes), format G1 resolved")
+        _research_note = (
+            f"`research.completed` reads the capture's "
+            f"v0.6.2 `researched` list ({len(_researched)} "
+            f"nodes), format G1 resolved"
+        )
     else:
-        _research_note = ("`research.completed` (captures predate "
-                          "CoiBridge v0.6.2 — no `researched` list in "
-                          "`bridge-research.json`, format G1)")
+        _research_note = (
+            "`research.completed` (captures predate "
+            "CoiBridge v0.6.2 — no `researched` list in "
+            "`bridge-research.json`, format G1)"
+        )
     if seq is not None and len(seq) > 1:
-        _duration_note = ("any `for:` duration the sequence history "
-                          "cannot prove — insufficient history or a blind "
-                          "snapshot inside the window (§4.3.1)")
+        _duration_note = (
+            "any `for:` duration the sequence history "
+            "cannot prove — insufficient history or a blind "
+            "snapshot inside the window (§4.3.1)"
+        )
     else:
-        _duration_note = ("any `for:` duration whose instantaneous value "
-                          "is TRUE (a single snapshot cannot prove a "
-                          "duration, §4.3 — see interpretation note)")
-    out.append("- **UNEVALUABLE by design:** " + _research_note + ", "
-               "all `power.*` (no power "
-               "capture, G2), `contracts/loans/edicts` (no v0.6 captures), "
-               "`time.*` (no executor run anchor), and " + _duration_note + ".")
+        _duration_note = (
+            "any `for:` duration whose instantaneous value "
+            "is TRUE (a single snapshot cannot prove a "
+            "duration, §4.3 — see interpretation note)"
+        )
+    out.append(
+        "- **UNEVALUABLE by design:** " + _research_note + ", "
+        "all `power.*` (no power "
+        "capture, G2), `contracts/loans/edicts` (no v0.6 captures), "
+        "`time.*` (no executor run anchor), and " + _duration_note + "."
+    )
     out.append("")
 
     counts = {TRUE: 0, FALSE: 0, UNEVALUABLE: 0}
@@ -903,11 +1006,17 @@ def build_report(plan_path, st, seq=None):
         out.append("")
         for chk in gchecks:
             res = record(eval_predicate(chk.get("when"), st, seq))
-            verdict = ("WOULD FIRE" if res.value == TRUE else
-                       "check blind (UNEVALUABLE)" if res.value == UNEVALUABLE
-                       else "not firing")
-            out.append(f"- `{chk.get('id')}` ({chk.get('severity')}): "
-                       f"**{res.value}** — {verdict} — {res.evidence}")
+            verdict = (
+                "WOULD FIRE"
+                if res.value == TRUE
+                else "check blind (UNEVALUABLE)"
+                if res.value == UNEVALUABLE
+                else "not firing"
+            )
+            out.append(
+                f"- `{chk.get('id')}` ({chk.get('severity')}): "
+                f"**{res.value}** — {verdict} — {res.evidence}"
+            )
         out.append("")
 
     # ---- phases ---------------------------------------------------------
@@ -923,10 +1032,16 @@ def build_report(plan_path, st, seq=None):
             res = eval_predicate(chk.get("when"), st, seq)
             record(res)
             checks_eval.append((chk, res))
-        phase_eval.append({
-            "phase": ph, "entry": entry_res, "entry_detail": entry_detail,
-            "exit": exit_res, "exit_detail": exit_detail, "checks": checks_eval,
-        })
+        phase_eval.append(
+            {
+                "phase": ph,
+                "entry": entry_res,
+                "entry_detail": entry_detail,
+                "exit": exit_res,
+                "exit_detail": exit_detail,
+                "checks": checks_eval,
+            }
+        )
 
     # Active-phase derivation (§7/§9): phases in order; a phase is
     # COMPLETE when its exit gate is TRUE; the first non-complete phase
@@ -938,9 +1053,11 @@ def build_report(plan_path, st, seq=None):
         active = None
     else:
         active = phase_eval[current_idx]
-        plan_status = (f"loop position: phase {current_idx + 1} of "
-                       f"{len(phases)} — {active['phase'].get('id')} "
-                       f"[{statuses[current_idx]}]")
+        plan_status = (
+            f"loop position: phase {current_idx + 1} of "
+            f"{len(phases)} — {active['phase'].get('id')} "
+            f"[{statuses[current_idx]}]"
+        )
 
     out.append("## Active-phase determination (§9 play-loop rules)")
     out.append("")
@@ -950,34 +1067,41 @@ def build_report(plan_path, st, seq=None):
         if statuses[i] == "COMPLETE":
             why = f"exit gate TRUE ({pe['exit'].evidence})"
         elif i == current_idx and statuses[i] == "ACTIVE":
-            why = ("first non-complete phase; entry gate TRUE, exit gate "
-                   f"{pe['exit'].value}")
+            why = f"first non-complete phase; entry gate TRUE, exit gate {pe['exit'].value}"
         elif i == current_idx:
-            why = (f"first non-complete phase; entry gate {pe['entry'].value} "
-                   f"— loop holds here, orders do not run (§4.4/§9 step 4)")
+            why = (
+                f"first non-complete phase; entry gate {pe['entry'].value} "
+                f"— loop holds here, orders do not run (§4.4/§9 step 4)"
+            )
         else:
             why = "an earlier phase is not complete; phases never overlap (§7)"
         out.append(f"- `{ph.get('id')}` — **{statuses[i]}** — {why}")
     out.append("")
-    out.append(f"**Active phase: "
-               f"{active['phase'].get('id') if active else 'none — ' + plan_status}**"
-               + (f" — {statuses[current_idx]}" if active else ""))
+    out.append(
+        f"**Active phase: "
+        f"{active['phase'].get('id') if active else 'none — ' + plan_status}**"
+        + (f" — {statuses[current_idx]}" if active else "")
+    )
     out.append("")
 
     # ---- sequence history (per prefix) -----------------------------------
     if seq is not None and len(seq) > 1:
         out.append("## Sequence phase history (per prefix, §4.3.1)")
         out.append("")
-        out.append("Each row re-derives phase statuses using only the "
-                   "history up to that snapshot — the way a live executor's "
-                   "history grows. The last row is this report's verdict.")
+        out.append(
+            "Each row re-derives phase statuses using only the "
+            "history up to that snapshot — the way a live executor's "
+            "history grows. The last row is this report's verdict."
+        )
         out.append("")
-        short = {"COMPLETE": "COMPLETE", "ACTIVE": "ACTIVE",
-                 "HELD AT ENTRY GATE (UNEVALUABLE)": "HELD (U)",
-                 "NOT ENTERED — entry gate FALSE": "NOT ENTERED (F)",
-                 "NOT REACHED": "NOT REACHED"}
-        header = "| snapshot | " + " | ".join(
-            f"phase {i}" for i in range(len(phases))) + " |"
+        short = {
+            "COMPLETE": "COMPLETE",
+            "ACTIVE": "ACTIVE",
+            "HELD AT ENTRY GATE (UNEVALUABLE)": "HELD (U)",
+            "NOT ENTERED — entry gate FALSE": "NOT ENTERED (F)",
+            "NOT REACHED": "NOT REACHED",
+        }
+        header = "| snapshot | " + " | ".join(f"phase {i}" for i in range(len(phases))) + " |"
         out.append(header)
         out.append("|" + "---|" * (len(phases) + 1))
         for k in range(1, len(seq) + 1):
@@ -992,8 +1116,10 @@ def build_report(plan_path, st, seq=None):
             row = " | ".join(short.get(s, s) for s in p_statuses)
             out.append(f"| {_date_of(pst)} | {row} |")
         out.append("")
-        out.append("Phase key: " + "; ".join(
-            f"phase {i} = `{ph.get('id')}`" for i, ph in enumerate(phases)))
+        out.append(
+            "Phase key: "
+            + "; ".join(f"phase {i} = `{ph.get('id')}`" for i, ph in enumerate(phases))
+        )
         out.append("")
 
     # ---- per-phase detail ------------------------------------------------
@@ -1005,25 +1131,35 @@ def build_report(plan_path, st, seq=None):
         out.append("")
         out.append(f"Intent: {str(ph.get('intent', '')).strip()}")
         out.append("")
-        out.append(f"**Entry gate: {pe['entry'].value}**"
-                   + (f" — {pe['entry'].evidence}" if not pe["entry_detail"] else ""))
+        out.append(
+            f"**Entry gate: {pe['entry'].value}**"
+            + (f" — {pe['entry'].evidence}" if not pe["entry_detail"] else "")
+        )
         for pred, res in pe["entry_detail"]:
             out.append(f"- **{res.value}** — `{render_predicate(pred)}` — {res.evidence}")
         out.append("")
-        out.append(f"**Exit gate: {pe['exit'].value}**"
-                   + (f" — {pe['exit'].evidence}" if not pe["exit_detail"] else ""))
+        out.append(
+            f"**Exit gate: {pe['exit'].value}**"
+            + (f" — {pe['exit'].evidence}" if not pe["exit_detail"] else "")
+        )
         for pred, res in pe["exit_detail"]:
             out.append(f"- **{res.value}** — `{render_predicate(pred)}` — {res.evidence}")
         if pe["checks"]:
             out.append("")
             out.append("Checks (evaluated against current state):")
             for chk, res in pe["checks"]:
-                verdict = ("WOULD FIRE" if res.value == TRUE else
-                           "check blind (UNEVALUABLE)" if res.value == UNEVALUABLE
-                           else "not firing")
-                out.append(f"- `{chk.get('id')}` ({chk.get('severity')}, "
-                           f"action={chk.get('action')}): **{res.value}** — "
-                           f"{verdict} — {res.evidence}")
+                verdict = (
+                    "WOULD FIRE"
+                    if res.value == TRUE
+                    else "check blind (UNEVALUABLE)"
+                    if res.value == UNEVALUABLE
+                    else "not firing"
+                )
+                out.append(
+                    f"- `{chk.get('id')}` ({chk.get('severity')}, "
+                    f"action={chk.get('action')}): **{res.value}** — "
+                    f"{verdict} — {res.evidence}"
+                )
         fb = ph.get("fallbacks") or {}
         if fb:
             out.append("")
@@ -1034,66 +1170,80 @@ def build_report(plan_path, st, seq=None):
     out.append("## Next orders (DRY RUN — would be prepared, nothing sent)")
     out.append("")
     if active is None:
-        out.append("No active phase — the plan is complete by its gates; "
-                   "no orders would be prepared.")
+        out.append(
+            "No active phase — the plan is complete by its gates; no orders would be prepared."
+        )
     else:
         ph = active["phase"]
-        out.append(f"For active phase `{ph.get('id')}` "
-                   f"[{statuses[current_idx]}], in plan order:")
+        out.append(f"For active phase `{ph.get('id')}` [{statuses[current_idx]}], in plan order:")
         out.append("")
         for order in ph.get("orders") or []:
             out.extend(render_order(order, st, statuses[current_idx], seq))
         if statuses[current_idx] != "ACTIVE":
             out.append("")
-            out.append("All orders above are held: the phase has not been "
-                       "entered, so no order is due (§9 step 5).")
+            out.append(
+                "All orders above are held: the phase has not been "
+                "entered, so no order is due (§9 step 5)."
+            )
     out.append("")
     out.append("## Summary")
     out.append("")
-    out.append(f"- Predicates evaluated (globals invariants/checks plus "
-               f"phase entry/exit gates and phase checks; composites count "
-               f"once): TRUE {counts[TRUE]}, "
-               f"FALSE {counts[FALSE]}, UNEVALUABLE {counts[UNEVALUABLE]} "
-               f"(leaf evidence inside composites is in the per-phase tables "
-               f"via the combined evidence strings).")
+    out.append(
+        f"- Predicates evaluated (globals invariants/checks plus "
+        f"phase entry/exit gates and phase checks; composites count "
+        f"once): TRUE {counts[TRUE]}, "
+        f"FALSE {counts[FALSE]}, UNEVALUABLE {counts[UNEVALUABLE]} "
+        f"(leaf evidence inside composites is in the per-phase tables "
+        f"via the combined evidence strings)."
+    )
     out.append(f"- Plan status: {plan_status}.")
     if seq is not None and len(seq) > 1:
-        _note1 = ("- Interpretation notes: (1) `for:` durations evaluate "
-                  "over the state sequence per §4.3.1 — TRUE only with an "
-                  "anchor snapshot at/before the window start and the "
-                  "inner predicate TRUE at every snapshot in the window; "
-                  "FALSE if it broke anywhere in the window; UNEVALUABLE "
-                  "on insufficient history, never by default. (2) A phase "
-                  "counts COMPLETE ")
+        _note1 = (
+            "- Interpretation notes: (1) `for:` durations evaluate "
+            "over the state sequence per §4.3.1 — TRUE only with an "
+            "anchor snapshot at/before the window start and the "
+            "inner predicate TRUE at every snapshot in the window; "
+            "FALSE if it broke anywhere in the window; UNEVALUABLE "
+            "on insufficient history, never by default. (2) A phase "
+            "counts COMPLETE "
+        )
     else:
-        _note1 = ("- Interpretation notes: (1) `for:` durations — instantaneous "
-                  "FALSE stays FALSE; instantaneous TRUE becomes UNEVALUABLE "
-                  "because one snapshot cannot prove the predicate held for "
-                  "the whole duration (§4.3). (2) A phase counts COMPLETE ")
-    out.append(_note1 + "purely when its exit gate is TRUE (§7/§9 re-derivation "
-               "from state); human-confirm manual orders inside a gate-complete "
-               "phase are not re-litigated by the evaluator. (3) Unknown / "
-               "out-of-vocabulary metrics evaluate UNEVALUABLE with a "
-               "closed-vocabulary note, never a crash and never a guess.")
+        _note1 = (
+            "- Interpretation notes: (1) `for:` durations — instantaneous "
+            "FALSE stays FALSE; instantaneous TRUE becomes UNEVALUABLE "
+            "because one snapshot cannot prove the predicate held for "
+            "the whole duration (§4.3). (2) A phase counts COMPLETE "
+        )
+    out.append(
+        _note1 + "purely when its exit gate is TRUE (§7/§9 re-derivation "
+        "from state); human-confirm manual orders inside a gate-complete "
+        "phase are not re-litigated by the evaluator. (3) Unknown / "
+        "out-of-vocabulary metrics evaluate UNEVALUABLE with a "
+        "closed-vocabulary note, never a crash and never a guess."
+    )
     out.append("")
     out.append("---")
-    out.append("DRY RUN — nothing was executed. Generated by "
-               "`tools/plan_check.py` (read-only over local files).")
+    out.append(
+        "DRY RUN — nothing was executed. Generated by "
+        "`tools/plan_check.py` (read-only over local files)."
+    )
     return "\n".join(out) + "\n", None
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Dry-run CoI plan evaluator "
-                                             "(read-only, executes nothing).")
+    ap = argparse.ArgumentParser(
+        description="Dry-run CoI plan evaluator (read-only, executes nothing)."
+    )
     ap.add_argument("plan", help="plan YAML file")
-    ap.add_argument("--live-dir", default=None,
-                    help="captures directory (default: <repo>/live)")
-    ap.add_argument("--state-seq", default=None,
-                    help="directory of per-snapshot state directories "
-                         "(§4.3.1 sequence mode); a directory that itself "
-                         "holds game-info.json is a 1-snapshot sequence")
-    ap.add_argument("--out", default=None, help="write report to this file "
-                                                "(default: stdout)")
+    ap.add_argument("--live-dir", default=None, help="captures directory (default: <repo>/live)")
+    ap.add_argument(
+        "--state-seq",
+        default=None,
+        help="directory of per-snapshot state directories "
+        "(§4.3.1 sequence mode); a directory that itself "
+        "holds game-info.json is a 1-snapshot sequence",
+    )
+    ap.add_argument("--out", default=None, help="write report to this file (default: stdout)")
     args = ap.parse_args(argv)
     plan_path = pathlib.Path(args.plan)
     if args.live_dir:
@@ -1117,8 +1267,7 @@ def main(argv=None):
         st = seq[-1]
     else:
         if not live_dir.exists():
-            print(f"clean error: live captures dir not found: {live_dir}",
-                  file=sys.stderr)
+            print(f"clean error: live captures dir not found: {live_dir}", file=sys.stderr)
             return 2
         try:
             st = State(live_dir)
