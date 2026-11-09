@@ -2329,3 +2329,47 @@ semantics and pinned).
   stalled; coal without a contract now flagged stalled; coal
   with a contract exempt), and the forecasts slope outlook
   (present without trade data, suppressed when import-fed).
+
+## Addendum XXVII — Release workflow run 1: the shutdown check's local path (2026-11-09)
+
+- **What failed**: the first tagged release run (Actions run
+  42625996026, tag `coi-v0.1.0`) failed in the lint gate at the
+  "shutdown check" step; all three build jobs were skipped. Every
+  other lint step passed. No release artefacts were produced.
+- **Root cause**: `tools/check_shutdown.sh` defaulted the binary
+  path to `$HOME/workspace/coi-companion/coi/target/debug/superintendent`
+  — a path that only exists on the development VM. On the runner
+  the binary was never found, the server never started, and the
+  check failed at its first step with nothing in the job log that
+  said why. A local-machine path shipped as a default: the same
+  family as the hardcoded `/home/hatch` path the v3 lint round
+  caught in `gen_catalogue.py`, this time in a shell default.
+- **Fix**: the default now resolves repo-relative —
+  `$HERE/../coi/target/debug/superintendent` — with the `$1`
+  override preserved. A sweep found the identical default in
+  four sibling checks (`check_badge.sh`,
+  `check_designate_page.sh`, `check_log_page.sh`,
+  `check_place_page.sh`); all five are fixed (the log-page check
+  also gained the `HERE` definition it never had). `fail()` in
+  the shutdown check now dumps the tail of serve.log and
+  stub.log (and serve2.log when present) before exiting, so a CI
+  failure is debuggable from the job log alone. The sweep's
+  near-misses, judged fine: `tools/ensure-toolchain.sh` (the
+  local VM's own repair script — machine-specific by design, not
+  run by CI) and `tools/diagnose_live.py` (the `/home` path is
+  prose in its docstring; its real default is repo-relative).
+  The documented standard sequence in `tools/README.md` also
+  named a `check_badge_page.sh` that does not exist; the loop
+  now names the real scripts.
+- **Foreign-machine proof**: the pristine tree (no `target/`)
+  was copied to a fresh directory under a different `$HOME`,
+  built with `cargo build --manifest-path coi/Cargo.toml`, and
+  `bash tools/check_shutdown.sh` run exactly as the workflow
+  runs it: **SHUTDOWN CHECK PASS**. The full standard check
+  sequence is green locally (cargo test 60/60, canon, plan
+  parity, serializer pairs, QoS guards 216/216, structure, mod
+  packages, place/designate/log/badge, audit-fail-loud,
+  shutdown, badge on the fixnow capture; shellcheck clean).
+- **Rule going forward**: a shipped check may derive its paths
+  from the repo (`$HERE`, `__file__`) or take them as arguments —
+  never from the machine it happens to be written on.

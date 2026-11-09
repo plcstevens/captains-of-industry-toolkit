@@ -14,7 +14,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-COI="${1:-$HOME/workspace/coi-companion/coi/target/debug/superintendent}"
+COI="${1:-$HERE/../coi/target/debug/superintendent}"
 PORT="${PORT:-8487}"
 STUB_PORT="${STUB_PORT:-3999}"
 WORK="$(mktemp -d)"

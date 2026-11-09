@@ -16,7 +16,8 @@ python3 tools/check_serializer_pairs.py
 bash tools/check_qos_guards.sh
 python3 tools/check_repo_structure.py
 python3 tools/lint_mod_packages.py
-for s in place designate log badge; do bash tools/check_${s}_page.sh; done
+for s in place designate log; do bash tools/check_${s}_page.sh; done
+bash tools/check_badge.sh
 bash tools/check_audit_fail_loud.sh
 bash tools/check_shutdown.sh
 CAPTURE=dev/captures/live-synthetic-fixnow bash tools/check_badge.sh

@@ -8,7 +8,8 @@
 # the Log page never fetches live state.
 set -euo pipefail
 
-COI="${1:-$HOME/workspace/coi-companion/coi/target/debug/superintendent}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+COI="${1:-$HERE/../coi/target/debug/superintendent}"
 PORT="${PORT:-8486}"
 WORK="$(mktemp -d)"
 trap 'kill ${SRV:-} 2>/dev/null || true; rm -rf "$WORK"' EXIT

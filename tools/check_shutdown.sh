@@ -18,7 +18,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-COI="${1:-$HOME/workspace/coi-companion/coi/target/debug/superintendent}"
+COI="${1:-$HERE/../coi/target/debug/superintendent}"
 PORT="${PORT:-8491}"
 STUB_PORT="${STUB_PORT:-3997}"
 WORK="$(mktemp -d)"
@@ -42,7 +42,16 @@ for _ in $(seq 1 50); do
   sleep 0.2
 done
 
-fail() { echo "FAIL: $1"; exit 1; }
+fail() {
+  echo "FAIL: $1"
+  for log in "$WORK/serve.log" "$WORK/stub.log" "$WORK/serve2.log"; do
+    if [ -f "$log" ]; then
+      echo "--- tail of $log ---"
+      tail -n 50 "$log" || true
+    fi
+  done
+  exit 1
+}
 get() { curl -s "http://127.0.0.1:$PORT$1"; }
 csrf() { get "$1" | grep -o 'name="csrf" value="[^"]*"' | awk 'NR==1' | sed 's/.*value="//; s/"//'; }
 
