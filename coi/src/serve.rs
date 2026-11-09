@@ -1100,6 +1100,11 @@ details.indgroup summary .count{margin-left:auto;color:var(--text-3);font-weight
   .ovgrid{grid-template-columns:1fr}
   .ovrail{position:static}
   .mega-panel{display:none!important}
+  .meganav{overflow-x:auto}
+  .tablecard{overflow-x:auto}
+  details.indgroup{overflow-x:auto}
+  .contract>div{flex:1 1 100%;border-left:0;border-top:1px solid var(--border-subtle)}
+  .contract>div:first-child{border-top:0}
   main{padding:16px}
 }
 ";
@@ -1109,7 +1114,7 @@ details.indgroup summary .count{margin-left:auto;color:var(--text-3);font-weight
 /// shell. Stroke glyphs on a 24×24 grid; i-play/i-pause are filled.
 /// Colour always comes from `color:` at the use site.
 const SPRITE: &str = "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><defs>\
-<symbol id=\"i-power\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/></g></symbol>\
+<symbol id=\"i-zap\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/></g></symbol>\
 <symbol id=\"i-users\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></g></symbol>\
 <symbol id=\"i-wheat\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 10c-3.5 0-5.5-2-5.5-5.5C10 4.5 12 6.5 12 10Z\"/><path d=\"M12 10c3.5 0 5.5-2 5.5-5.5C14 4.5 12 6.5 12 10Z\"/><path d=\"M12 16.5c-2.8 0-4.6-1.4-5-4 2.8 0 4.6 1.4 5 4Z\"/><path d=\"M12 16.5c2.8 0 4.6-1.4 5-4-2.8 0-4.6 1.4-5 4Z\"/><path d=\"M12 10v12\"/></g></symbol>\
 <symbol id=\"i-flask\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 3h6\"/><path d=\"M10 3v5.5L4.8 18.5A2 2 0 0 0 6.6 21.5h10.8a2 2 0 0 0 1.8-3L14 8.5V3\"/><path d=\"M7.8 15h8.4\"/></g></symbol>\
@@ -1215,7 +1220,8 @@ if(n===null||n===undefined){b.className='mustfix mustfix--off';b.innerHTML=ic('a
 if(!d.reachable){b.className='mustfix mustfix--off';b.innerHTML=ic('alert')+'<span>'+n+' must fix · last known</span>';return}
 if(n>0){b.className='mustfix mustfix--alert';b.innerHTML=ic('alert')+'<span>'+n+' must fix</span>'}
 else{b.className='mustfix mustfix--ok';b.innerHTML=ic('check')+'<span>0 must fix</span>'}}
-function poll(){fetch('/api/v1/must-fix-count').then(function(r){return r.json()}).then(render).catch(function(){})}
+function poll(){if(document.hidden)return;fetch('/api/v1/must-fix-count').then(function(r){return r.json()}).then(render).catch(function(){})}
+document.addEventListener('visibilitychange',function(){if(!document.hidden)poll()});
 setInterval(poll,60000)})();
 </script>";
 
@@ -1852,11 +1858,20 @@ fn svg_sparkline_big(points: &[f64], color: &str) -> String {
 }
 
 /// Terrain heatmap: a height grid (tiles, row-major) as inline
-/// SVG rects on a low→high ramp (deep water blue → green → tan →
-/// pale → white). Colour is never alone: the caller prints the
-/// height range as text beside it. Cell size scales so the SVG
-/// stays ~720 px wide; north (y = 0) is up, matching the game's
-/// own map orientation in bridge coordinates.
+/// SVG on a low→high ramp (deep water blue → green → tan → pale →
+/// white). Colour is never alone: the caller prints the height
+/// range as text beside it. Cell size scales so the SVG stays
+/// ~720 px wide; north (y = 0) is up, matching the game's own map
+/// orientation in bridge coordinates.
+///
+/// Rendering (perf round, DESIGN v3 addendum): the ramp is
+/// quantized to 64 colour buckets and each bucket is emitted as
+/// ONE <path> whose subpaths are horizontal runs of same-bucket
+/// cells. Per-cell <rect> elements cost ~74 bytes and one DOM
+/// node per tile — 1.27 MB / 16,865 nodes at the bridge's
+/// 16,384-tile region cap, ~560 ms of client parse. Bucketed
+/// paths measure 5–14× smaller on real terrain with at most 64
+/// DOM nodes, and no JavaScript is involved either way.
 fn svg_heatmap(heights: &[f64], w: usize, h: usize, min: f64, max: f64) -> String {
     if w == 0 || h == 0 || heights.len() < w * h {
         return String::new();
@@ -1874,31 +1889,51 @@ fn svg_heatmap(heights: &[f64], w: usize, h: usize, min: f64, max: f64) -> Strin
         max - min
     };
     let cell = (720.0 / w as f64).clamp(1.0, 24.0);
-    let mut rects = String::new();
+    const BUCKETS: usize = 64;
+    let bucket_of = |v: f64| -> usize {
+        let t = ((v - min) / span).clamp(0.0, 1.0);
+        ((t * BUCKETS as f64) as usize).min(BUCKETS - 1)
+    };
+    let colour_of = |t: f64| -> (u8, u8, u8) {
+        let seg = (t * (STOPS.len() - 1) as f64).min((STOPS.len() - 2) as f64);
+        let i = seg as usize;
+        let f = seg - i as f64;
+        let (r0, g0, b0) = STOPS[i];
+        let (r1, g1, b1) = STOPS[i + 1];
+        (
+            (r0 as f64 + (r1 as f64 - r0 as f64) * f) as u8,
+            (g0 as f64 + (g1 as f64 - g0 as f64) * f) as u8,
+            (b0 as f64 + (b1 as f64 - b0 as f64) * f) as u8,
+        )
+    };
+    let mut paths: Vec<String> = vec![String::new(); BUCKETS];
     for y in 0..h {
-        for x in 0..w {
-            let t = ((heights[y * w + x] - min) / span).clamp(0.0, 1.0);
-            let seg = (t * (STOPS.len() - 1) as f64).min((STOPS.len() - 2) as f64);
-            let i = seg as usize;
-            let f = seg - i as f64;
-            let (r0, g0, b0) = STOPS[i];
-            let (r1, g1, b1) = STOPS[i + 1];
-            let (r, g, b) = (
-                (r0 as f64 + (r1 as f64 - r0 as f64) * f) as u8,
-                (g0 as f64 + (g1 as f64 - g0 as f64) * f) as u8,
-                (b0 as f64 + (b1 as f64 - b0 as f64) * f) as u8,
-            );
-            rects.push_str(&format!(
-                "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\" fill=\"rgb({},{},{})\"/>",
+        let mut x = 0;
+        while x < w {
+            let b = bucket_of(heights[y * w + x]);
+            let mut x2 = x;
+            while x2 + 1 < w && bucket_of(heights[y * w + x2 + 1]) == b {
+                x2 += 1;
+            }
+            let run = (x2 - x + 1) as f64 * cell;
+            paths[b].push_str(&format!(
+                "M{:.1} {:.1}h{:.1}v{:.1}h{:.1}z",
                 x as f64 * cell,
                 y as f64 * cell,
+                run,
                 cell,
-                cell,
-                r,
-                g,
-                b
+                -run
             ));
+            x = x2 + 1;
         }
+    }
+    let mut out = String::new();
+    for (b, d) in paths.iter().enumerate() {
+        if d.is_empty() {
+            continue;
+        }
+        let (r, g, bl) = colour_of((b as f64 + 0.5) / BUCKETS as f64);
+        out.push_str(&format!("<path fill=\"rgb({r},{g},{bl})\" d=\"{d}\"/>"));
     }
     format!(
         "<svg width=\"{:.0}\" height=\"{:.0}\" viewBox=\"0 0 {:.1} {:.1}\" role=\"img\" style=\"max-width:100%;height:auto\">{}</svg>",
@@ -1906,7 +1941,7 @@ fn svg_heatmap(heights: &[f64], w: usize, h: usize, min: f64, max: f64) -> Strin
         h as f64 * cell,
         w as f64 * cell,
         h as f64 * cell,
-        rects
+        out
     )
 }
 
@@ -8430,8 +8465,10 @@ fn page_entities(state: &State, session: &Session, req: &Request) -> Response {
 }
 
 const TABLE_JS: &str = "<script>
-function filterTable(){var q=document.getElementById('tfilter').value.toLowerCase();document.querySelectorAll('#ptable tbody tr').forEach(function(r){r.style.display=r.textContent.toLowerCase().indexOf(q)>=0?'':'none'})}
-document.querySelectorAll('#ptable thead th').forEach(function(th,i){th.style.cursor='pointer';th.title='Click to sort';th.addEventListener('click',function(){var tb=document.querySelector('#ptable tbody');var rows=Array.prototype.slice.call(tb.rows);var dir=th.getAttribute('data-dir')==='asc'?'desc':'asc';th.setAttribute('data-dir',dir);rows.sort(function(a,b){var x=a.cells[i].textContent.trim(),y=b.cells[i].textContent.trim();var sx=x.trim().charAt(0)==='-'?-1:1,sy=y.trim().charAt(0)==='-'?-1:1;var nx=sx*parseFloat(x.replace(/[^0-9.]/g,'')),ny=sy*parseFloat(y.replace(/[^0-9.]/g,''));var c=(!isNaN(nx)&&!isNaN(ny)&&/[0-9]/.test(x)&&/[0-9]/.test(y))?nx-ny:x.localeCompare(y);return dir==='asc'?c:-c});rows.forEach(function(r){tb.appendChild(r)})})});
+function filterTable(){var t=document.getElementById('ptable');var f=document.getElementById('tfilter');if(!t||!f)return;var q=f.value.toLowerCase();t.querySelectorAll('tbody tr').forEach(function(r){r.style.display=r.textContent.toLowerCase().indexOf(q)>=0?'':'none'})}
+function wireTable(tid,fid){var t=document.getElementById(tid);if(!t)return;var f=document.getElementById(fid);if(f&&!f.hasAttribute('oninput')){f.addEventListener('input',function(){var q=f.value.toLowerCase();t.querySelectorAll('tbody tr').forEach(function(r){r.style.display=r.textContent.toLowerCase().indexOf(q)>=0?'':'none'})})}
+t.querySelectorAll('thead th').forEach(function(th,i){th.style.cursor='pointer';th.title='Click to sort';th.addEventListener('click',function(){var tb=t.querySelector('tbody');if(!tb)return;var rows=Array.prototype.slice.call(tb.rows);var dir=th.getAttribute('data-dir')==='asc'?'desc':'asc';th.setAttribute('data-dir',dir);rows.sort(function(a,b){var x=a.cells[i].textContent.trim(),y=b.cells[i].textContent.trim();var sx=x.trim().charAt(0)==='-'?-1:1,sy=y.trim().charAt(0)==='-'?-1:1;var nx=sx*parseFloat(x.replace(/[^0-9.]/g,'')),ny=sy*parseFloat(y.replace(/[^0-9.]/g,''));var c=(!isNaN(nx)&&!isNaN(ny)&&/[0-9]/.test(x)&&/[0-9]/.test(y))?nx-ny:x.localeCompare(y);return dir==='asc'?c:-c});rows.forEach(function(r){tb.appendChild(r)})})})}
+wireTable('ptable','tfilter');
 </script>";
 
 // ---------------------------------------------------------------------------

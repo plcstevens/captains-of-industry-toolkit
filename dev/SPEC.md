@@ -2445,3 +2445,41 @@ semantics and pinned).
   everything else unchanged. Security alerts and the Monday
   cargo-audit watch still cover vulnerabilities between
   monthly runs.
+
+## Addendum XXIX — UX / JavaScript performance round (2026-11-09)
+
+Measured examination (method, full tables and verdicts in
+DESIGN.md, "UX / JavaScript performance examination"
+addendum). Four behaviour changes, all in `coi/src/serve.rs`:
+
+- **Badge polling pauses while hidden.** `BADGE_JS`'s 60 s
+  poll now returns early when `document.hidden`, and a
+  `visibilitychange` listener polls immediately when the page
+  becomes visible again — no requests from unseen tabs, and a
+  fresh badge on return instead of up-to-60 s stale.
+- **Catalogue filter and sort restored.** The catalogue page
+  called a `wireTable('ctable','tfilter')` helper that was
+  never defined (console ReferenceError; the filter input was
+  dead). `TABLE_JS` now defines `wireTable` generally (filter
+  listener unless the input has an inline `oninput`, plus the
+  established header-click sort scoped to the named table) and
+  self-wires `#ptable` exactly as before.
+- **Terrain heatmap renders as bucketed paths.** The ramp is
+  quantized to 64 colour buckets, one `<path>` of horizontal
+  runs per bucket, replacing one `<rect>` per cell: at the
+  bridge's 16,384-tile region cap the page fell from
+  1,268,579 B / 16,865 DOM nodes / ~560 ms client parse to
+  462,395 B / 545 nodes / ~25 ms parse (adversarial noise
+  grid). Still pure inline SVG, no JavaScript.
+- **Sprite id collision removed.** The zap glyph was defined
+  under `id="i-power"` ahead of the true power glyph, so
+  `<use href="#i-power">` (Shutdown, Actions) rendered a
+  lightning bolt. The zap definition is now `i-zap`.
+
+Plus ≤900 px CSS reachability rules (mega-nav scrolls
+horizontally so the Records section is reachable at phone
+width; contract cells stack; table cards and index groups may
+scroll horizontally) — no desktop rendering change, and every
+page's measured height is unchanged. Suspicions the evidence
+cleared (filter/sort cost, per-row handlers, paint blocking)
+are recorded in the DESIGN addendum; nothing else changed.

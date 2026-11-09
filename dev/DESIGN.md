@@ -1354,3 +1354,176 @@ actionlint) plus the mod-package linter
 (`tools/lint_mod_packages.py`) were adopted in the same round;
 configs live at the root (.editorconfig, .pre-commit-config.yaml,
 .markdownlint.json, pyproject.toml).
+
+# Addendum — UX / JavaScript performance examination (2026-11-09)
+
+Philip's brief: examine the UX and think about the JavaScript
+performance. Discipline: measure first, fix only what the evidence
+condemns; every claim carries a number. Harness: Playwright +
+headless Chromium in the VM, the stub game server against both
+committed captures (`live-synthetic-v065`, `live-synthetic-fixnow`),
+1440×900 primary viewport, a 390×844 pass for reachability.
+Materiality bar, set before measuring: an interaction over
+100 ms on the synthetic data, a poll that burns cycles unseen, a
+paint that janks, wire size dominated by avoidable duplication,
+or a control that is dead or unreachable at 390 px.
+
+## Baseline measurements (before, v065 capture, 1440×900)
+
+Every page carries the same fixed overhead: inline CSS 25,686 B,
+icon sprite 6,321 B, badge script 769 B — 32,776 B before any
+content. All JavaScript is inline at the end of `<body>` (there
+is no `client.js`); the largest script total on any page is
+2,084 B (Entities/Machines). First contentful paint across all
+34 routes × 2 captures: 100–260 ms. Longtasks were sporadic
+(57–86 ms on about a third of loads, including the smallest
+pages — the VM's noise floor, not page-attributable).
+
+| Page | Wire | DOM nodes | FCP (ms) | Notes |
+| --- | --- | --- | --- | --- |
+| Overview | 54.6 KB | 687 | 260 | |
+| Issues | 59.4 KB | 772 | 188 | board, uncollapsed by rule |
+| Products | 96.5 KB | 1,957 | 216 | 60 rows, 62 forms (pin per row) |
+| Entities/Storages | 127.1 KB | 1,884 | 200 | 60 rows of 283 |
+| Entities/Machines | 74.2 KB | 1,170 | 216 | 60 rows of 223 |
+| Catalogue | 55.6 KB | 754 | 180 | filter dead — see verdicts |
+| Research catalogue | 188.2 KB | 2,934 | 172 | 251 forms (one §12 Queue form per node) |
+| Place | 118.0 KB | 2,423 | 188 | 83 forms (per-blueprint prepare) |
+| Terrain | 490.0 KB | 6,595 | 232 | 6,144 SVG rects = ~457 KB of the page |
+| Terrain, region at the bridge cap (16,384 cells, adversarial noise grid) | 1,268,579 B | 16,865 | 292 | responseEnd 90 ms but domInteractive 649 ms — ~560 ms of client parse; longtask 109 ms |
+| Smallest page (Shutdown) | 38.7 KB | 298 | 100 | fixed overhead is 85% of it |
+
+Interaction timings (median of 7, synchronous handler time):
+table filters 0.1–0.4 ms (Storages 0.2, Machines 0.1–0.2,
+Research over all 250 rows 0.3–0.4); table sorts 0.7–3.2 ms
+(Storages 0.7–1.3, Products 1.0–3.2). Every client-filtered
+table is server-paginated to at most 60 rows except the
+research catalogue's 250.
+
+## Verdicts per suspicion
+
+- **(a) Badge poller runs hidden — CONFIRMED, fixed.** The 60 s
+  `setInterval` had no visibility handling; a backgrounded page
+  polled once per 65 s window, same as the visible control
+  (headless Chromium does not flip `document.hidden` for
+  inactive pages, so the code fact plus the not-in-front poll
+  are the evidence). Cost per poll is small — a ~57 B JSON from
+  the badge cache (the endpoint never touches the game),
+  11.6–72.6 ms round trip — but it is invisible work, and the
+  badge could sit stale for up to 60 s after returning. Fix:
+  `poll()` returns early when `document.hidden`, and a
+  `visibilitychange` listener polls immediately on return.
+  Verified: forced-hidden → 0 polls; return → 1 poll at once.
+- **(b) Table sorting/filtering cost — CLEARED.** All medians
+  above are two orders of magnitude under the 100 ms bar. No
+  debounce added: the handlers themselves are sub-millisecond,
+  so debouncing would only add latency. Sort comparators do
+  regex work per comparison and still land at ≤3.2 ms on
+  60 rows.
+- **(c) Per-row handlers vs delegation — CLEARED.** No script
+  attaches a listener to a row. Listeners exist only per `<th>`
+  (≤9 per table) plus one global filter function per page,
+  invoked from the filter input.
+- **(d) Terrain rendering — CONFIRMED, fixed (it is SVG, not
+  canvas).** Per-cell `<rect>` markup was 93% of the Terrain
+  page and ~94% of the capped-region page, with the parse cost
+  measured above. Fix in `svg_heatmap`: the colour ramp is
+  quantized to 64 buckets; each bucket renders as ONE `<path>`
+  of horizontal same-bucket runs. No JavaScript, same inline
+  SVG, same `role="img"` contract, colour error ≤ 1/64 of the
+  ramp. Pixel-verified: 10 sampled cells (corners + interior)
+  rasterize exactly to their bucket colours. After, capture
+  grid (fixnow pair): wire 501,714 → 130,372 B, DOM
+  6,595 → 508, FCP 224 → 88 ms, page height unchanged
+  (1,917 px). After,
+  capped region (noise grid, the worst case for run-merging):
+  wire 1,268,579 → 462,395 B, DOM 16,865 → 545,
+  domInteractive 649 → 98 ms. A smooth-terrain 16,384-cell
+  grid models to ~165 KB of path data (Python model of the
+  same algorithm); the noise figure is the measured one.
+- **(e) Script parse/exec blocking first paint — CLEARED.**
+  No script in `<head>`; totals above; FCP range above. The
+  only head payload is the inline CSS, a founding constraint
+  (single binary, no external assets) whose measured cost is
+  the FCP range itself.
+- **(f) Repeated inline SVG payload — MOSTLY CLEARED, one bug
+  fixed.** The sprite is already deduplicated (`<symbol>` +
+  `<use>`, 6,321 B once per page). But it defined
+  `id="i-power"` TWICE: the first definition was the Feather
+  "zap" glyph, the second the real power glyph, and browsers
+  resolve `<use>` to the first — so Shutdown and Actions have
+  been showing a lightning bolt (visible in the 390 px
+  screenshots). The zap definition is renamed `i-zap`; the
+  power glyph now renders. Duplicate ids after: none.
+- **Catalogue filter — DEAD CONTROL, found by the crawl,
+  fixed.** `/catalogue` called `wireTable('ctable','tfilter')`,
+  a function that existed nowhere: a console `ReferenceError`
+  on every load (both captures) and a filter input that changed
+  nothing (typed "steel": 30 of 30 rows still visible).
+  `TABLE_JS` now defines a real `wireTable(tableId, filterId)`
+  — filter listener (skipped when the input already carries an
+  inline `oninput`) plus the same header-click sort, scoped to
+  the named table — and self-wires `#ptable` as before, so
+  Products/Entities behaviour is unchanged and Trade's inert
+  include stays an inert no-op. After: no console errors;
+  filter "clone" → exactly 1 of 30 rows (the Clone command),
+  cleared → 30; catalogue sort click works (22.1 ms first
+  click, 30 rows).
+- **Confirm-page countdown — NO JAVASCRIPT EXISTS.** The
+  confirm sheets carry static "expires in 2 minutes" text;
+  expiry is the server-side 120 s token. Nothing to optimise.
+  (A live countdown would be a new feature, not a fix; not
+  built.)
+- **Fixed overhead (CSS + sprite + badge = 32,776 B/page) —
+  REPORTED, not changed.** It dominates small pages by
+  construction of the single-file architecture. Measured
+  impact is the FCP range above; splitting assets would break
+  the no-external-assets constraint for no measured gain on
+  loopback.
+
+## The 390 px pass — findings and dispositions
+
+The product is desktop-first by contract (DESIGN §0); this pass
+separates "desktop-shaped" from "broken":
+
+- **Layout width expands to 439–841 px** on most pages (widest
+  unbreakable content wins) and the user pans horizontally.
+  Desktop-shaped; reported, not redesigned. All content probed
+  was reachable by that pan.
+- **Mega-nav Records section unreachable — FIXED.** On pages
+  whose layout stays 390 wide (Issues, Log, Snapshots, Manual),
+  the Records section sat at right edge 466 px with no page
+  scroll covering it — absent from the visible nav row in
+  screenshots. At ≤900 px `.meganav` now scrolls horizontally
+  (`overflow-x:auto`): verified scrollWidth 450 > clientWidth
+  358, and Records scrolls into view at right edge 374 ≤ 390.
+  Mega panels are already `display:none` at ≤900 by V3 design;
+  sections navigate by their landing links there.
+- **Contract strip clipped mid-word — FIXED.** At ≤900 px the
+  three contract cells stack full-width; verified unclipped
+  (scrollWidth == clientWidth per cell). Desktop strip
+  unchanged (media query only).
+- **Wide-table hardening — added, honestly inert in this
+  emulation.** `.tablecard` and `details.indgroup` get
+  `overflow-x:auto` at ≤900 px. In the 390 emulation the boxes
+  sized to their content (scrollWidth == clientWidth), so
+  reachability there came from page pan, not these rules; the
+  rules only bite when an ancestor constrains the box. Kept:
+  strictly safer, zero desktop effect.
+- Stat tiles, rail and forms reflow acceptably (rail goes
+  horizontal per the existing ≤900 rules). No unreadable text
+  found; no other dead controls at 390.
+
+## Cost of the fixes
+
+Badge visibility lines + the ≤900 rules add 333 B to every
+page; the generalised `TABLE_JS` adds ~400 B more on the four
+table pages. Every page's scrollHeight is byte-identical
+before/after on the fixnow capture — the v3 height discipline
+holds (Terrain 1,917, Products 2,843, Issues 3,695 on fixnow).
+Full standard check sequence green after the round (cargo test
+60/60, canon, plan parity, serializer pairs, QoS guards
+216/216, structure, mod packages, place/designate/log page
+checks, badge on both captures, audit-fail-loud, shutdown;
+clippy `-D warnings` and fmt clean). SPEC Addendum XXIX records
+the behaviour changes.
