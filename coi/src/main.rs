@@ -33,7 +33,7 @@ fn main() {
     let mut cli_game_url: Option<String> = None;
     let mut cli_proxy: Option<String> = None;
     let mut cli_host_header: Option<String> = None;
-    let mut db_path = env::var("COI_DB").unwrap_or_else(|_| "coi.db".to_string());
+    let mut db_path = env::var("COI_DB").unwrap_or_else(|_| default_db_path());
     let mut rest: Vec<String> = Vec::new();
 
     let mut i = 1;
@@ -188,7 +188,7 @@ fn usage() {
   forecast Outlook at current rates: stock runways + storage fill ETAs (arg: saved raw-stats JSON bundle, offline)
   serve    Local dashboard at http://127.0.0.1:8484/ (opts: --port, --bind)
   saveinfo Inspect a .save file offline (arg: path; flags: --json, --extract-screenshot)\n  plan-check DRY-RUN plan evaluation vs a state dir (arg: plan.json; flags: --state-dir, --out)\n  play     PREPARE-ONLY session walk over a state sequence (arg: plan.json; flags: --state-seq, --session-out, --transcript-out)\n  terrain  Terrain sensing (CoiBridge 0.6.5): `terrain deposits`, `terrain region X0 Y0 X1 Y1`, `terrain estimate X0 Y0 X1 Y1 TARGET`\n\n\
-         ENV: COI_GAME_URL, COI_PROXY, COI_HOST_HEADER, COI_DB (default ./coi.db)\n\
+         ENV: COI_GAME_URL, COI_PROXY, COI_HOST_HEADER, COI_DB (default: ./coi.db on Windows; on Linux/macOS the OS data folder — see INSTALL.md)\n\
          Config: [game] url/host_header/proxy in coi.toml (env and CLI override it).\n\
          Default game URL: http://127.0.0.1:3073 (direct, on the game PC).\n\
          Through any TCP tunnel from another machine (SSH, WireGuard, Tailscale, ...): --game-url http://<pc-name>:3073 --host-header localhost:3073, plus --proxy env or --proxy host:port if the tunnel needs a CONNECT proxy. See REMOTE-ACCESS.md."
@@ -198,6 +198,143 @@ fn usage() {
 fn die(msg: &str) -> ! {
     eprintln!("error: {msg}");
     exit(2);
+}
+
+// ---------------------------------------------------------------------------
+// Per-OS data/config locations (daemon round, SPEC Addendum XXIV)
+// ---------------------------------------------------------------------------
+
+/// The OS-conventional folder this app keeps its data in, for the
+/// platforms where a bare relative default is the wrong answer:
+/// macOS `~/Library/Application Support/Superintendent`, Linux
+/// `$XDG_DATA_HOME/superintendent` (or `~/.local/share/...`).
+/// Windows returns None: there the established behaviour — the
+/// database beside the program — is the convention, and existing
+/// installs must see zero change.
+pub(crate) fn os_data_dir() -> Option<std::path::PathBuf> {
+    let home = env::var_os("HOME").map(std::path::PathBuf::from);
+    os_data_dir_from(env::var("XDG_DATA_HOME").ok().as_deref(), home.as_deref())
+}
+
+fn os_data_dir_from(
+    xdg_data_home: Option<&str>,
+    home: Option<&std::path::Path>,
+) -> Option<std::path::PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = xdg_data_home;
+        home.map(|h| {
+            h.join("Library")
+                .join("Application Support")
+                .join("Superintendent")
+        })
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        if let Some(x) = xdg_data_home {
+            if !x.is_empty() {
+                return Some(std::path::PathBuf::from(x).join("superintendent"));
+            }
+        }
+        home.map(|h| h.join(".local").join("share").join("superintendent"))
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (xdg_data_home, home);
+        None
+    }
+}
+
+/// The OS-conventional config folder, same shapes as
+/// [`os_data_dir`] but on the config side: macOS shares the
+/// Application Support folder; Linux uses `$XDG_CONFIG_HOME`
+/// (or `~/.config`). Windows returns None (zero change).
+pub(crate) fn os_config_dir() -> Option<std::path::PathBuf> {
+    let home = env::var_os("HOME").map(std::path::PathBuf::from);
+    os_config_dir_from(env::var("XDG_CONFIG_HOME").ok().as_deref(), home.as_deref())
+}
+
+fn os_config_dir_from(
+    xdg_config_home: Option<&str>,
+    home: Option<&std::path::Path>,
+) -> Option<std::path::PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = xdg_config_home;
+        home.map(|h| {
+            h.join("Library")
+                .join("Application Support")
+                .join("Superintendent")
+        })
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        if let Some(x) = xdg_config_home {
+            if !x.is_empty() {
+                return Some(std::path::PathBuf::from(x).join("superintendent"));
+            }
+        }
+        home.map(|h| h.join(".config").join("superintendent"))
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (xdg_config_home, home);
+        None
+    }
+}
+
+/// Where the database lives when neither COI_DB nor --db says
+/// otherwise. Windows: `coi.db` beside the program / in the working
+/// folder — exactly what existing installs already use. macOS and
+/// Linux: a `coi.db` already sitting in the working folder still
+/// wins (a folder install keeps working); otherwise the OS data
+/// dir, created on demand — a daemon started by launchd/systemd
+/// from an arbitrary working folder must not scatter (or lose) its
+/// database there.
+fn default_db_path() -> String {
+    #[cfg(not(unix))]
+    {
+        "coi.db".to_string()
+    }
+    #[cfg(unix)]
+    {
+        if std::path::Path::new("coi.db").exists() {
+            return "coi.db".to_string();
+        }
+        match os_data_dir() {
+            Some(dir) => {
+                let _ = std::fs::create_dir_all(&dir);
+                dir.join("coi.db").to_string_lossy().into_owned()
+            }
+            None => "coi.db".to_string(),
+        }
+    }
+}
+
+/// Every place a coi.toml may live, in precedence order — shared by
+/// the [game], [productivity] and [builder] readers so all three
+/// sections resolve identically: $COI_CONFIG, ./coi.toml, coi.toml
+/// next to the db, and finally the OS config dir (the daemon case:
+/// a service's working folder is not the install folder). First
+/// file that exists wins, as each reader has always done.
+pub(crate) fn config_candidates(db_path: &str) -> Vec<std::path::PathBuf> {
+    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+    if let Ok(p) = env::var("COI_CONFIG") {
+        candidates.push(p.into());
+    }
+    candidates.push("coi.toml".into());
+    if let Some(parent) = std::path::Path::new(db_path).parent() {
+        if !parent.as_os_str().is_empty() {
+            candidates.push(parent.join("coi.toml"));
+        }
+    }
+    if let Some(dir) = os_config_dir() {
+        let p = dir.join("coi.toml");
+        if !candidates.contains(&p) {
+            candidates.push(p);
+        }
+    }
+    candidates
 }
 
 fn parse_authority(url: &str) -> String {
@@ -210,22 +347,13 @@ fn parse_authority(url: &str) -> String {
 /// The `[game]` section of coi.toml: `url`, `host_header`, `proxy` —
 /// the topology a self-hoster on a second machine needs, expressible
 /// in the config file so even the bare double-click launch picks it
-/// up. Search order matches [productivity] and [builder]:
-/// $COI_CONFIG, ./coi.toml, coi.toml next to the db. Parser is the
-/// same deliberately minimal flat `key = value` style; unknown keys
-/// and other sections are ignored.
+/// up. Search order (shared by [productivity] and [builder] via
+/// `config_candidates`): $COI_CONFIG, ./coi.toml, coi.toml next to
+/// the db, the OS config dir. Parser is the same deliberately
+/// minimal flat `key = value` style; unknown keys and other
+/// sections are ignored.
 fn load_game_section(db_path: &str) -> (Option<String>, Option<String>, Option<String>) {
-    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
-    if let Ok(p) = std::env::var("COI_CONFIG") {
-        candidates.push(p.into());
-    }
-    candidates.push("coi.toml".into());
-    if let Some(parent) = std::path::Path::new(db_path).parent() {
-        if !parent.as_os_str().is_empty() {
-            candidates.push(parent.join("coi.toml"));
-        }
-    }
-    for path in candidates {
+    for path in config_candidates(db_path) {
         if let Ok(text) = std::fs::read_to_string(&path) {
             return parse_game_toml(&text);
         }
@@ -1733,5 +1861,73 @@ mod tests {
     fn game_toml_absent_section_is_none() {
         let (url, host, proxy) = parse_game_toml("[productivity]\nfire_point = 0.4\n");
         assert!(url.is_none() && host.is_none() && proxy.is_none());
+    }
+
+    /// Per-OS dirs (daemon round): Linux honours XDG first, then
+    /// the ~/.local/share resp. ~/.config fallbacks; an empty XDG
+    /// value counts as unset; no home means no dir (the caller
+    /// falls back to the working folder).
+    #[cfg(all(unix, not(target_os = "macos")))]
+    #[test]
+    fn os_dirs_follow_xdg() {
+        let home = std::path::Path::new("/home/tester");
+        assert_eq!(
+            os_data_dir_from(Some("/xdg/data"), Some(home)),
+            Some(std::path::PathBuf::from("/xdg/data/superintendent"))
+        );
+        assert_eq!(
+            os_data_dir_from(None, Some(home)),
+            Some(std::path::PathBuf::from(
+                "/home/tester/.local/share/superintendent"
+            ))
+        );
+        assert_eq!(
+            os_data_dir_from(Some(""), Some(home)),
+            Some(std::path::PathBuf::from(
+                "/home/tester/.local/share/superintendent"
+            ))
+        );
+        assert_eq!(
+            os_config_dir_from(Some("/xdg/cfg"), Some(home)),
+            Some(std::path::PathBuf::from("/xdg/cfg/superintendent"))
+        );
+        assert_eq!(
+            os_config_dir_from(None, Some(home)),
+            Some(std::path::PathBuf::from(
+                "/home/tester/.config/superintendent"
+            ))
+        );
+        assert_eq!(os_data_dir_from(None, None), None);
+        assert_eq!(os_config_dir_from(None, None), None);
+    }
+
+    /// macOS: both dirs are the one Application Support folder;
+    /// XDG variables are not a Mac convention and are ignored.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn os_dirs_follow_application_support() {
+        let home = std::path::Path::new("/Users/tester");
+        let want = Some(std::path::PathBuf::from(
+            "/Users/tester/Library/Application Support/Superintendent",
+        ));
+        assert_eq!(os_data_dir_from(Some("/xdg/data"), Some(home)), want);
+        assert_eq!(os_config_dir_from(None, Some(home)), want);
+        assert_eq!(os_data_dir_from(None, None), None);
+    }
+
+    /// The config search keeps its established head (COI_CONFIG is
+    /// exercised elsewhere; here: ./coi.toml before the db-adjacent
+    /// file) and appends at most one OS-config-dir entry, last.
+    #[test]
+    fn config_candidates_keep_order_and_append_os_dir() {
+        let c = config_candidates("some/dir/coi.db");
+        assert_eq!(c[0], std::path::PathBuf::from("coi.toml"));
+        assert_eq!(c[1], std::path::PathBuf::from("some/dir/coi.toml"));
+        if let Some(dir) = os_config_dir() {
+            assert_eq!(c.last(), Some(&dir.join("coi.toml")));
+            assert_eq!(c.len(), 3);
+        } else {
+            assert_eq!(c.len(), 2);
+        }
     }
 }

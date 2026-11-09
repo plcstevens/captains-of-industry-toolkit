@@ -17,6 +17,7 @@ python3 tools/check_repo_structure.py
 python3 tools/lint_mod_packages.py
 for s in place designate log badge; do bash tools/check_${s}_page.sh; done
 bash tools/check_audit_fail_loud.sh
+bash tools/check_shutdown.sh
 CAPTURE=dev/captures/live-synthetic-fixnow bash tools/check_badge.sh
 ```
 
@@ -25,10 +26,11 @@ wires it for commits): `cargo fmt` + `cargo clippy -- -D warnings`
 (Rust), `ruff check` + `ruff format` (Python, `pyproject.toml`),
 `shellcheck` (shell), `markdownlint` (Markdown,
 `.markdownlint.json` — pragmatic set: MD013/MD025/MD033/MD036/
-MD040/MD041 off by design — long prose lines, multi-H1 addenda
-documents, inline HTML, bold lead-ins as house style, unlabelled
-fences and non-H1 openings are this repo's conventions, not
-defects), `yamllint` (`.yamllint.yml`), `actionlint` against the
+MD040/MD041/MD060 off by design — long prose lines, multi-H1
+addenda documents, inline HTML, bold lead-ins as house style,
+unlabelled fences, non-H1 openings and compact table separators
+are this repo's conventions, not defects), `yamllint`
+(`.yamllint.yml`), `actionlint` against the
 workflow draft. Adding the structure check to CI is already in
 the draft workflow (dev/RELEASE-WORKFLOW-DRAFT.md) — no separate
 step needed when the owner pastes it.
@@ -40,6 +42,7 @@ step needed when the owner pastes it.
 | `check_plan_parity.py` | Proves the Python reference engine and the Rust runner return identical verdicts on every fixture state. |
 | `check_place_page.sh` / `check_designate_page.sh` / `check_log_page.sh` / `check_badge.sh` | End-to-end page checks against the stub game server (the designation check independently re-verifies the sealed job file's hash in Python). |
 | `check_audit_fail_loud.sh` | Breaks the database mid-flow and asserts the UI reports an applied-but-unaudited command instead of claiming success. |
+| `check_shutdown.sh` | Exercises the in-UI Shutdown end to end: top-bar control, confirm page, tokenless POST refused (403), confirmed POST answers the landing page, the process exits 0, the port is released, and a relaunch on the same database passes `PRAGMA integrity_check` with the pre-shutdown snapshot and the shutdown's own Log event intact. |
 | `check_serializer_pairs.py` | Build gate: every mod service that subscribes to saved calendar events must carry its serializer pair and manifest flag, or the build refuses. |
 | `check_canon.py` | Drift gate: every wired number in the canon (`docs/canon/`) must agree with the code it cites, and the generated `canon.json` / agent rendering must be fresh. |
 | `canon_to_json.py` | Generates `docs/canon/canon.json` (embedded by the server) and `.llms/canon-for-agents.md` from the canon YAML source. |

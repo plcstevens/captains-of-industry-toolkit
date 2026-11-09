@@ -48,7 +48,8 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
 
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -121,6 +122,57 @@ struct State {
     badge: Mutex<BadgeCache>,
     prepared: Mutex<HashMap<String, Prepared>>,
     prepared_jobs: Mutex<HashMap<String, PreparedJob>>,
+    /// Set by the /shutdown POST (daemon round, Addendum XXIV):
+    /// the accept loop notices within a poll interval, stops
+    /// accepting, drains in-flight requests, and exits 0.
+    shutdown: AtomicBool,
+    /// Requests currently being handled; the shutdown path waits
+    /// for this to reach zero so an in-flight write (or its audit
+    /// row) always finishes before the database is checkpointed.
+    inflight: Arc<Inflight>,
+}
+
+/// In-flight request counter with a drained signal. `begin`
+/// returns a guard; the count drops when the guard does — i.e.
+/// after the response has been fully written to the socket.
+struct Inflight {
+    count: Mutex<usize>,
+    drained: Condvar,
+}
+
+struct InflightGuard(Arc<Inflight>);
+
+impl Inflight {
+    fn new() -> Arc<Inflight> {
+        Arc::new(Inflight {
+            count: Mutex::new(0),
+            drained: Condvar::new(),
+        })
+    }
+
+    fn begin(self: &Arc<Inflight>) -> InflightGuard {
+        let mut n = self.count.lock().unwrap_or_else(|p| p.into_inner());
+        *n += 1;
+        InflightGuard(Arc::clone(self))
+    }
+
+    /// Block until every in-flight request has finished.
+    fn wait_drained(&self) {
+        let mut n = self.count.lock().unwrap_or_else(|p| p.into_inner());
+        while *n > 0 {
+            n = self.drained.wait(n).unwrap_or_else(|p| p.into_inner());
+        }
+    }
+}
+
+impl Drop for InflightGuard {
+    fn drop(&mut self) {
+        let mut n = self.0.count.lock().unwrap_or_else(|p| p.into_inner());
+        *n = n.saturating_sub(1);
+        if *n == 0 {
+            self.0.drained.notify_all();
+        }
+    }
 }
 
 /// Poison-tolerant lock for the session/prepared maps (audit R1):
@@ -424,21 +476,59 @@ pub fn cmd(cfg: &Config, db_path: &str, args: &[String]) -> i32 {
         }),
         prepared: Mutex::new(HashMap::new()),
         prepared_jobs: Mutex::new(HashMap::new()),
+        shutdown: AtomicBool::new(false),
+        inflight: Inflight::new(),
     });
-    for stream in listener.incoming() {
-        match stream {
-            Ok(mut s) => {
+    // Non-blocking accept with a short poll: the /shutdown POST
+    // sets its flag from a handler thread, and this loop is what
+    // notices — then stops accepting, drains, and exits cleanly.
+    if let Err(e) = listener.set_nonblocking(true) {
+        eprintln!("serve: cannot set non-blocking accept: {e}");
+        return 1;
+    }
+    loop {
+        if state.shutdown.load(Ordering::SeqCst) {
+            break;
+        }
+        match listener.accept() {
+            Ok((mut s, _)) => {
                 let state = Arc::clone(&state);
                 std::thread::spawn(move || {
+                    // The guard drops only after the response has
+                    // been written — the shutdown drain measures
+                    // real in-flight work, not accepted sockets.
+                    let _guard = state.inflight.begin();
                     if let Some(req) = read_request(&mut s) {
                         let resp = route(&state, &req);
                         send(&mut s, resp);
                     }
                 });
             }
-            Err(e) => eprintln!("serve: accept failed: {e}"),
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::sleep(std::time::Duration::from_millis(15));
+            }
+            Err(e) => {
+                eprintln!("serve: accept failed: {e}");
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
         }
     }
+    // Graceful exit (Addendum XXIV): no new requests are accepted
+    // (the listener drops with this function); in-flight requests
+    // finish — including any write and its audit row — then the
+    // database is checkpointed so the WAL is folded back into the
+    // main file before the process goes.
+    println!("serve: shutdown requested — finishing in-flight requests…");
+    state.inflight.wait_drained();
+    match Store::open(&state.db_path) {
+        Ok(st) => {
+            if let Err(e) = st.checkpoint() {
+                eprintln!("serve: database checkpoint failed: {e}");
+            }
+        }
+        Err(e) => eprintln!("serve: cannot reopen database to checkpoint it: {e}"),
+    }
+    println!("serve: stopped cleanly.");
     0
 }
 
@@ -513,6 +603,8 @@ fn route(state: &State, req: &Request) -> Response {
         ("GET", "/research") => page_research(state, &session, req),
         ("GET", "/research/node") => page_research_node(state, &session, req),
         ("GET", "/api/v1/must-fix-count") => api_must_fix_count(state),
+        ("GET", "/shutdown") => page_shutdown(state, &session),
+        ("POST", "/shutdown") => do_shutdown(state, &session, req),
         ("GET", "/actions") => page_actions(state, &session),
         ("POST", "/actions/prepare") => do_prepare(state, &session, req),
         ("GET", "/prepare") => page_prepare(state, &session, req),
@@ -566,6 +658,93 @@ fn route(state: &State, req: &Request) -> Response {
         ("GET", "/favicon.ico") => Response::text(204, ""),
         _ => Response::text(404, "not found"),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Shutdown (daemon round, SPEC Addendum XXIV)
+// ---------------------------------------------------------------------------
+
+/// The confirm step of the top-bar Shutdown control. Two-step by
+/// design: this page names exactly what stopping means BEFORE the
+/// POST exists — after it, this site is gone and there is nothing
+/// left to explain anything with.
+fn page_shutdown(state: &State, session: &Session) -> Response {
+    let mut body = page_head(
+        "System",
+        "Shut down",
+        "Stop the Superintendent website on this machine.",
+        "",
+    );
+    body.push_str(
+        "<div class=\"card\"><div class=\"cardhead\"><h2>What happens when you shut down</h2></div>\
+         <p><b>This website stops.</b> The program exits; this tab — and any other tab or browser \
+         showing the site — will fail to load from then on. There is no page after this one but the \
+         confirmation that it stopped.</p>\
+         <p><b>Nothing is lost.</b> Anything already in flight finishes first, then the database is \
+         closed cleanly. Snapshots, the audit log and your settings stay on disk, ready for the next launch.</p>\
+         <p><b>Your game is not touched.</b> Shutting down the companion never changes, pauses or \
+         stops the game itself — it only stops this website.</p>\
+         <p><b>To use it again</b>, launch the program again the way you started it (double-click, \
+         Start menu, or <span class=\"mono\">systemctl --user start superintendent</span> / \
+         <span class=\"mono\">launchctl start com.coi.superintendent</span> if you run it as a service). \
+         If you set it to start on boot, it also comes back at your next logon.</p></div>",
+    );
+    body.push_str(&format!(
+        "<form method=\"post\" action=\"/shutdown\">\
+         <input type=\"hidden\" name=\"csrf\" value=\"{}\">\
+         <p><button class=\"btn--danger\" type=\"submit\">Shut down Superintendent</button> \
+         <a class=\"btn btn--secondary\" href=\"/\">Cancel — keep it running</a></p></form>",
+        esc(&session.csrf)
+    ));
+    Response::html(200, layout(state, session, "Shut down", &body))
+}
+
+/// The shutdown itself. CSRF-checked like every POST. Records a
+/// system activity event (best-effort — a database problem must
+/// never block stopping), sets the flag the accept loop polls,
+/// and answers with the landing page: the last thing this server
+/// will ever serve in this run.
+fn do_shutdown(state: &State, session: &Session, req: &Request) -> Response {
+    if let Err(r) = check_csrf(session, req) {
+        return r;
+    }
+    if let Ok(st) = store(state) {
+        let _ = st.activity_add(&ActivityEvent {
+            event_key: format!("shutdown-{}-{}", now_unix(), rand_hex(4)),
+            recorded_ts_unix: now_unix() as i64,
+            source: "system".to_string(),
+            actor: Some(session.user.clone()),
+            category: Some("website".to_string()),
+            action: "shutdown".to_string(),
+            summary: Some(
+                "Website shut down from the top-bar Shutdown control; in-flight requests \
+                 drained and the database checkpointed before exit."
+                    .to_string(),
+            ),
+            game_id: None,
+            game_date: None,
+            game_tick: None,
+            outcome: Some("stopped".to_string()),
+            payload_json: None,
+        });
+    }
+    state.shutdown.store(true, Ordering::SeqCst);
+    Response::html(
+        200,
+        format!(
+            "<!doctype html><html><head><meta charset=\"utf-8\">\
+             <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
+             <title>Stopped — Superintendent</title><style>{CSS}</style></head><body>\
+             <main style=\"max-width:640px;margin:12vh auto 0;padding:0 16px\">\
+             <div class=\"card\"><div class=\"cardhead\"><h2>Superintendent has stopped</h2></div>\
+             <p><b>You can close this tab.</b> The website is no longer running, so this address \
+             will not load again until the program is started.</p>\
+             <p>Nothing was lost: in-flight work finished and the database was closed cleanly. \
+             Your game was not touched.</p>\
+             <p>To use Superintendent again, launch the program again the way you started it — \
+             or, if you run it as a service, restart that service.</p></div></main></body></html>"
+        ),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -804,6 +983,7 @@ details.payload pre{background:var(--surface-2);color:var(--text-2)}
 .topsearch{margin-left:auto;display:flex;align-items:center;gap:6px;background:var(--surface-3);border:1px solid var(--border-strong);border-radius:var(--r-sm);padding:5px 9px;color:var(--text-3)}
 .topsearch input{background:none;border:0;color:var(--text-1);font:13px var(--font-ui);width:170px;outline:none;margin:0;padding:0}
 .topstatus{display:flex;align-items:center;gap:8px;white-space:nowrap;color:var(--text-2);font-size:13px}
+.topshutdown{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .topstatus .date{color:var(--text-1);font-weight:650}
 .topstatus .down{color:var(--critical);font-weight:600}
 /* must-fix badge (V2 addition, 2026-11-06) */
@@ -950,6 +1130,7 @@ const SPRITE: &str = "<svg width=\"0\" height=\"0\" style=\"position:absolute\" 
 <symbol id=\"i-layers\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"12 2 2 7 12 12 22 7 12 2\"/><polyline points=\"2 17 12 22 22 17\"/><polyline points=\"2 12 12 17 22 12\"/></g></symbol>\
 <symbol id=\"i-search\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><line x1=\"21\" y1=\"21\" x2=\"16.5\" y2=\"16.5\"/></g></symbol>\
 <symbol id=\"i-clipboard\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\"/><rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M9 12h6\"/><path d=\"M9 16h4\"/></g></symbol>\
+<symbol id=\"i-power\" viewBox=\"0 0 24 24\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M18.36 6.64a9 9 0 1 1-12.73 0\"/><line x1=\"12\" y1=\"2\" x2=\"12\" y2=\"12\"/></g></symbol>\
 </defs></svg>";
 
 /// An icon use-site. `name` is one of the sprite ids without the
@@ -1382,12 +1563,14 @@ fn layout_ctx(
          <nav class=\"meganav\">{}</nav>\
          <form class=\"topsearch\" method=\"get\" action=\"/products\">{}<input type=\"text\" name=\"q\" placeholder=\"Jump to product, page…\" aria-label=\"Jump to product\"></form>\
          {}\
-         <div class=\"topstatus\">{}</div></header>\
+         <div class=\"topstatus\">{}</div>\
+         <a class=\"btn btn--ghost btn--sm topshutdown\" href=\"/shutdown\">{} Shutdown</a></header>\
          <div class=\"shell\"><aside class=\"rail\">{}</aside><main>{body}</main></div>{BADGE_JS}</body></html>",
         mega,
         icon("search"),
         mustfix_badge(state),
         status_strip(state),
+        icon("power"),
         rail
     )
 }
@@ -4096,22 +4279,15 @@ fn blueprint_entry(slug: &str) -> Option<Value> {
 }
 
 /// The QoS jobs folder confirmed jobs are written into. Config:
-/// `[builder] jobs_dir` in coi.toml (same search order as
-/// [productivity]); default `%APPDATA%\Captain of Industry\QoS\
-/// jobs` on Windows. The fallback (APPDATA unset — never on
-/// Windows) is a plain `qos-jobs` folder next to the binary.
+/// `[builder] jobs_dir` in coi.toml (the shared search order,
+/// `crate::config_candidates`); default `%APPDATA%\Captain of
+/// Industry\QoS\jobs` on Windows. On Linux/macOS the APPDATA
+/// variable is honoured when set (a Proton prefix exports it);
+/// otherwise the fallback is a `qos-jobs` folder inside the OS
+/// data dir, and `[builder] jobs_dir` is the documented way to
+/// point at the game's prefix — see INSTALL.md.
 fn builder_jobs_dir(db_path: &str) -> std::path::PathBuf {
-    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
-    if let Ok(p) = std::env::var("COI_CONFIG") {
-        candidates.push(p.into());
-    }
-    candidates.push("coi.toml".into());
-    if let Some(parent) = std::path::Path::new(db_path).parent() {
-        if !parent.as_os_str().is_empty() {
-            candidates.push(parent.join("coi.toml"));
-        }
-    }
-    for path in candidates {
+    for path in crate::config_candidates(db_path) {
         if let Ok(text) = std::fs::read_to_string(&path) {
             let mut in_builder = false;
             for raw in text.lines() {
@@ -4141,6 +4317,9 @@ fn builder_jobs_dir(db_path: &str) -> std::path::PathBuf {
                 .join("QoS")
                 .join("jobs");
         }
+    }
+    if let Some(dir) = crate::os_data_dir() {
+        return dir.join("qos-jobs");
     }
     std::path::PathBuf::from("qos-jobs")
 }
@@ -6402,7 +6581,6 @@ fn page_why(state: &State, session: &Session, req: &Request) -> Response {
 /// surface. Static reference text; no live data except the
 /// install's own facts where noted.
 fn page_manual(state: &State, session: &Session) -> Response {
-    let _ = state;
     let mut body = page_head(
         "Guidance",
         "Learn the tool",
@@ -6414,12 +6592,29 @@ fn page_manual(state: &State, session: &Session) -> Response {
         "Informational — a manual; the actions it describes live on their own pages",
         "Static reference text, bundled with the tool. Nothing here needs the game",
     ));
-    body.push_str(
+    body.push_str(&format!(
         "<div class=\"card\"><div class=\"cardhead\"><h2>What this is</h2></div>\
          <p>Superintendent is a single program that serves this website from your own machine and talks to your running game of Captain of Industry. \
          There is no account, no cloud and no telemetry: the only thing it ever contacts is your game. Its data — snapshots, the audit log, settings — \
-         lives in two files next to the program: <code>coi.db</code> and <code>coi.toml</code>. Run the program and open the address it prints \
+         lives in a database file (this install: <code>{}</code>) and an optional <code>coi.toml</code> settings file. Run the program and open the address it prints \
          (by default http://127.0.0.1:8484). To let another machine on your own network reach it, see REMOTE-ACCESS.md in the toolkit — and read its warnings first.</p></div>",
+        esc(&state.db_path)
+    ));
+    body.push_str(
+        "<div class=\"card\"><div class=\"cardhead\"><h2>Run it all the time</h2></div>\
+         <p>The site only exists while the program runs, so most players leave it running: it is \
+         loopback-only and idles at a few megabytes of memory and no measurable CPU. On Windows, put a \
+         shortcut in the Startup folder (simplest) or a Task Scheduler \u{201c}at logon\u{201d} task (most reliable); \
+         on Linux a <code>systemd --user</code> service; on macOS a launchd agent. Where its data lives: on \
+         Windows, <code>coi.db</code> sits beside the program; on Linux it defaults to \
+         <code>~/.local/share/superintendent/</code> (or <code>$XDG_DATA_HOME</code>), with settings in \
+         <code>~/.config/superintendent/coi.toml</code>; on macOS both live in \
+         <code>~/Library/Application Support/Superintendent/</code>. The full recipes, with the exact \
+         settings that matter, are in INSTALL.md (\u{201c}Run it all the time\u{201d}).</p>\
+         <p><b>Stopping it:</b> the <b>Shutdown</b> control at the right of the top bar (two steps: it \
+         tells you what will happen, then you confirm) — in-flight work finishes and the database closes \
+         cleanly. From the OS: end the scheduled task, <code>systemctl --user stop superintendent</code>, \
+         or <code>launchctl stop com.coi.superintendent</code>. Your game is never touched by stopping.</p></div>",
     );
     body.push_str(
         "<div class=\"card\"><div class=\"cardhead\"><h2>The pages, by domain</h2></div>\
@@ -9142,6 +9337,8 @@ mod tests {
             }),
             prepared: Mutex::new(HashMap::new()),
             prepared_jobs: Mutex::new(HashMap::new()),
+            shutdown: AtomicBool::new(false),
+            inflight: Inflight::new(),
         }
     }
 
@@ -9206,6 +9403,46 @@ mod tests {
         // The deficit panel carries the spec'd CTA row (V2.7 row 12).
         assert!(neg.contains("Open Actions"), "{neg}");
         assert!(!pos.contains("Open Actions"), "{pos}");
+    }
+
+    /// Shutdown (Addendum XXIV): the confirm page names the
+    /// consequences and carries the form; a tokenless POST is
+    /// refused and does not set the flag.
+    #[test]
+    fn shutdown_confirm_page_and_token_gate() {
+        let st = test_state();
+        let s = local_session(&st);
+        let r = page_shutdown(&st, &s);
+        let body = String::from_utf8(r.body).unwrap();
+        assert!(body.contains("What happens when you shut down"), "{body}");
+        assert!(body.contains("action=\"/shutdown\""), "{body}");
+        assert!(body.contains("name=\"csrf\""), "{body}");
+        let r2 = do_shutdown(&st, &s, &test_req("127.0.0.1:8484"));
+        assert_eq!(r2.status, 403);
+        assert!(!st.shutdown.load(Ordering::SeqCst));
+    }
+
+    /// The drain the graceful exit waits on: it must not return
+    /// while a request guard is alive, and must return once the
+    /// last guard drops.
+    #[test]
+    fn inflight_drain_waits_for_last_guard() {
+        let inf = Inflight::new();
+        let guard = inf.begin();
+        let done = std::sync::Arc::new(AtomicBool::new(false));
+        let waiter = {
+            let inf = Arc::clone(&inf);
+            let done = Arc::clone(&done);
+            std::thread::spawn(move || {
+                inf.wait_drained();
+                done.store(true, Ordering::SeqCst);
+            })
+        };
+        std::thread::sleep(std::time::Duration::from_millis(60));
+        assert!(!done.load(Ordering::SeqCst));
+        drop(guard);
+        waiter.join().unwrap();
+        assert!(done.load(Ordering::SeqCst));
     }
 
     /// Badge states: alert with the count when issues exist;

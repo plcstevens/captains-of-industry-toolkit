@@ -274,6 +274,17 @@ impl Store {
         Ok(Store { conn })
     }
 
+    /// Fold the write-ahead log back into the main database file
+    /// and truncate it — the clean-close step of a graceful
+    /// shutdown (daemon round, Addendum XXIV), so the database a
+    /// user copies or backs up right after stopping the app is
+    /// complete in the one file.
+    pub fn checkpoint(&self) -> Result<(), String> {
+        self.conn
+            .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+            .map_err(|e| format!("db checkpoint: {e}"))
+    }
+
     /// Insert one `coi-snapshot/1` JSON value plus its triage issues.
     /// Returns Ok(Some(id)) for a new snapshot, Ok(None) when this
     /// (game_id, tick) is already stored.

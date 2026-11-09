@@ -2097,3 +2097,76 @@ clippy -D warnings clean; every check script green on the final
 tree (place / designate / log / audit-fail-loud / badge on both
 captures / parity / serializer pairs / canon / structure / mod
 packages, source and zips).
+
+## Addendum XXIV — Daemon round: in-UI Shutdown, per-OS paths, three-platform releases (2026-11-09)
+
+The follow-on round to V3, sequenced by Philip (2026-11-09):
+make the program a well-behaved always-on local daemon without
+changing §12 or the no-login posture.
+
+- **In-UI Shutdown.** A Shutdown control sits in the top bar's
+  system area. `GET /shutdown` renders a confirm page that names
+  the consequences *before* the POST: the site goes away, any
+  in-flight request finishes, the game is untouched, restart is
+  by launching the program again. `POST /shutdown` (per-form
+  token, like every POST) logs a best-effort `system` activity
+  event, answers the standalone landing page ("Superintendent
+  has stopped — you can close this tab"), and flips a flag the
+  non-blocking accept loop polls: it stops accepting, drains
+  in-flight requests (an `Inflight` counter + condvar; a
+  connection counts only after its full response is written),
+  runs `PRAGMA wal_checkpoint(TRUNCATE)` on the store, and exits
+  0. `tools/check_shutdown.sh` gates it end to end, including a
+  tokenless POST (403, server still up) and a relaunch
+  integrity/snapshot check.
+- **Per-OS path defaults.** Database default: Windows unchanged
+  (`coi.db` beside the program — an upgrading Windows user sees
+  zero change); on unix an existing `./coi.db` still wins, else
+  the OS data dir is used and created (`$XDG_DATA_HOME/
+  superintendent/` or `~/.local/share/superintendent/` on Linux;
+  `~/Library/Application Support/Superintendent/` on macOS).
+  Config search order is now shared by all three `[game]` /
+  `[productivity]` / `[builder]` readers: `COI_CONFIG`, then
+  `./coi.toml`, then beside the database, then the OS config
+  dir (`$XDG_CONFIG_HOME/superintendent/` resp.
+  `~/Library/Application Support/Superintendent/`). QoS jobs-dir
+  on unix falls back to the OS data dir when %APPDATA% is unset.
+- **Keep-running guidance** (INSTALL.md §6 + the in-app manual):
+  every recipe starts the program with the `serve` subcommand
+  (no browser pop at logon). Windows: Startup-folder shortcut
+  and Task Scheduler at-logon, both stressing the "Start in"
+  folder because database/config resolution depends on it.
+  Linux: systemd `--user` unit (%h-based, `Restart=on-failure`
+  so a Shutdown stays down); the unit is `systemd-analyze verify`
+  -clean and the binary behaviour under it was verified directly
+  on this VM — the `systemctl --user` bus is not available in
+  the VM session, so the enable/start cycle itself is recorded
+  as *not* live-verified here. macOS: launchd user agent with
+  `KeepAlive=false`, labelled build-available-but-not-run-tested
+  everywhere it appears. Measured idle cost of leaving it
+  running (Linux release binary against the synthetic capture):
+  ~8 MB RSS, 0.0% CPU at idle, loopback only.
+- **Releases go three-platform.** `dev/RELEASE-WORKFLOW-DRAFT.md`
+  v2 (owner pastes it over `.github/workflows/release.yml`)
+  adds ubuntu + macOS jobs beside Windows; macOS artefacts are
+  marked untested-in-anger in the draft's comments and its
+  owner notes. The lint job gains the shutdown check.
+- **Linux smoke test** (native release binary vs
+  `dev/captures/live-synthetic-v065` via the stub): all 18
+  probed routes answer 200 — /, issues, products, entities,
+  terrain, research, catalogue, guides, manual, why, plans,
+  snapshots, log, shutdown, actions, place, designate, trade —
+  the XDG default database is created at the expected path, and
+  the UI shutdown exits 0.
+
+Packaging (daemon-round restage, 2026-11-09): Windows
+superintendent.exe 6,610,173 B, sha256
+dd5d1945b9d6c2700f33080e72ae87af9ef86774bae4e3a483de720247c39639;
+Linux superintendent 5,474,296 B, sha256
+7c72a1c50fc32b8498d8692777d2f58698285313fefd43ca728c75979ba06c68
+(both staged in dist/ with .sha256 files; the weekend bundle
+carries the Windows build). Mod zips unchanged from V3 (same
+hashes). cargo test 53/53 (new: XDG dir resolution, config
+candidate order, shutdown page + token gate, in-flight drain);
+clippy -D warnings and rustfmt clean; full check suite green
+including check_shutdown.sh.

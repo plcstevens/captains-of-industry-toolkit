@@ -134,24 +134,15 @@ impl Default for Thresholds {
 
 impl Thresholds {
     /// Load overrides from the `[productivity]` section of coi.toml.
-    /// Search order: $COI_CONFIG, ./coi.toml, coi.toml next to the db.
-    /// The parser is intentionally minimal (flat `key = value` lines,
-    /// `#` comments) so the companion gains no new dependency for a
-    /// dozen numbers; unknown keys are ignored, unparseable values
-    /// keep the prep defaults.
+    /// Search order: the shared `crate::config_candidates` list
+    /// ($COI_CONFIG, ./coi.toml, coi.toml next to the db, the OS
+    /// config dir). The parser is intentionally minimal (flat
+    /// `key = value` lines, `#` comments) so the companion gains no
+    /// new dependency for a dozen numbers; unknown keys are ignored,
+    /// unparseable values keep the prep defaults.
     pub fn load(db_path: &str) -> Thresholds {
         let mut th = Thresholds::default();
-        let mut candidates: Vec<std::path::PathBuf> = Vec::new();
-        if let Ok(p) = std::env::var("COI_CONFIG") {
-            candidates.push(p.into());
-        }
-        candidates.push("coi.toml".into());
-        if let Some(parent) = std::path::Path::new(db_path).parent() {
-            if !parent.as_os_str().is_empty() {
-                candidates.push(parent.join("coi.toml"));
-            }
-        }
-        for path in candidates {
+        for path in crate::config_candidates(db_path) {
             if let Ok(text) = std::fs::read_to_string(&path) {
                 th.apply_toml(&text);
                 break;
