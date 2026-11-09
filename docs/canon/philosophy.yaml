@@ -122,9 +122,9 @@
   rule: >
     Coal import buffer >= 120 minutes of draw at plant scale (issue-copy
     heuristic, previously unsourced inside fix-hint text; recorded here
-    with its status). Related: forecasts exclude coal from the slope
-    outlook because buffer-managed products follow delivery rhythm, not
-    trend.
+    with its status). Related: forecasts exclude import-fed products
+    from the slope outlook because buffer-managed products follow
+    delivery rhythm, not trend (canon: board.import-fed-products).
   numbers:
     - { name: buffer_minutes, value: 120, unit: minutes }
   source: code

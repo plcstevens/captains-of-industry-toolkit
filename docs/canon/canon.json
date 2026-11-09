@@ -90,8 +90,8 @@
     {
      "id": "board.import-fed-products",
      "title": "Products you import on purpose",
-     "player": "Some products are cheaper to import than to make, and a factory may deliberately produce none of them. Those products are never flagged as stalled — zero production is the plan, not a failure. Today the engine applies this to coal only.\n",
-     "rule": "The stall detector exempts import-fed products (import_fed). The current implementation exempts exactly one product, coal, hardcoded — recorded here as a known limitation, not hidden in a code comment. Making the list configurable (per-run, in coi.toml) is a recorded follow-up for the product owner; the exemption itself is deliberate and stays.\n",
+     "player": "Some products are cheaper to import than to make, and a factory may deliberately produce none of them. A product you receive under an active import contract is never flagged as stalled — zero production is the plan, not a failure. If the companion can't see your trade (the bridge mod missing or too old), it can't know a product is imported, so it flags it like any other — no news is never treated as proof of a plan.\n",
+     "rule": "import_fed(P) := an ACTIVE contract in the CoiBridge /coi/v1/contracts payload has productToBuy == P, derived at fetch time into the import-fed set. Exempt from: the stall detector, the seasonal long-window gate (same predicate), and the forecasts slope outlook (a stock trend under ship deliveries is delivery rhythm, not decline). NOT exempt from deficit findings or the blended runway: a draining stock is a planning fact whatever its source. Only active contracts count — available offers are not a feed, and quick trades and loans are one-off deliveries, not standing feeds. When the contracts payload is absent (no bridge / pre-v0.6 bridge) the set is empty and no product is exempt: the exemption applies only on positive evidence. (Pre-C-3 the engine hardcoded this exemption to coal; that hardcode is gone — coal is exempt exactly when a contract establishes it, like any product.)\n",
      "numbers": [],
      "source": "code",
      "status": "wired"
@@ -275,7 +275,7 @@
      "id": "forecasts.slope",
      "title": "Slope outlook for key products",
      "player": "For the most important products there's a second, longer view: if the stock's recent trend continues, when does it run out — out to ten years. This is the early-warning line for slow declines that the 3-year runway can't see yet.\n",
-     "rule": "Slope runway := least-squares trend of quantity over history, evaluated for importance-HIGH products only; listed when the projected runway is < 120 months. Excludes coal (buffer semantics differ — see philosophy.coal-buffer) and seasonal products (own rule).\n",
+     "rule": "Slope runway := least-squares trend of quantity over history, evaluated for importance-HIGH products only; listed when the projected runway is < 120 months. Excludes import-fed products (stock follows delivery rhythm, not trend — see board.import-fed-products and philosophy.coal-buffer) and seasonal products (own rule).\n",
      "numbers": [
       {
        "name": "horizon_months",
@@ -974,7 +974,7 @@
      "id": "philosophy.coal-buffer",
      "title": "The coal buffer: two hours of draw",
      "player": "If you import coal, keep a buffer: the board's coal advice assumes an import buffer of at least 120 minutes of your power plant's draw, so a late ship is an inconvenience, not a blackout. Like the steel rule, this is a practice heuristic — tune it to your ship schedule.\n",
-     "rule": "Coal import buffer >= 120 minutes of draw at plant scale (issue-copy heuristic, previously unsourced inside fix-hint text; recorded here with its status). Related: forecasts exclude coal from the slope outlook because buffer-managed products follow delivery rhythm, not trend.\n",
+     "rule": "Coal import buffer >= 120 minutes of draw at plant scale (issue-copy heuristic, previously unsourced inside fix-hint text; recorded here with its status). Related: forecasts exclude import-fed products from the slope outlook because buffer-managed products follow delivery rhythm, not trend (canon: board.import-fed-products).\n",
      "numbers": [
       {
        "name": "buffer_minutes",

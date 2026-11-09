@@ -37,7 +37,7 @@ Source: code · Status: wired
 
 ### board.import-fed-products — Products you import on purpose
 
-Rule: The stall detector exempts import-fed products (import_fed). The current implementation exempts exactly one product, coal, hardcoded — recorded here as a known limitation, not hidden in a code comment. Making the list configurable (per-run, in coi.toml) is a recorded follow-up for the product owner; the exemption itself is deliberate and stays.
+Rule: import_fed(P) := an ACTIVE contract in the CoiBridge /coi/v1/contracts payload has productToBuy == P, derived at fetch time into the import-fed set. Exempt from: the stall detector, the seasonal long-window gate (same predicate), and the forecasts slope outlook (a stock trend under ship deliveries is delivery rhythm, not decline). NOT exempt from deficit findings or the blended runway: a draining stock is a planning fact whatever its source. Only active contracts count — available offers are not a feed, and quick trades and loans are one-off deliveries, not standing feeds. When the contracts payload is absent (no bridge / pre-v0.6 bridge) the set is empty and no product is exempt: the exemption applies only on positive evidence. (Pre-C-3 the engine hardcoded this exemption to coal; that hardcode is gone — coal is exempt exactly when a contract establishes it, like any product.)
 
 Source: code · Status: wired
 
@@ -101,7 +101,7 @@ Source: code · Status: wired
 
 ### forecasts.slope — Slope outlook for key products
 
-Rule: Slope runway := least-squares trend of quantity over history, evaluated for importance-HIGH products only; listed when the projected runway is < 120 months. Excludes coal (buffer semantics differ — see philosophy.coal-buffer) and seasonal products (own rule).
+Rule: Slope runway := least-squares trend of quantity over history, evaluated for importance-HIGH products only; listed when the projected runway is < 120 months. Excludes import-fed products (stock follows delivery rhythm, not trend — see board.import-fed-products and philosophy.coal-buffer) and seasonal products (own rule).
 
 Numbers: horizon_months = 120 months
 
@@ -303,7 +303,7 @@ Source: code · Status: heuristic
 
 ### philosophy.coal-buffer — The coal buffer: two hours of draw
 
-Rule: Coal import buffer >= 120 minutes of draw at plant scale (issue-copy heuristic, previously unsourced inside fix-hint text; recorded here with its status). Related: forecasts exclude coal from the slope outlook because buffer-managed products follow delivery rhythm, not trend.
+Rule: Coal import buffer >= 120 minutes of draw at plant scale (issue-copy heuristic, previously unsourced inside fix-hint text; recorded here with its status). Related: forecasts exclude import-fed products from the slope outlook because buffer-managed products follow delivery rhythm, not trend (canon: board.import-fed-products).
 
 Numbers: buffer_minutes = 120 minutes
 

@@ -40,7 +40,8 @@
   rule: >
     Slope runway := least-squares trend of quantity over history, evaluated
     for importance-HIGH products only; listed when the projected runway is
-    < 120 months. Excludes coal (buffer semantics differ — see
+    < 120 months. Excludes import-fed products (stock follows delivery
+    rhythm, not trend — see board.import-fed-products and
     philosophy.coal-buffer) and seasonal products (own rule).
   numbers:
     - { name: horizon_months, value: 120, unit: months,

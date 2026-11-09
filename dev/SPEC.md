@@ -2256,3 +2256,76 @@ semantics and pinned).
   (cargo test 53/53, canon, plan parity, serializer pairs,
   structure 454 files, page checks, audit fail-loud, shutdown,
   badge on both captures).
+
+## Addendum XXVI — C-3: the import-fed exemption generalised (2026-11-09)
+
+- **Decision** (Philip, 2026-11-09): GENERALISE. This closes the
+  open item left by the Design V3 canon reconciliation (the
+  `board.import-fed-products` entry recorded the coal-only
+  hardcode as a known limitation; the v3 round deliberately did
+  not change engine behaviour). The hardcode is gone.
+- **Signal investigation** (payload evidence before design):
+  - *Chosen:* the CoiBridge `/coi/v1/contracts` payload —
+    source-verified shape (BridgeRoutesV6.cs): `active[]` rows
+    carry `productToBuy` (the product the player receives),
+    `productToPayWith`, `quantityToPayWith`, `toBuy`. An ACTIVE
+    contract naming P as productToBuy is a standing, deliberate
+    import arrangement for exactly P — the canon rationale in
+    data form.
+  - *Rejected:* the vanilla `/api/v1/products/sources` endpoint
+    — the verbatim 0.8.8 samples show produced/consumed rows of
+    type `recipe` / `fuel` / `entity` only; no import row type is
+    verified to exist, and the endpoint is per-product/per-period
+    (an N-request fetch on an unverified shape). Quick trades —
+    one-off spot exchanges; an available trade is not a feed, and
+    the route lists offers, not a delivery history. Loans — a
+    one-off delivery against repayment, not a feed.
+- **Implementation**: `fetch_live` ingests `/coi/v1/contracts`
+  best-effort (new `Live.contracts`, Null when the bridge is
+  absent or predates v0.6 — the same pattern as census/machines).
+  `import_fed_products()` derives the set from `active[].productToBuy`;
+  `compute_issues` and `compute_forecasts` consult the set
+  everywhere the coal hardcode stood: the stall gate, the
+  seasonal long-window gate (which shares the predicate, as it
+  shared the variable before), and the forecasts slope-runway
+  exclusion (`id != "Product_Coal"` — the delivery-rhythm
+  rationale in philosophy.coal-buffer was never coal-specific).
+  Deficit findings and the blended runway are deliberately NOT
+  exempted: a draining stock is a planning fact whatever its
+  source — unchanged from the pre-C-3 boundary. Snapshots now
+  carry `bridgeContracts` for provenance (which products were
+  positively import-fed when a stored board was computed). The
+  file-loaded forecast path carries no trade payload, so it
+  derives no exemption (positive evidence only).
+- **Absent-data rule**: no contracts payload → empty set → NO
+  exemption, coal included. The exemption is only ever applied
+  on positive evidence; absent data fails toward showing the
+  finding (the pre-canon behaviour for every non-coal product).
+- **Capture regression**: neither committed capture carries
+  trade data (no `bridge-contracts.json` fixture; the stub now
+  maps the route and 404s it, exactly like a pre-v0.6 bridge),
+  so coal is NOT positively import-fed in either capture under
+  the new rule. Its board treatment is nevertheless unchanged:
+  the full CLI report (issues + forecasts) is byte-identical
+  before/after on both live-synthetic-v065 and
+  live-synthetic-fixnow, because coal's cover (≈ 93.9 months)
+  fails the < 36-month stall gate on its own and no other coal
+  finding or forecast exists in either set. Badge expectations
+  unchanged; both badge checks pass in the standard sequence.
+- **Canon**: `board.import-fed-products` rewritten (id stable;
+  the coal-only limitation text is replaced by the general
+  derivation, its data source, and the absent-data behaviour);
+  `forecasts.slope` and `philosophy.coal-buffer` aligned to say
+  import-fed where they said coal. canon.json +
+  canon-for-agents regenerated; drift gate green (53 wired /
+  19 unwired, unchanged); the Why page renders the new rule
+  (verified against the stub: new text present, coal-only text
+  absent).
+- **Tests**: 7 new cargo tests (60 total): the predicate
+  (active-only, offers don't count, paying-with doesn't count,
+  no-data and malformed rows yield the empty set), the board
+  (non-coal import-fed product exempt from stall but still
+  deficit-flagged; the same product without trade data flagged
+  stalled; coal without a contract now flagged stalled; coal
+  with a contract exempt), and the forecasts slope outlook
+  (present without trade data, suppressed when import-fed).

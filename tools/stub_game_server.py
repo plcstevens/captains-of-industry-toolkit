@@ -26,6 +26,7 @@ exercised end-to-end without a live game:
     /coi/v1/census                    -> <capture>/bridge-census.json
     /coi/v1/topology                  -> <capture>/bridge-topology.json
     /coi/v1/machines                  -> <capture>/bridge-machines.json
+    /coi/v1/contracts                 -> <capture>/bridge-contracts.json
 
 Anything else gets a 404 (which is exactly how an older CoiBridge
 looks to the companion: bridge_json() degrades to None).
@@ -65,6 +66,7 @@ BRIDGE_ROUTES = {
     "/coi/v1/census": "bridge-census.json",
     "/coi/v1/topology": "bridge-topology.json",
     "/coi/v1/machines": "bridge-machines.json",
+    "/coi/v1/contracts": "bridge-contracts.json",
     "/coi/v1/power": "bridge-power.json",
     "/coi/v1/terrain": "bridge-terrain.json",
     "/coi/v1/deposits": "bridge-deposits.json",

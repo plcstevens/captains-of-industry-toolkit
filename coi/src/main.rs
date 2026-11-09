@@ -576,6 +576,7 @@ pub(crate) struct Live {
     pub(crate) machines: Value,         // CoiBridge /coi/v1/machines (Null when bridge absent)
     pub(crate) terrain: Value,          // CoiBridge /coi/v1/terrain summary (Null pre-0.6.5)
     pub(crate) deposits: Value,         // CoiBridge /coi/v1/deposits (Null pre-0.6.5)
+    pub(crate) contracts: Value,        // CoiBridge /coi/v1/contracts (Null pre-0.6 / no bridge)
 }
 
 pub(crate) fn fetch_live(c: &Client) -> Result<Live, String> {
@@ -647,6 +648,11 @@ pub(crate) fn fetch_live(c: &Client) -> Result<Live, String> {
     // per snapshot.
     let terrain = get_json(c, "/coi/v1/terrain").unwrap_or(Value::Null);
     let deposits = get_json(c, "/coi/v1/deposits").unwrap_or(Value::Null);
+    // Trade (CoiBridge v0.6): the contracts payload is the evidence
+    // base for the import-fed exemption (canon:
+    // board.import-fed-products) — best-effort like every bridge
+    // payload; absent means no product is positively import-fed.
+    let contracts = get_json(c, "/coi/v1/contracts").unwrap_or(Value::Null);
     Ok(Live {
         game,
         server,
@@ -659,6 +665,7 @@ pub(crate) fn fetch_live(c: &Client) -> Result<Live, String> {
         machines,
         terrain,
         deposits,
+        contracts,
     })
 }
 
@@ -710,6 +717,12 @@ pub(crate) fn snapshot_json(live: &Live) -> Value {
         // re-fetched on demand, they are not stored per snapshot).
         "bridgeTerrain": live.terrain,
         "bridgeDeposits": live.deposits,
+        // Trade provenance: the contracts payload the board was
+        // computed from, carried so a stored snapshot records which
+        // products were positively import-fed at capture time
+        // (canon: board.import-fed-products). Null when the bridge
+        // was unreachable or predates the route.
+        "bridgeContracts": live.contracts,
     });
     snap
 }
@@ -1062,8 +1075,32 @@ pub(crate) fn seasonal_net(live: &Live, id: &str, s: &Value) -> (f64, String) {
     )
 }
 
+/// Products positively established as import-fed, derived from the
+/// CoiBridge /coi/v1/contracts payload (canon:
+/// board.import-fed-products). A product is import-fed when an
+/// ACTIVE contract's productToBuy names it: a standing arrangement
+/// to receive it by ship, so zero local production is the plan, not
+/// a failure. Available-but-not-established offers do not count (an
+/// offer is not a feed), and neither do quick trades or loans —
+/// one-off deliveries, not standing feeds. When the payload is
+/// absent (no bridge, or a bridge older than v0.6) the set is empty
+/// and NO product is exempt: the exemption applies only on positive
+/// evidence, never on assumption.
+pub(crate) fn import_fed_products(contracts: &Value) -> std::collections::HashSet<String> {
+    let mut out = std::collections::HashSet::new();
+    if let Some(active) = contracts["active"].as_array() {
+        for c in active {
+            if let Some(p) = c["productToBuy"].as_str() {
+                out.insert(p.to_string());
+            }
+        }
+    }
+    out
+}
+
 pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
     let mut issues: Vec<Issue> = Vec::new();
+    let import_fed_set = import_fed_products(&live.contracts);
     if let Some(map) = live.stats["products"].as_object() {
         for (id, s) in map {
             let kind = live.kinds.get(id).cloned().unwrap_or_default();
@@ -1113,12 +1150,11 @@ pub(crate) fn compute_issues(live: &Live) -> Vec<Issue> {
                 })
             };
             // Import-fed products are exempt from the stall detector:
-            // zero production is the plan, not a failure. canon:
-            // board.import-fed-products — the rule is explicit there,
-            // including its current limitation: the exemption list is
-            // exactly one product (coal). Widening it is a canon change
-            // first, a code change second.
-            let import_fed = id == "Product_Coal";
+            // zero production is the plan, not a failure. The set is
+            // derived per fetch from active import contracts (canon:
+            // board.import-fed-products); with no trade data it is
+            // empty and nothing is exempt — coal included.
+            let import_fed = import_fed_set.contains(id);
             // Farms and ship-borne supply produce in bursts; they get
             // the yearly-balance treatment below, never the monthly
             // stall/deficit detectors.
@@ -1281,6 +1317,7 @@ pub(crate) struct Forecast {
 // (all horizons stated together in forecasts.horizons-together)
 pub(crate) fn compute_forecasts(live: &Live) -> Vec<Forecast> {
     let mut out: Vec<Forecast> = Vec::new();
+    let import_fed_set = import_fed_products(&live.contracts);
     // Stats payloads come in two shapes: /api/v1/products/stats nests the
     // product map under "products", but some saved bundles keep the map at
     // the top level with date/tick siblings. Accept both.
@@ -1350,7 +1387,7 @@ pub(crate) fn compute_forecasts(live: &Live) -> Vec<Forecast> {
                     && qty > 0
                     && net <= 0
                     && net > -120
-                    && id != "Product_Coal"
+                    && !import_fed_set.contains(id)
                     && !seasonal
                 {
                     let months = qty as f64 / (-sl);
@@ -1579,6 +1616,10 @@ fn cmd_forecast(cfg: &Config, file: Option<String>) -> i32 {
                 machines: Value::Null,
                 terrain: Value::Null,
                 deposits: Value::Null,
+                // Saved bundles carry no trade payload, so no
+                // import-fed exemption is derived from them (canon:
+                // board.import-fed-products — positive evidence only).
+                contracts: Value::Null,
             }
         }
         None => {
@@ -1913,6 +1954,149 @@ mod tests {
         assert_eq!(os_data_dir_from(Some("/xdg/data"), Some(home)), want);
         assert_eq!(os_config_dir_from(None, Some(home)), want);
         assert_eq!(os_data_dir_from(None, None), None);
+    }
+
+    // ---- Import-fed exemption (C-3; canon: board.import-fed-products) ----
+
+    fn contracts_json(active: &[&str], available: &[&str]) -> Value {
+        let mk = |ids: &[&str]| -> Value {
+            Value::Array(
+                ids.iter()
+                    .map(|p| {
+                        serde_json::json!({"id": "Contract_Test", "productToBuy": p,
+                            "productToPayWith": "Product_Steel", "quantityToPayWith": 10})
+                    })
+                    .collect(),
+            )
+        };
+        serde_json::json!({"active": mk(active), "available": mk(available)})
+    }
+
+    #[test]
+    fn import_fed_set_from_active_contracts_only() {
+        let set = import_fed_products(&contracts_json(&["Product_Coal"], &["Product_Diesel"]));
+        assert!(set.contains("Product_Coal"));
+        assert!(
+            !set.contains("Product_Diesel"),
+            "an unestablished offer is not a feed"
+        );
+        assert!(
+            !set.contains("Product_Steel"),
+            "paying WITH a product is not importing it"
+        );
+    }
+
+    #[test]
+    fn import_fed_set_empty_without_trade_data() {
+        assert!(import_fed_products(&Value::Null).is_empty());
+        assert!(import_fed_products(&serde_json::json!({})).is_empty());
+        assert!(import_fed_products(&contracts_json(&[], &[])).is_empty());
+        // Malformed rows are skipped, never guessed at.
+        let bad = serde_json::json!({"active": [{"id": "Contract_X"}, {"productToBuy": 42}]});
+        assert!(import_fed_products(&bad).is_empty());
+    }
+
+    /// Minimal Live for board/forecast tests: one product with the
+    /// given stats entry and contracts payload; everything else
+    /// empty or Null (no history, no bridge beyond trade).
+    fn live_for_board(id: &str, stats: Value, contracts: Value) -> Live {
+        let mut names = std::collections::HashMap::new();
+        names.insert(id.to_string(), id.to_string());
+        let mut products = serde_json::Map::new();
+        products.insert(id.to_string(), stats);
+        Live {
+            game: serde_json::json!({"date": "1-1-1", "tick": 0}),
+            server: Value::Null,
+            names,
+            kinds: std::collections::HashMap::new(),
+            stats: serde_json::json!({"products": products}),
+            pinned_ids: Vec::new(),
+            history: serde_json::json!({"products": {}}),
+            census: Value::Null,
+            machines: Value::Null,
+            terrain: Value::Null,
+            deposits: Value::Null,
+            contracts,
+        }
+    }
+
+    /// Stall-shaped stats: zero production everywhere, steady
+    /// consumption, `qty` in stock (cover = qty/10 months).
+    fn stall_stats(qty: i64) -> Value {
+        serde_json::json!({
+            "quantity": qty, "stored": qty, "storageCapacity": 1000,
+            "produced": [0, 0, 0, 0, 0], "consumed": [10, 10, 10, 10, 10],
+        })
+    }
+
+    fn has_class(issues: &[Issue], class: &str) -> bool {
+        issues.iter().any(|i| i.class == class)
+    }
+
+    #[test]
+    fn import_fed_product_is_exempt_from_stall() {
+        // Diesel under an active import contract: no stall finding.
+        // Its draining stock still earns the deficit finding — the
+        // exemption covers the stall claim only.
+        let live = live_for_board(
+            "Product_Diesel",
+            stall_stats(100),
+            contracts_json(&["Product_Diesel"], &[]),
+        );
+        let issues = compute_issues(&live);
+        assert!(!has_class(&issues, "stalled"));
+        assert!(has_class(&issues, "deficit"));
+    }
+
+    #[test]
+    fn same_product_without_trade_data_is_flagged_stalled() {
+        // No bridge data at all: import-fed-ness is not established,
+        // so no exemption — the finding shows.
+        let live = live_for_board("Product_Diesel", stall_stats(100), Value::Null);
+        assert!(has_class(&compute_issues(&live), "stalled"));
+    }
+
+    #[test]
+    fn coal_without_import_contract_is_flagged_stalled() {
+        // The pre-C-3 blanket coal exemption is gone: no contract,
+        // no exemption.
+        let live = live_for_board("Product_Coal", stall_stats(100), Value::Null);
+        assert!(has_class(&compute_issues(&live), "stalled"));
+    }
+
+    #[test]
+    fn coal_with_import_contract_is_exempt_from_stall() {
+        let live = live_for_board(
+            "Product_Coal",
+            stall_stats(100),
+            contracts_json(&["Product_Coal"], &[]),
+        );
+        assert!(!has_class(&compute_issues(&live), "stalled"));
+    }
+
+    #[test]
+    fn slope_forecast_skips_import_fed_products() {
+        let stats = serde_json::json!({
+            "quantity": 700, "stored": 700, "storageCapacity": 1000,
+            "produced": [0, 0, 0, 0, 0], "consumed": [5, 5, 10, 60, 900],
+        });
+        let mut live = live_for_board("Product_Diesel", stats, Value::Null);
+        live.history = serde_json::json!({"products": {"Product_Diesel": {
+            "quantity": [1000, 900, 800, 700],
+            "produced": [0, 0, 0, 0],
+            "consumed": [5, 5, 5, 5],
+        }}});
+        let slope = |l: &Live| {
+            compute_forecasts(l)
+                .iter()
+                .any(|f| f.basis.contains("monthly stock slope"))
+        };
+        assert!(slope(&live), "declining key product gets a slope outlook");
+        live.contracts = contracts_json(&["Product_Diesel"], &[]);
+        assert!(
+            !slope(&live),
+            "import-fed: the stock trend is delivery rhythm, not decline"
+        );
     }
 
     /// The config search keeps its established head (COI_CONFIG is
