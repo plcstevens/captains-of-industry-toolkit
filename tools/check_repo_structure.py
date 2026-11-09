@@ -3,7 +3,8 @@
 
 The lean rule, enforced mechanically:
   1. ROOT ALLOWLIST — the repo root holds only the player-facing
-     trio (README.md, INSTALL.md, REMOTE-ACCESS.md), repo
+     trio (README.md, INSTALL.md, REMOTE-ACCESS.md), the agent
+     entry pair (AGENTS.md, CLAUDE.md), repo
      infrastructure dotfiles (.gitignore, .editorconfig,
      .pre-commit-config.yaml, .markdownlint.json, .yamllint.yml,
      pyproject.toml, LICENSE) and the declared folders
@@ -41,6 +42,8 @@ ROOT_FILES = {
     "README.md",
     "INSTALL.md",
     "REMOTE-ACCESS.md",
+    "AGENTS.md",
+    "CLAUDE.md",
     "LICENSE",
     ".gitignore",
     ".editorconfig",

@@ -33,6 +33,9 @@ A personal toolkit for [Captains of Industry](https://www.captain-of-industry.co
 
 - `README.md` (this file), `INSTALL.md`, `REMOTE-ACCESS.md` — the
   player-facing entry points.
+- `AGENTS.md` — the entry guide for LLM agents operating or
+  playing through the toolkit (`CLAUDE.md` includes it for
+  Claude Code).
 - `docs/` — player-facing deeper documentation, including the
   canon (`docs/canon/`).
 - `dev/` — the development paper trail: `SPEC.md`, `DESIGN.md`,

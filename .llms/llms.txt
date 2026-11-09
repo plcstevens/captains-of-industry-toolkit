@@ -7,17 +7,23 @@ and are linked.
 
 ## Read in this order
 
-1. [BEHAVIOURS.md](BEHAVIOURS.md) — how an agent should behave when
+1. [AGENTS.md](../AGENTS.md) — the entry guide and operator
+   contract for an LLM agent working with, or playing through,
+   this toolkit: the component map, how to reach a running game,
+   the observe → plan → act → verify loop, the hard rails, the
+   trust order, and the first-session checklist. Start here,
+   before everything below.
+2. [BEHAVIOURS.md](BEHAVIOURS.md) — how an agent should behave when
    operating this toolkit on a player's behalf: the observe → plan
    → act → verify loop, the §12 prepare → confirm → audit rule for
    anything that mutates the game, and the standing policies
    (priority groups, mod behaviour extraction).
-2. [SANDBOX-PROTOCOLS.md](SANDBOX-PROTOCOLS.md) — the protocols
+3. [SANDBOX-PROTOCOLS.md](SANDBOX-PROTOCOLS.md) — the protocols
    for testing anything unproven (new command channels, risky
    flows) on throwaway sandbox saves only, with the game-id abort
    guards. Read before attempting any capability the website does
    not already expose.
-3. [canon-for-agents.md](canon-for-agents.md) — GENERATED rendering
+4. [canon-for-agents.md](canon-for-agents.md) — GENERATED rendering
    of the canon (every threshold and reasoning rule, with status
    and provenance). Cite canon ids; the source is
    [docs/canon/](../docs/canon/README.md).
