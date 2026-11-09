@@ -1,0 +1,67 @@
+{
+ "totalEntities": 23,
+ "byProto": {
+  "Settlement1": 1,
+  "SmeltingFurnaceT1": 1,
+  "CasterT1": 2,
+  "CoalMaker": 1,
+  "DieselGeneratorT1": 1,
+  "ResearchLab1": 2,
+  "TruckT1": 4,
+  "StorageLoose": 2,
+  "StorageUnit": 2,
+  "StorageFluid": 1,
+  "WasteDump": 1,
+  "AssemblyManual": 4,
+  "FarmT1": 1
+ },
+ "machines": {
+  "SmeltingFurnaceT1": {
+   "states": {
+    "Working": 1
+   },
+   "recipes": [
+    "IronSmeltingT1Scrap"
+   ]
+  },
+  "CasterT1": {
+   "states": {
+    "Working": 1,
+    "NotEnoughInput": 1
+   },
+   "recipes": [
+    "IronCasting"
+   ]
+  },
+  "CoalMaker": {
+   "states": {
+    "Working": 1
+   },
+   "recipes": [
+    "CoalFromWood"
+   ]
+  },
+  "AssemblyManual": {
+   "states": {
+    "Working": 3,
+    "NotEnoughInput": 1
+   },
+   "recipes": [
+    "ConstructionParts1",
+    "MechanicalParts"
+   ]
+  },
+  "FarmT1": {
+   "states": {
+    "Working": 1
+   },
+   "recipes": [
+    "PotatoFarming"
+   ]
+  }
+ },
+ "transports": {
+  "total": 6,
+  "fullyConnected": 6
+ }
+}

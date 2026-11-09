@@ -1,0 +1,1029 @@
+# fresh-start-v1 — Captains of Industry, New Haven, normal difficulty, Update 4.
+# Version history lives in plan.changelog below (current: v1.3.0,
+# 2026-11-06 — research placeholder ids retired from shipped game data).
+#
+# Format: ../GAME-PLAN-FORMAT.md (Game-Plan Format v1). Read it first; this
+# file uses only its closed predicate vocabulary, its order kinds, and its
+# placeholder-with-warning convention for unsourced ids.
+#
+# Content source: the local-coi-starter skill (SKILL.md + references/
+# phases.md, research-order.md, layout-policy.md, bottlenecks.md), with
+# research node ids cross-checked against the game's extracted id list
+# (coi/data/research_ids.txt) and product ids against the live product
+# catalogue (live/products.json). Uncertainty in the sources is carried
+# here as flags: / placeholder mappings — never laundered into facts.
+#
+# Thresholds (stockpile numbers, floors) are PLAN-SET TARGETS chosen by the
+# plan author, not game facts. They are deliberately conservative for a
+# first supervised run and are expected to be tuned after a sandbox run.
+
+plan:
+  id: fresh-start
+  version: 1.3.0
+  title: "Fresh start — New Haven (normal, Update 4) to self-sufficiency + first rail"
+  map: {name: "New Haven", difficulty: normal}
+  game_version: "0.8.8"            # Update 4.3 — the version the plan targets; format §3.1: the plan targets the version being run
+  dlc: [trains-expansion]          # owned (starter skill); only phase 7 needs it
+  author: "Claudius (overnight build, 2026-11-02)"
+  created: 2026-11-02
+  changelog:
+    - version: 1.3.0
+      date: 2026-11-06
+      change: >-
+        Research placeholder ids RETIRED from a primary source: the
+        shipped game's own proto registrations (Mafi.Base.dll,
+        Mafi.Base.Prototypes.Research — decompiled 2026-11-06),
+        cross-checked against the bridge /research capture from
+        a live game capture (live-check/current/bridge-research.json),
+        whose researched list carries the exact id strings. (1)
+        'Construction' = ResearchCpPacking —
+        ConstructionResearchData registers Start("Construction",
+        Ids.Research.CpPacking) unlocking AssemblyManual + the
+        CpAssembly / MechPartsIronAssembly / ElectronicsAssembly
+        recipes, exactly this plan's unlock list. The old sole
+        candidate ResearchCp1Production is NOT a research node at
+        all: it is a GOAL id (GoalsData: GoalToResearchNode
+        "ResearchCp1Production" targets CpPacking), which is why it
+        sat among the earliest goal strings and in the mixed id dump
+        behind coi/data/research_ids.txt. (2) 'Construction II' =
+        ResearchCp2Packing (same file: Start("Construction II",
+        Ids.Research.Cp2Packing), AssemblyElectrified + Cp2Assembly).
+        (3) 'Synthetic Rubber' = ResearchRubberProduction
+        (RefineryResearchData: Start("Synthetic rubber",
+        Ids.Research.RubberProduction)). (4) 'Concrete Production' =
+        ResearchConcreteAdvanced: no node displays as 'Concrete
+        Production' in the shipped data; the wiki Required Research
+        trio (Crusher, Rotary Kiln, Concrete Mixer) is this node's
+        exact unlock list (MiningAndSmeltingResearchData) and its
+        shipped display name is 'Advanced concrete' — the v1.2.x
+        do-not-substitute caution was name-based and is superseded
+        by the proto data. (5) The ResearchPowerAndMaintenance
+        ambiguity flag is retired: ResearchPowerMaintenance is not
+        a research node in the shipped data (no proto, no Ids
+        field); the node's shipped display name is 'Maintenance'.
+        (6) 'Groundwater Pump' = ResearchUndergroundWater
+        (Start("Groundwater pump", Ids.Research.UndergroundWater)) —
+        the plan's inferred candidate was the right node. (7) A
+        CORRECTED asserted id: the phase-6 ship-dock order named
+        ResearchShipDockRepair, which is again a goal id
+        (GoalToResearchNode "ResearchShipDockRepair" targets
+        Ids.Research.RepairDock); the node is ResearchRepairDock
+        (Start("Ship dock repair", Ids.Research.RepairDock)) and the
+        order would have failed at prepare. Affected orders/gates are now executable ResearchStartCmd /
+        research.completed references instead of §4.5 placeholders;
+        no thresholds, gates (beyond the id references themselves),
+        phase structure or autonomy changed. Fixtures regenerated
+        with the corrected ids (tools/gen_growth_fixtures.py).
+    - version: 1.2.2
+      date: 2026-11-05
+      change: >-
+        Update 4.3 readiness pass for the supervised weekend run. (1)
+        Version reconciliation: game_version confirmed as 0.8.8 — the
+        plan targets the version being run (format §3.1). The
+        0.8.7d figure in the sibling continuation plan is that save's
+        provenance (the relocation plan's Expanding save), not this
+        plan's target, and never applied here. (2) requires refreshed
+        to the current substrate: companion catalogue 15 verified / 224
+        wired / 1 excluded (was 13 / 226 / 1) and the /place flow
+        available; bridge floor unchanged (see requires note). (3)
+        Placement mechanism named: authored place-blueprint orders now
+        record the QoSBuilder job route (companion /place flow, SPEC
+        Addendum XVII) in their notes; order kind, completion semantics
+        and autonomy are unchanged. (4) 4.3 substance check: NO phase,
+        gate, order or threshold changes. Mixed-materials support
+        changes storage/cargo buffer semantics, but this plan's gates
+        read aggregate product stats, no gate uses a storage.* metric,
+        and its storage orders target dedicated single-product buffers
+        by starter doctrine; info overlays, radiation-shielded trains
+        and train stats are UI / late-game surfaces no phase
+        references; 0.8.8 changed no recipe ratios (patch watch
+        2026-11-02), so dataset-derived sizing stands. Patch bump per
+        §3.1: notes/metadata only.
+    - version: 1.2.1
+      date: 2026-11-04
+      change: "Blueprint asset linkage: pack_slug / pack_slug_overlay fields set on authored refs (plans-blueprint-status.md). Asset fields only; no gate/order changes."
+    - version: 1.2.0
+      date: 2026-11-03
+      change: "Research<Construction> placeholder re-investigated and kept per §4.5 (see the plan-level assumption); §4.3.1 duration semantics adopted. Earlier history: NIGHT-LOG.md."
+  requires:
+    companion: ">= website build with generic command flow + /place flow (15 verified / 224 wired / 1 excluded; QoSBuilder 0.1.0 executes placement jobs)"
+    bridge: ">=0.5.0"              # floor unchanged: research.completed works from executor-observed completions at this floor; bridge >=0.6.2 (the weekend stack runs 0.6.4) makes it directly evaluable from the researched list (format G1 resolved)
+  end_state: >-
+    Phase 7 exit gate met: a first train network and line exist, the
+    settlement is food-secure, and every permanent district from the
+    layout policy is placed. The plan then halts and hands the run back
+    with a run report. Mid/late-game progression (Advanced Diesel at
+    scale, coal power beyond the first boiler, offshore oil) is the
+    next plan's job, not this one's.
+  assumptions:
+    - claim: "Starting area contains an abandoned comms station with free scrap iron and reportedly ~600 concrete slabs; oil patch NE of the start, coal nearby, limestone fairly close, iron a fair distance away, coast/docks to the south."
+      source: "layout-policy.md — reported hypothesis, NOT confirmed tile-level truth"
+      status: hypothesis
+    - claim: "Starting settlement is ~100 population against ~160 housing capacity in shipping containers; refugees arrive in waves of 16."
+      source: "layout-policy.md (reported) + research-order.md (16 per wave)"
+      status: hypothesis
+    - claim: "The starting ship's hold carries several hundred units of copper, covering early electronics until copper refining is online."
+      source: "layout-policy.md — reported"
+      status: hypothesis
+    - claim: "A fresh game starts with some diesel stock (vehicles and the first diesel generator run before any diesel chain exists), so the diesel invariant in globals can be armed from t0."
+      source: "inferred from starter phase 1 (diesel generator is a phase-1 build)"
+      status: hypothesis
+      confirm: "Phase 0 scout verifies Product_Diesel quantity > 0; if it is 0, a human amends globals.invariants before the game is unpaused."
+    - claim: "Research display names in the starter skill map to game node ids as recorded per-order in the phases below; mappings not marked 'sourced-id' are candidates or placeholders."
+      source: "research-order.md + research-tree.md (display-name verification) cross-checked against coi/data/research_ids.txt (extracted game ids)"
+      status: mixed-per-order
+    - claim: "The phase-2 entry research node (display name 'Construction') is ResearchCpPacking — RETIRED 2026-11-06 (plan v1.3.0) from the shipped game's proto registrations (Mafi.Base.dll, ConstructionResearchData: Start(\"Construction\", Ids.Research.CpPacking) with this plan's exact unlock list), cross-checked against a live bridge /research capture, whose researched list contains the string ResearchCpPacking. The 2026-11-03 investigation's sole candidate ResearchCp1Production is a GOAL id, not a research node (GoalsData: GoalToResearchNode \"ResearchCp1Production\" targets CpPacking) — the mixed id dump behind coi/data/research_ids.txt contains goal ids, which is why no id-to-name source seemed to exist. Sibling retirements in the same pass: Construction II = ResearchCp2Packing, Synthetic Rubber = ResearchRubberProduction, 'Concrete Production' = ResearchConcreteAdvanced (shipped display 'Advanced concrete')."
+      source: "Mafi.Base.dll decompiled 2026-11-06 (Mafi.Base.Prototypes.Research/ConstructionResearchData.cs, RefineryResearchData.cs, MiningAndSmeltingResearchData.cs; Mafi.Base.Prototypes.Messages/GoalsData.cs); live-check/current/bridge-research.json (researched list)"
+      status: sourced-id-retired
+    - claim: "Blueprint placement mechanism (v1.2.2): a place-blueprint order with asset_status: authored and a pack_slug is placed through the companion /place flow — the layout ships inside the companion's embedded library (tools/gen_blueprint_library.py, decode-verified at generation); the operator prepares and confirms in the website; only the confirm writes a single-use, expiring, gameId-pinned QoSBuilder job file; the mod places the layout as ordinary construction sites in one batch; the placement verdict is the companion's before/after census diff, and the order's own completion (human-confirm or verify predicates) is unchanged. Refs with asset_status: not-yet-authored have no library asset and still degrade to manual builds. The pack's strings are NOT in-game tested (library testing_status), so the first placement on the new save happens only under the operator's in-the-moment confirm."
+      source: "SPEC Addendum XVII (QoSBuilder job-file contract); coi/data/blueprint-library.json (82 entries; all six fresh-start pack_slugs present: iron-v1, iron-v2, starter-assemblies-v1, concrete-v1, diesel-v1, rubber-v1)"
+      status: sourced
+    - claim: "Update 4.3 (0.8.8) mechanics deltas relevant to this plan: mixed-materials support (storages/cargo buffers may hold mixed contents — the bridge storages route already reports mixed contents), info overlays, radiation-shielded trains, train stats, and the in-game web API. No recipe ratio changed. None of these alters an early-game phase, gate or order in this plan (full reasoning in the v1.2.2 changelog entry)."
+      source: "0.8.8 changelog via patch watch 2026-11-02 (coigame.com/Changelog); SPEC §3 storages route note"
+      status: sourced
+
+globals:
+  autonomy:
+    sim-control: confirm           # pause may be auto-applied by invariants/checks per format §5.2/§7.1; speed changes confirm
+    research: confirm
+    pins-alerts: auto
+    global-priority: confirm
+    entity-settings: confirm
+    storage: confirm
+    trade-contracts-loans: confirm
+    vehicles-logistics: confirm
+    trains: manual-only
+    construction: manual-only      # posture unchanged in v1.2.2: authored blueprints are placed via the /place flow under human confirm (QoSBuilder job route — see the placement-mechanism assumption); direct CreateStaticEntityCmd placement was verified live 2026-11-05 (Protocol A-R) but is not this plan's mechanism
+    deconstruction: banned         # replacement live before demolition; demolition is a human decision
+    manual: manual-only
+  banned_commands: [GameConsoleCmd]
+  invariants:
+    - {metric: settlement.starving, op: "==", value: false}
+    - {metric: settlement.homeless, op: "==", value: 0}
+    - {metric: product.quantity, product: Product_Diesel, op: ">", value: 0,
+       note: "Armed from t0 per the starting-diesel assumption above; phase 0 verifies the assumption before first unpause."}
+  checks:
+    - id: global-food-floor
+      every: {minutes: 5}
+      when: {metric: settlement.months_of_food, op: "<", value: 1}
+      severity: critical
+      action: pause-and-report
+      note: "Food is a settlement-existential; monthsOfFood < 1 means the buffer is nearly gone regardless of phase."
+  crisis_protocol:
+    trigger_note: >-
+      The death-spiral trio (fuel, maintenance, electricity) from
+      bottlenecks.md: lose one and everything cascades. Crisis beats
+      plan — phase progression suspends while this runs.
+    orders:
+      - id: crisis-pause-research
+        do: ResearchStopCmd
+        args: {}
+        note: "Frees Unity and worker capacity (bottlenecks.md crisis step 1). ResearchStopCmd takes no args in the catalogue."
+        class: research
+      - id: crisis-pause-game-briefly
+        do: SetSimPauseStateCmd
+        args: {isPaused: true}
+        note: "Stop the clock while the human assesses; unpausing is a human decision."
+        class: sim-control
+      - id: crisis-human-triage
+        do: manual-step
+        step: >-
+          In the UI: (1) pause all non-essential production (ToggleEnabledCmd
+          per machine may be prepared by the agent instead, entity-settings,
+          confirm); (2) divert iron to mechanical parts to feed the
+          maintenance depot; (3) Unity-boost the maintenance depot
+          (manual only — no catalogue command spends Unity, format G5);
+          (4) confirm diesel generators sit on the OUTPUT side of fuel
+          storage so a fuel hiccup cannot kill power.
+        why: "bottlenecks.md crisis response steps 2-4; several levers have no command-channel equivalent."
+        class: manual
+        completion: human-confirm
+
+phases:
+
+  # ------------------------------------------------------------------
+  - id: phase-0-scout-bootstrap
+    name: "Scout & bootstrap"
+    intent: >-
+      Pause, look, verify the plan's hypotheses against the actual save,
+      pin the vital products, and queue nothing yet. No building happens
+      in this phase; it exists so every later gate reads observed state,
+      not the layout-policy hypotheses.
+    skippable: false
+    entry_gate: []                 # first phase; entered at run start
+    orders:
+      - id: p0-pause
+        do: SetSimPauseStateCmd
+        args: {isPaused: true}
+        note: "Starter phase 1 opens with 'pause, scout'. Verified command."
+        class: sim-control
+        verify:
+          - {metric: game.paused, op: "==", value: true}
+      - id: p0-scout-layers
+        do: manual-step
+        step: >-
+          Open the Layers view (resource overlays) and record: oil patch
+          bearing/distance from the comms station, coal deposit, limestone,
+          iron deposit distance, coastline and shipyard position to the
+          south. Use the terrain inspector (Shift+L) on candidate mine
+          spots to see ore layers. Do NOT place anything yet.
+        why: "layout-policy.md: starting-area details are a reported hypothesis; verify against the actual save before any tile-level placement."
+        class: manual
+        completion: human-confirm
+      - id: p0-verify-starting-state
+        do: observe-only
+        observe: >-
+          Record the opening snapshot: Product_Diesel / Product_IronScrap /
+          Product_ConcreteSlab / Product_Copper quantities; population and
+          housing from bridge status; researchedCount baseline (needed for
+          research.completed observation, format G1). Compare against the
+          plan assumptions and report every mismatch to the human. If
+          Product_Diesel == 0, STOP: the globals diesel invariant must be
+          amended by a human before unpausing.
+        class: manual
+      - id: p0-claim-tutorial-freebies
+        do: manual-step
+        step: "Claim any tutorial-goal freebies the game offers."
+        why: "Starter phase 1: 'claim any tutorial-goal freebies'."
+        class: manual
+        completion: human-confirm
+      - id: p0-pin-vitals
+        do: PinToggleCmd
+        args: {productToToggle: Product_Diesel}
+        note: "Pin the death-spiral vitals so they are visible on the HUD from hour one. Repeat this order shape for Product_IronScrap and Product_ConstructionParts once unlocked (ConstructionParts may not be unlocked at t0 — its product.unlocked precondition will simply hold the order until phase 2)."
+        class: pins-alerts
+        verify:
+          - {metric: product.pinned, product: Product_Diesel, op: "==", value: true}
+    checks:
+      - id: p0-diesel-assumption
+        every: {minutes: 5}
+        when: {metric: product.quantity, product: Product_Diesel, op: "==", value: 0}
+        severity: critical
+        action: pause-and-report
+        note: "Fires only if the starting-diesel assumption is wrong at t0; after phase 4 the same signal is a real fuel crisis and phase checks take over."
+    exit_gate:
+      - {metric: settlement.population, op: ">", value: 0}
+      - {metric: settlement.free_housing, op: ">=", value: 0}
+    fallbacks:
+      on_gate_stall: pause-and-report
+      stall_after: {months: 1}
+
+  # ------------------------------------------------------------------
+  - id: phase-1-scrap-starter
+    name: "Scrap-fed starter cluster"
+    intent: >-
+      Consume the comms-station scrap pile in a DISPOSABLE starter cluster:
+      scrap smelter (1 blast furnace + 2 casters), wood-burning coal maker,
+      diesel generator, two research labs, tree-clearing designations,
+      controlled ocean dumping. Start the research queue. Nothing built
+      here is permanent (layout policy).
+    skippable: false
+    entry_gate:
+      - {metric: product.quantity, product: Product_IronScrap, op: ">", value: 0}
+    orders:
+      - id: p1-research-construction
+        do: ResearchStartCmd
+        args: {nodeId: ResearchCpPacking}
+        note: "Research order #1 (research-order.md): unlocks assemblies, Construction Parts I, Mechanical Parts, Electronics I. Id SOURCED 2026-11-06 (plan v1.3.0): shipped proto registration Start(\"Construction\", Ids.Research.CpPacking) in Mafi.Base (ConstructionResearchData) with exactly these unlocks; the string ResearchCpPacking appears in a live bridge researched list. The tree calls it a starting tech — it may already be complete at t0, in which case this order is skipped by its verify. (The old candidate ResearchCp1Production is a goal id, not a research node — see the plan-level assumption.)"
+        class: research
+        verify:
+          - {metric: research.researched_count, op: ">=", value: 1}
+      - id: p1-research-queue-first15
+        do: manual-step
+        step: >-
+          Queue the first-15 research list (research-order.md) up front in
+          the research UI, in the order the phases below consume it:
+          Construction (ResearchCpPacking); Maintenance (listed as
+          'Power & Maintenance' in older guides; ResearchPowerAndMaintenance);
+          Trading Dock (ResearchTradeDock); Vehicles & Mining
+          (ResearchVehicleAndMining); Beacon; Tools; Advanced concrete
+          (the wiki's 'Concrete Production'; ResearchConcreteAdvanced);
+          Basic Diesel; Synthetic Rubber (ResearchRubberProduction);
+          Copper Refinement; Construction II (ResearchCp2Packing);
+          Conveyor Belts; Ship Dock Repair; Groundwater Pump; Fuel Station.
+          All ids sourced 2026-11-06 (plan v1.3.0). Two labs keep research
+          ahead of building.
+        why: "The per-node ResearchQueueDequeueCmd orders live in their consuming phases (so gates stay honest); this step is the starter skill's queue-up-front instruction. It stays a human step (bulk queueing in the UI is one pass), but since plan v1.3.0 every id in the list is sourced — the eyeball-against-the-screen rationale is retired."
+        class: manual
+        completion: human-confirm
+      - id: p1-build-starter-cluster
+        do: place-blueprint
+        blueprint_ref: "starter-cluster/scrap-smelter-1furnace-2caster-plus-coal-maker"
+        asset_status: authored
+        pack_slug: iron-v1
+        district: starter-cluster
+        note: "Degrades to a manual build from layout-policy.md's temporary list: first scrap smelter (1 blast furnace + 2 casters on scrap), wood-burning coal maker, diesel generator placed on the OUTPUT side of fuel storage, two research labs. Starter cluster is disposable — build cheap, near the comms station/docks, never anchor a permanent build here. Placement route (v1.2.2): the smelter core (pack slug iron-v1) goes through the companion /place flow — human confirm, QoSBuilder job; the coal maker, generator and labs are single-building manual placements (no pack asset contains them — plans-blueprint-status.md ref #1)."
+        class: construction
+        completion: human-confirm
+      - id: p1-tree-clearing-and-dumping
+        do: manual-step
+        step: >-
+          Designate tree clearing around the starter cluster, and set
+          controlled ocean waste dumping on the 'flat' setting in a zone
+          AWAY from the ship's docking spot (dumping extends coastline
+          into future building land; keep the south/east coastline stretch
+          reserved for the future big harbour — do not build or dump on it).
+        why: "Starter phase 1 + layout policy rules 2 and 4."
+        class: manual
+        completion: human-confirm
+      - id: p1-resume-time
+        do: GameSpeedChangeCmd
+        args: {newSpeedMultiplier: 1}
+        note: "Scout is done: run at speed 1 while the starter cluster goes up (a human unpauses — SetSimPauseStateCmd {isPaused: false} — as the companion order to this one; both are verified sim-control commands, confirm class in this plan)."
+        class: sim-control
+        verify:
+          - {metric: game.speed, op: "==", value: 1}
+      - id: p1-research-power-maintenance-early-flag
+        do: observe-only
+        observe: >-
+          Watch the research queue: Power & Maintenance is order #2 in
+          this plan (maintenance-before-anything-else). The source skill
+          flags an order variant — some guides take it after Trading
+          Dock. The variant is recorded here, not silently resolved.
+        flags: [single-source]
+        class: manual
+    checks:
+      - id: p1-scrap-runway
+        every: {minutes: 5}
+        when: {metric: product.quantity, product: Product_IronScrap, op: "<", value: 100}
+        severity: warning
+        action: pause-and-report
+        note: "Scrap is finite: below this, phase 3 (mining) stops being optional. Threshold is a plan-set target."
+      - id: p1-diesel-floor
+        every: {minutes: 5}
+        when: {metric: product.quantity, product: Product_Diesel, op: "<", value: 100}
+        severity: critical
+        action: crisis-protocol
+        note: "Death-spiral trio, fuel leg (bottlenecks.md)."
+    exit_gate:
+      - {metric: product.quantity, product: Product_Iron, op: ">=", value: 100}
+      - {metric: research.has_active_lab, op: "==", value: true}
+      - any:
+          - {metric: research.current, op: "!=", value: none}
+          - {metric: research.queue_length, op: ">", value: 0}
+    fallbacks:
+      on_gate_stall: pause-and-report
+      stall_after: {months: 2}
+      on_check_fail: crisis-protocol
+
+  # ------------------------------------------------------------------
+  - id: phase-2-assembly-power-maintenance
+    name: "Assembly + power & maintenance stability"
+    intent: >-
+      Construction researched → ~4 manual assemblies near the smelter
+      (construction parts priority 1, then mechanical parts, then
+      electronics), maintenance depot online, one farm near the
+      settlement. This is the power+maintenance stability phase:
+      maintenance must never stall from here on.
+    skippable: false
+    entry_gate:
+      - metric: research.completed
+        node: ResearchCpPacking
+      - {metric: product.quantity, product: Product_Iron, op: ">=", value: 100}
+    orders:
+      - id: p2-research-power-and-maintenance
+        do: ResearchStartCmd
+        args: {nodeId: ResearchPowerAndMaintenance}
+        note: "Research order #2. Id CONFIRMED 2026-11-06 (plan v1.3.0): shipped proto registration Start(\"Maintenance\", Ids.Research.PowerAndMaintenance) in Mafi.Base (unlocks MaintenanceDepotT0), and ResearchPowerAndMaintenance appears in a live bridge researched list. The flagged ambiguity is retired: ResearchPowerMaintenance is not a research node in the shipped data (no proto registration, no Ids field) — it reached research_ids.txt via the mixed goal/other id dump. Note the node's shipped display name is 'Maintenance'; 'Power & Maintenance' is the older guides' name."
+        class: research
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchPowerAndMaintenance}
+              - {metric: research.queue_contains, node: ResearchPowerAndMaintenance, op: "==", value: true}
+      - id: p2-build-assemblies
+        do: place-blueprint
+        blueprint_ref: "starter-cluster/manual-assemblies-x4"
+        asset_status: authored
+        pack_slug: starter-assemblies-v1
+        district: starter-cluster
+        note: "Manual build until authored: ~4 manual assemblies near the smelter. Recipe priority: construction parts FIRST (the eternal early bottleneck), then mechanical parts, then electronics (starter phase 2). Placement route (v1.2.2): authored as pack slug starter-assemblies-v1 — companion /place flow, human confirm, QoSBuilder job."
+        class: construction
+        completion: human-confirm
+      - id: p2-enable-construction-parts-recipe
+        do: manual-step
+        step: "Set one manual assembly to the Construction Parts I recipe and confirm it is producing; set a second to Mechanical Parts once construction parts flow."
+        why: "MachineToggleRecipeActiveCmd exists (verified) but needs a runtime machine id + exact recipe id, neither sourced for a fresh save; the recipe choice is the human's until entity resolution is exercised in sandbox. Agent may prepare the command form in-session once the assembly's entity id is known from census/topology."
+        class: manual
+        completion: human-confirm
+      - id: p2-build-maintenance-depot
+        do: place-blueprint
+        blueprint_ref: "starter-cluster/maintenance-depot"
+        asset_status: not-yet-authored
+        district: starter-cluster
+        note: "Maintenance depot online in this phase (starter phase 2). Temporary siting is acceptable — it moves with the districts later."
+        class: construction
+        completion: verify-predicates
+        verify:
+          - {metric: census.proto_count, proto: MaintenanceDepotT1, op: ">=", value: 1, flags: [proto-id-unconfirmed]}
+      - id: p2-build-first-farm
+        do: place-blueprint
+        blueprint_ref: "starter-cluster/first-farm"
+        asset_status: not-yet-authored
+        district: settlement-edge
+        note: "One farm near the settlement (starter phase 2). Crop assignment is manual: FarmAssignCropCmd exists (wired) but crop proto ids are not sourced in the starter material, so no crop id is written here."
+        class: construction
+        completion: human-confirm
+      - id: p2-pin-construction-parts
+        do: PinToggleCmd
+        args: {productToToggle: Product_ConstructionParts}
+        note: "Construction parts are the phase-spanning bottleneck; keep them pinned."
+        class: pins-alerts
+        preconditions:
+          - {metric: product.unlocked, product: Product_ConstructionParts, op: "==", value: true}
+        verify:
+          - {metric: product.pinned, product: Product_ConstructionParts, op: "==", value: true}
+    checks:
+      - id: p2-construction-parts-starvation
+        every: {minutes: 5}
+        when:
+          all:
+            - {metric: product.quantity, product: Product_ConstructionParts, op: "==", value: 0}
+            - {metric: product.net_flow, product: Product_ConstructionParts, window: thisMonth, op: "<", value: 0}
+        severity: warning
+        action: pause-and-report
+        note: "Construction-parts starvation (bottlenecks.md): do not overbuild fabrication to compensate — 'don't rush' is the source's explicit warning; report and let the human decide."
+      - id: p2-maintenance-proxy
+        every: {minutes: 5}
+        when: {metric: census.machine_state_share, proto: "*", state: NotEnoughInput, op: ">", value: 0.5}
+        severity: critical
+        action: crisis-protocol
+        note: "Maintenance has no product id and no stock route (format G6) — a broad NotEnoughInput share across machines is the observable proxy for the maintenance/power legs of the death-spiral trio. Crude by design; the companion detectors refine it."
+      - id: p2-diesel-floor
+        every: {minutes: 5}
+        when: {metric: product.quantity, product: Product_Diesel, op: "<", value: 100}
+        severity: critical
+        action: crisis-protocol
+    exit_gate:
+      - {metric: research.completed, node: ResearchPowerAndMaintenance}
+      - {metric: census.proto_count, proto: MaintenanceDepotT1, op: ">=", value: 1, flags: [proto-id-unconfirmed]}
+      - all:
+          - any:
+              - {metric: product.produced, product: Product_ConstructionParts, window: lastMonth, op: ">", value: 0}
+              - {metric: product.consumed, product: Product_ConstructionParts, window: lastMonth, op: ">", value: 0}
+          - {metric: product.net_flow, product: Product_ConstructionParts, window: lastMonth, op: ">=", value: 0}
+        for: {months: 1}
+        note: "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+      - {metric: product.quantity, product: Product_MechanicalParts, op: ">", value: 0}
+    fallbacks:
+      on_gate_stall: pause-and-report
+      stall_after: {months: 2}
+      on_check_fail: crisis-protocol
+
+  # ------------------------------------------------------------------
+  - id: phase-3-mining-vehicles
+    name: "Mining & vehicles"
+    intent: >-
+      Vehicles & Mining ends reliance on the scrap pile: coal mine first
+      (retiring the coal maker smoothly), then iron mine + ore smelter
+      anchoring the PERMANENT smelting district, truck fleet grown
+      aggressively for the long iron haul.
+    skippable: false
+    entry_gate:
+      - {metric: research.completed, node: ResearchPowerAndMaintenance}
+      - all:
+          - any:
+              - {metric: product.produced, product: Product_ConstructionParts, window: lastMonth, op: ">", value: 0}
+              - {metric: product.consumed, product: Product_ConstructionParts, window: lastMonth, op: ">", value: 0}
+          - {metric: product.net_flow, product: Product_ConstructionParts, window: lastMonth, op: ">=", value: 0}
+        note: "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+    orders:
+      - id: p3-research-trading-dock
+        do: ResearchStartCmd
+        args: {nodeId: ResearchTradeDock}
+        note: "Research order #3. Display name in sources is 'Trading Dock' (U4-verified); the game id spells it TradeDock. The dock is the emergency bailout — it buys any shortage and prevents game-over. Placement note from the source: needs only -2 ocean depth since v0.8.1, much easier early placement."
+        class: research
+        flags: [id-spelling-differs-from-display]
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchTradeDock}
+              - {metric: research.queue_contains, node: ResearchTradeDock, op: "==", value: true}
+      - id: p3-research-vehicles-mining
+        do: ResearchStartCmd
+        args: {nodeId: ResearchVehicleAndMining}
+        note: "Research order #4. Display name 'Vehicles & Mining' is U4-verified; the game id is singular 'Vehicle'. Unlocks vehicle depot, Mine Control Tower, Ore Sorting Plant (research-order.md)."
+        class: research
+        flags: [id-spelling-differs-from-display]
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchVehicleAndMining}
+              - {metric: research.queue_contains, node: ResearchVehicleAndMining, op: "==", value: true}
+      - id: p3-build-coal-mine
+        do: place-blueprint
+        blueprint_ref: "mining/coal-mine-first"
+        asset_status: not-yet-authored
+        district: coal-mine
+        note: "Coal mine FIRST (starter phase 3), sited per the phase-0 scout. Keep mine edges well back from permanent processing — veins run below sea level and terrain collapses into pits (layout policy rule 3)."
+        class: construction
+        completion: human-confirm
+      - id: p3-retire-coal-maker
+        do: manual-step
+        step: >-
+          Decommission the wood-burning coal maker SMOOTHLY, in this order:
+          stop truck imports of wood to it, let it burn its remaining wood,
+          and only then remove it — removal itself is a human in-UI act
+          (deconstruction is banned for the agent in this plan).
+        why: "Starter phase 3 prescribes the smooth retirement sequence; the plan encodes the sequence, not a demolition order."
+        class: manual
+        completion: human-confirm
+      - id: p3-build-iron-mine-and-ore-smelter
+        do: place-blueprint
+        blueprint_ref: "smelting-district/ore-smelter-anchor"
+        asset_status: authored
+        pack_slug: iron-v1
+        pack_slug_overlay: iron-v2
+        district: smelting-district
+        note: "Iron mine + ore-based smelter. The ore smelter ANCHORS the permanent smelting district — place thoughtfully in the reserved inland area, not in the starter cluster (layout policy). This is the phase's one permanent siting decision. Placement route (v1.2.2): the smelter anchor (pack slugs iron-v1 + overlay iron-v2) goes through the companion /place flow — human confirm, QoSBuilder job; the iron mine itself is deposit-sited and placed manually (plans-blueprint-status.md ref #6)."
+        class: construction
+        completion: human-confirm
+      - id: p3-grow-truck-fleet
+        do: AddVehicleToBuildQueueCmd
+        args:
+          protoId: {placeholder: "VehicleProto<pickup>", display_name: "small pickup truck",
+                    status: unsourced-id, confirm: "Vehicle proto ids are not in the starter material; source from the vehicle depot UI / game data before use."}
+          vehicleDepotId: {$entity: {proto: VehiclesDepotT1, match: only}, flags: [proto-id-unconfirmed]}
+          count: 2
+        note: "Grow the fleet aggressively for the iron haul (starter phase 3), but keep it lean — small vehicles are upgraded manually later (unassign → scrap → rebuild), so do not over-invest (bottlenecks.md). Wired command (not verified); the proto placeholder makes this order manual-only until sourced."
+        class: vehicles-logistics
+        flags: [placeholder-id, wired-command]
+      - id: p3-research-beacon
+        do: ResearchStartCmd
+        args: {nodeId: ResearchBeacon}
+        note: "Research order #5 (U4-verified id). Refugee waves are 16 pops each — see the beacon check below; the beacon gets switched OFF before housing is exceeded."
+        class: research
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchBeacon}
+              - {metric: research.queue_contains, node: ResearchBeacon, op: "==", value: true}
+      - id: p3-research-tools
+        do: ResearchStartCmd
+        args: {nodeId: ResearchTools}
+        note: "Research order #6: the QoL suite (copy/cut, copy settings, Unity tool, pause tool, upgrade, planning mode) that makes every later build faster."
+        class: research
+    checks:
+      - id: p3-beacon-housing-guard
+        every: {minutes: 5}
+        when: {metric: settlement.free_housing, op: "<", value: 16}
+        severity: warning
+        action: pause-and-report
+        note: "One refugee wave is 16 pops. If free housing < 16 and the beacon is on, the next wave over-accepts past capacity and costs Unity (research-order.md / bottlenecks.md). Refugee acceptance itself has no catalogue command (format G9) — switching the beacon off is a manual step the human takes from this report."
+      - id: p3-truck-congestion-signal
+        every: {minutes: 15}
+        when: {metric: product.net_flow, product: Product_IronOre, window: thisMonth, op: "==", value: 0}
+        severity: warning
+        action: pause-and-report
+        note: "Proxy only: 'trucks extremely busy' is a UI signal with no API equivalent. Zero iron-ore flow while the mine exists usually means logistics, not geology — scale the fleet, don't tune around it (bottlenecks.md)."
+      - id: p3-diesel-floor
+        every: {minutes: 5}
+        when: {metric: product.quantity, product: Product_Diesel, op: "<", value: 150}
+        severity: critical
+        action: crisis-protocol
+        note: "Floor raised vs phase 2: the truck fleet is now a diesel consumer at scale. Plan-set target."
+    exit_gate:
+      - {metric: research.completed, node: ResearchVehicleAndMining}
+      - {metric: product.quantity, product: Product_Coal, op: ">=", value: 200}
+      - all:
+          - any:
+              - {metric: product.produced, product: Product_IronOre, window: lastMonth, op: ">", value: 0}
+              - {metric: product.consumed, product: Product_IronOre, window: lastMonth, op: ">", value: 0}
+          - {metric: product.net_flow, product: Product_IronOre, window: lastMonth, op: ">", value: 0}
+        note: "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+      - all:
+          - any:
+              - {metric: product.produced, product: Product_Iron, window: lastMonth, op: ">", value: 0}
+              - {metric: product.consumed, product: Product_Iron, window: lastMonth, op: ">", value: 0}
+          - {metric: product.net_flow, product: Product_Iron, window: lastMonth, op: ">=", value: 0}
+        note: "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+    fallbacks:
+      on_gate_stall: pause-and-report
+      stall_after: {months: 2}
+      on_check_fail: crisis-protocol
+
+  # ------------------------------------------------------------------
+  - id: phase-4-concrete-diesel-rubber
+    name: "Concrete, diesel & rubber"
+    intent: >-
+      The transitional industry phase: limestone mine + kiln for concrete,
+      oil pumps + basic distiller + rubber maker at the oil patch. Rubber
+      and copper cannot be postponed — this phase ends with a REAL diesel
+      chain replacing the starting stock, and rubber flowing.
+    skippable: false
+    entry_gate:
+      - {metric: research.completed, node: ResearchVehicleAndMining}
+      - {metric: product.quantity, product: Product_Coal, op: ">=", value: 200}
+    orders:
+      - id: p4-research-concrete-production
+        do: ResearchStartCmd
+        args: {nodeId: ResearchConcreteAdvanced}
+        note: "Research order #7. Id SOURCED 2026-11-06 (plan v1.3.0): no node displays as 'Concrete Production' in the shipped data; the wiki Required Research trio for this step (Crusher, Rotary Kiln, Concrete Mixer) is the exact unlock list of the node registered as Start(\"Advanced concrete\", Ids.Research.ConcreteAdvanced) in Mafi.Base (MiningAndSmeltingResearchData) — shipped display name 'Advanced concrete'. The v1.2.x caution against substituting ResearchConcreteAdvanced was based on its name alone and is superseded by the proto data; the string also appears in a live bridge researched list."
+        class: research
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchConcreteAdvanced}
+              - {metric: research.queue_contains, node: ResearchConcreteAdvanced, op: "==", value: true}
+      - id: p4-build-limestone-kiln-concrete
+        do: place-blueprint
+        blueprint_ref: "concrete-district/kiln-plus-mixer-first"
+        asset_status: authored
+        pack_slug: concrete-v1
+        district: concrete-district
+        note: "Limestone mine + rotary kiln + concrete mixer (starter phase 4), using the phase-0 scout's limestone position. Transitional siting: concrete production will be rebuilt at scale later; do not overbuild it here. Placement route (v1.2.2): the kiln+mixer block (pack slug concrete-v1) goes through the companion /place flow — human confirm, QoSBuilder job; the limestone mine is deposit-sited and placed manually."
+        class: construction
+        completion: human-confirm
+      - id: p4-research-basic-diesel
+        do: ResearchStartCmd
+        args: {nodeId: ResearchBasicDiesel}
+        note: "Research order #8. Id exists in research_ids.txt; the exact display form 'Basic Diesel' is single-source in research-tree.md (Charles says 'diesel'; Medium guide corroborates the progression) — flag carried."
+        class: research
+        flags: [single-source]
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchBasicDiesel}
+              - {metric: research.queue_contains, node: ResearchBasicDiesel, op: "==", value: true}
+      - id: p4-build-basic-diesel-chain
+        do: place-blueprint
+        blueprint_ref: "oil-district/basic-diesel-3pumps-distiller"
+        asset_status: authored
+        pack_slug: diesel-v1
+        district: oil-district
+        note: "At the oil patch (phase-0 scout): 3 oil pumps + basic distiller, wastewater dumped — layout policy explicitly calls this design 'not the most scalable' and temporary. Diesel generators stay on the output side of fuel storage (bottlenecks.md structural rule). Placement route (v1.2.2): the distiller block (pack slug diesel-v1) goes through the companion /place flow — human confirm, QoSBuilder job; the 3 pumps sit on oil-patch tiles and are placed manually (plans-blueprint-status.md ref #8)."
+        class: construction
+        completion: human-confirm
+      - id: p4-diesel-storage-alert
+        do: StorageAlertSetEnabledCmd
+        args:
+          storageId: {$entity: {proto: StorageFluidT2, product: Product_Diesel, match: first}, flags: [proto-id-unconfirmed]}
+          isEnabled: true
+          isAbove: false
+        note: "Turn on the game's own storage alert for the diesel buffer, firing when the level falls BELOW its threshold (SPEC §12.7: align with native alerts rather than duplicating them). Arg names verified against live/commands.json 2026-11-02 (storageId / isEnabled / isAbove). StorageAlertSetThresholdCmd (wired) may set the level in-session."
+        class: pins-alerts
+        flags: [args-recheck-at-prepare]
+      - id: p4-research-synthetic-rubber
+        do: ResearchStartCmd
+        args: {nodeId: ResearchRubberProduction}
+        note: "Research order #9. 'Cannot be postponed: no rubber, no vehicles/electronics, no maintenance, no death spiral' (research-order.md). Id SOURCED 2026-11-06 (plan v1.3.0): shipped proto registration Start(\"Synthetic rubber\", Ids.Research.RubberProduction) in Mafi.Base (RefineryResearchData; unlocks VacuumDistillationTower + the diesel/coal rubber recipe); of the two old candidates, ResearchRubberProduction is the node and ResearchRubber is not registered as one. The string appears in a live bridge researched list."
+        class: research
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchRubberProduction}
+              - {metric: research.queue_contains, node: ResearchRubberProduction, op: "==", value: true}
+      - id: p4-build-rubber-maker
+        do: place-blueprint
+        blueprint_ref: "oil-district/rubber-maker"
+        asset_status: authored
+        pack_slug: rubber-v1
+        district: oil-district
+        note: "Rubber maker next to the basic diesel chain (starter phase 4). Placement route (v1.2.2): pack slug rubber-v1 — companion /place flow, human confirm, QoSBuilder job."
+        class: construction
+        completion: human-confirm
+    checks:
+      - id: p4-diesel-net-flow
+        every: {minutes: 5}
+        when:
+          all:
+            - {metric: product.produced, product: Product_Diesel, window: lifetime, op: ">", value: 0}
+            - {metric: product.net_flow, product: Product_Diesel, window: thisMonth, op: "<", value: 0}
+        severity: warning
+        action: pause-and-report
+        note: "Once the basic diesel chain exists, a negative monthly diesel balance is the earliest death-spiral warning — earlier than any stock floor. Diesel chain guard (Round 5): the lifetime-produced sibling in the when: all: means this can only fire once a diesel chain has actually produced diesel — before that, a negative balance is ordinary starting-stock drawdown, not a chain deficit."
+      - id: p4-rubber-deadline
+        every: {minutes: 15}
+        when:
+          all:
+            - {metric: research.completed, node: ResearchBasicDiesel, op: "==", value: true}
+            - {metric: product.quantity, product: Product_Rubber, op: "==", value: 0}
+        severity: warning
+        action: pause-and-report
+        note: "Diesel done but zero rubber: the postponement trap bottlenecks.md names explicitly."
+    exit_gate:
+      - {metric: product.quantity, product: Product_ConcreteSlab, op: ">=", value: 100}
+      - all:
+          - any:
+              - {metric: product.produced, product: Product_Diesel, window: lastMonth, op: ">", value: 0}
+              - {metric: product.consumed, product: Product_Diesel, window: lastMonth, op: ">", value: 0}
+          - {metric: product.net_flow, product: Product_Diesel, window: lastMonth, op: ">=", value: 0}
+        note: "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+      - {metric: product.quantity, product: Product_Rubber, op: ">", value: 0}
+      - {metric: product.quantity, product: Product_Diesel, op: ">=", value: 300}
+    fallbacks:
+      on_gate_stall: pause-and-report
+      stall_after: {months: 2}
+      on_check_fail: crisis-protocol
+
+  # ------------------------------------------------------------------
+  - id: phase-5-copper-construction2-food
+    name: "Copper, Construction II & food security"
+    intent: >-
+      Spend the ship's copper wisely while the permanent copper district
+      (mine + smelter + electrolysis, near power — it is thirsty for water
+      and power) comes online BEFORE the ship stock runs out. Construction
+      II unlocks electric assemblies and the permanent conveyor-ready
+      assembly area. Food security is gated explicitly here: the farm
+      base must carry the settlement with margin.
+    skippable: false
+    entry_gate:
+      - all:
+          - any:
+              - {metric: product.produced, product: Product_Diesel, window: lastMonth, op: ">", value: 0}
+              - {metric: product.consumed, product: Product_Diesel, window: lastMonth, op: ">", value: 0}
+          - {metric: product.net_flow, product: Product_Diesel, window: lastMonth, op: ">=", value: 0}
+        note: "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+      - {metric: product.quantity, product: Product_Rubber, op: ">", value: 0}
+    orders:
+      - id: p5-research-copper-refinement
+        do: ResearchStartCmd
+        args: {nodeId: ResearchCopperRefinement}
+        note: "Research order #10 (U4-verified display name + exact id in research_ids.txt). Note: a separate ResearchCopper id also exists in the game data — if the research screen shows it as a prerequisite, queue it first (human confirms while queueing; the plan does not guess the prerequisite graph, which research-tree.md says is not publicly documented)."
+        class: research
+        flags: [prerequisite-graph-unconfirmed]
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchCopperRefinement}
+              - {metric: research.queue_contains, node: ResearchCopperRefinement, op: "==", value: true}
+      - id: p5-build-copper-district
+        do: place-blueprint
+        blueprint_ref: "copper-district/mine-smelter-electrolysis"
+        asset_status: not-yet-authored
+        district: copper-district
+        note: "PERMANENT build (layout policy): copper mine + smelter + electrolysis, sited near the power district because electrolysis is thirsty for water and power. Likely needs a 3rd diesel generator (starter phase 5) — adding it is part of this build step, on the output side of fuel storage."
+        class: construction
+        completion: human-confirm
+      - id: p5-research-construction-2
+        do: ResearchStartCmd
+        args: {nodeId: ResearchCp2Packing}
+        note: "Research order #11: electric assemblies (2x manual speed) + yellow construction parts; gateway to automation. Id SOURCED 2026-11-06 (plan v1.3.0): shipped proto registration Start(\"Construction II\", Ids.Research.Cp2Packing) in Mafi.Base (ConstructionResearchData; unlocks AssemblyElectrified + Cp2Assembly recipe) — the Cp2 = Construction Parts II reading was right, but the full node id is ResearchCp2Packing, confirmed in a live bridge researched list."
+        class: research
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchCp2Packing}
+              - {metric: research.queue_contains, node: ResearchCp2Packing, op: "==", value: true}
+      - id: p5-build-permanent-assembly-area
+        do: place-blueprint
+        blueprint_ref: "assembly-district/permanent-conveyor-ready-v1"
+        asset_status: not-yet-authored
+        district: assembly-district
+        note: "Start the PERMANENT conveyor-ready assembly area with storage buffers (starter phase 5). As it comes online, begin retiring disposable starter buildings — retirement means pause/stop first; any actual removal is a human act (deconstruction banned for the agent)."
+        class: construction
+        completion: human-confirm
+      - id: p5-food-security-push
+        do: manual-step
+        step: >-
+          Expand farming beyond the phase-2 single farm until the food
+          buffer is visibly growing: additional farms near the settlement,
+          crops assigned in the farm UI (crop proto ids unsourced — no
+          FarmAssignCropCmd order is written in this plan). Keep food
+          variety simple at this stage; the gate below (monthsOfFood) is
+          the arbiter, not farm count.
+        why: "The starter skill seeds one farm in phase 2 and treats food as a settlement commitment (refugees/housing); this plan makes food security an explicit gated phase outcome using the bridge status route, which is the only honest food metric available."
+        class: manual
+        completion: verify-predicates
+        verify:
+          - {metric: settlement.months_of_food, op: ">=", value: 3}
+    checks:
+      - id: p5-ship-copper-runway
+        every: {minutes: 15}
+        when:
+          all:
+            - {metric: product.quantity, product: Product_Copper, op: "<", value: 100}
+            - {metric: product.net_flow, product: Product_CopperOre, window: thisMonth, op: "<=", value: 0}
+        severity: critical
+        action: pause-and-report
+        note: "The ship's copper stock is finite (layout policy). Low copper + no copper-ore flow = the copper district is late. Threshold is a plan-set target."
+      - id: p5-food-floor
+        every: {minutes: 5}
+        when: {metric: settlement.months_of_food, op: "<", value: 2}
+        severity: critical
+        action: pause-and-report
+        note: "Stricter than the global floor: this phase's whole point is food security, so it reports earlier."
+      - id: p5-power-proxy
+        every: {minutes: 5}
+        when: {metric: census.machine_state_share, proto: "*", state: NotEnoughInput, op: ">", value: 0.4}
+        severity: warning
+        action: pause-and-report
+        note: "No power route exists (format G2): electrolysis + a 3rd generator change the power balance, and a rising starved share is the available proxy. Do not gate on MW — there is no MW source."
+    exit_gate:
+      - {metric: research.completed, node: ResearchCopperRefinement}
+      - all:
+          - any:
+              - {metric: product.produced, product: Product_Copper, window: lastMonth, op: ">", value: 0}
+              - {metric: product.consumed, product: Product_Copper, window: lastMonth, op: ">", value: 0}
+          - {metric: product.net_flow, product: Product_Copper, window: lastMonth, op: ">=", value: 0}
+        note: "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+      - {metric: settlement.months_of_food, op: ">=", value: 3, for: {months: 1}}
+      - {metric: settlement.starving, op: "==", value: false}
+    fallbacks:
+      on_gate_stall: pause-and-report
+      stall_after: {months: 2}
+      on_check_fail: crisis-protocol
+
+  # ------------------------------------------------------------------
+  - id: phase-6-automation-expansion
+    name: "Automation & expansion districts"
+    intent: >-
+      Conveyor Belts kill the truck chaos: electric assemblies, belt-fed
+      lines, unit storages with keep-full import rules — one dedicated
+      line per product, no sushi belts. Ship repaired, groundwater and
+      fuel station round out the first-15. Districts from the layout
+      policy become the map's permanent shape.
+    skippable: false
+    entry_gate:
+      - {metric: research.completed, node: ResearchCopperRefinement}
+      - {metric: settlement.months_of_food, op: ">=", value: 3}
+    orders:
+      - id: p6-research-conveyor-belts
+        do: ResearchStartCmd
+        args: {nodeId: ResearchConveyorBelts}
+        note: "Research order #12 (U4-verified display name; exact id in research_ids.txt). Flag: a ResearchConveyors id also exists — if the screen shows Conveyors as the belt-unlocking node instead, amend the plan rather than guessing."
+        class: research
+        flags: [id-ambiguity]
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchConveyorBelts}
+              - {metric: research.queue_contains, node: ResearchConveyorBelts, op: "==", value: true}
+      - id: p6-belt-the-permanent-lines
+        do: manual-step
+        step: >-
+          Belt-feed the permanent assembly district: one dedicated line
+          per product, no sushi belts, no permanent multi-recipe
+          factories (starter phase 6). Unit storages get keep-full import
+          rules — set them in the storage UI; the agent may prepare
+          StorageSetSliderStepCmd (wired) per storage in-session once the
+          storage entity id is resolved from the bridge storages route,
+          but slider VALUES are not readable back (format G7), so verify
+          is human-confirm.
+        why: "Belts are placement (format G3) and sliders are write-only state (G7); both stay human-led in v1 of this plan."
+        class: manual
+        completion: human-confirm
+      - id: p6-research-ship-dock-repair
+        do: ResearchStartCmd
+        args: {nodeId: ResearchRepairDock}
+        note: "Research order #13. Id CORRECTED 2026-11-06 (plan v1.3.0): this order previously named ResearchShipDockRepair, which is a GOAL id (GoalsData: GoalToResearchNode \"ResearchShipDockRepair\" targets Ids.Research.RepairDock) and would have failed at prepare. The node is ResearchRepairDock — shipped registration Start(\"Ship dock repair\", Ids.Research.RepairDock) in Mafi.Base (ConstructionResearchData; unlocks the Shipyard2 layout entity), confirmed in a live bridge researched list. The old note's conflation warning had the relationship backwards and is retired."
+        class: research
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchRepairDock}
+              - {metric: research.queue_contains, node: ResearchRepairDock, op: "==", value: true}
+      - id: p6-repair-ship-and-explore
+        do: manual-step
+        step: >-
+          Repair the capital ship at the shipyard and begin world-map
+          exploration (offshore oil is the phase-7 prize). Shipyard
+          commands exist (wired) but repair flow semantics are untested;
+          the human drives this in the UI.
+        why: "Starter phase 7 opens with ship repair → world map → offshore oil."
+        class: manual
+        completion: human-confirm
+      - id: p6-research-groundwater-pump
+        do: ResearchStartCmd
+        args: {nodeId: ResearchUndergroundWater}
+        note: "Research order #14. Id SOURCED 2026-11-06 (plan v1.3.0): shipped proto registration Start(\"Groundwater pump\", Ids.Research.UndergroundWater) in Mafi.Base — the plan's inferred candidate was the right node; the string appears in a live bridge researched list. Scalable water replaces rainwater collectors."
+        class: research
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchUndergroundWater}
+              - {metric: research.queue_contains, node: ResearchUndergroundWater, op: "==", value: true}
+      - id: p6-research-fuel-station
+        do: ResearchStartCmd
+        args: {nodeId: ResearchFuelStation}
+        note: "Research order #15 (U4-verified display name + exact id). Vehicle refuelling logistics — the truck fleet's diesel stops being hand-carried."
+        class: research
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchFuelStation}
+              - {metric: research.queue_contains, node: ResearchFuelStation, op: "==", value: true}
+      - id: p6-build-fuel-station
+        do: place-blueprint
+        blueprint_ref: "logistics/fuel-station-first"
+        asset_status: not-yet-authored
+        district: starter-cluster
+        note: "First fuel station near the vehicle depot / docks (vehicle depot siting is permanent per layout policy: near the docks)."
+        class: construction
+        completion: human-confirm
+      - id: p6-next-research-note
+        do: observe-only
+        observe: >-
+          Record for the NEXT plan (do not queue blindly): after the
+          first 15, the source order is Advanced Diesel (id
+          ResearchAdvancedDiesel exists) → Power Generation (coal boiler
+          + steam turbine replacing diesel generators; candidate ids
+          ResearchPowerGeneration2 / ResearchPowerGen2 are ambiguous —
+          unsourced mapping) → Cargo Depot (id ResearchCargoDepot
+          exists; explicit gate per a single-source community report: it
+          cannot be researched until a cargo ship is discovered).
+        flags: [single-source, unverified]
+        class: manual
+    checks:
+      - id: p6-transport-connectivity
+        every: {minutes: 15}
+        when: {metric: census.transports_fully_connected_ratio, op: "<", value: 0.95}
+        severity: warning
+        action: pause-and-report
+        note: "Belt conversion leaves dangling transports; the census transports block (total vs fullyConnected) is the observable. Threshold is a plan-set target."
+      - id: p6-diesel-floor
+        every: {minutes: 5}
+        when: {metric: product.quantity, product: Product_Diesel, op: "<", value: 200}
+        severity: critical
+        action: crisis-protocol
+    exit_gate:
+      - {metric: research.completed, node: ResearchConveyorBelts}
+      - {metric: research.completed, node: ResearchRepairDock}
+      - {metric: research.completed, node: ResearchFuelStation}
+      - all:
+          - any:
+              - {metric: product.produced, product: Product_ConstructionParts2, window: lastMonth, op: ">", value: 0}
+              - {metric: product.consumed, product: Product_ConstructionParts2, window: lastMonth, op: ">", value: 0}
+          - {metric: product.net_flow, product: Product_ConstructionParts2, window: lastMonth, op: ">=", value: 0}
+        note: "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+      - {metric: census.transports_fully_connected_ratio, op: ">=", value: 0.95}
+    fallbacks:
+      on_gate_stall: pause-and-report
+      stall_after: {months: 2}
+      on_check_fail: crisis-protocol
+
+  # ------------------------------------------------------------------
+  - id: phase-7-rail-introduction
+    name: "Rail introduction (Trains Expansion DLC)"
+    intent: >-
+      First rail, honestly scoped: the starter skill hands rail off to
+      the coi-trains sibling skill and notes the in-game train tutorials
+      are new in Update 4 — use them. This phase stands up ONE network
+      and ONE line on the longest truck haul (iron), built by hand,
+      with the command-channel train primitives kept sandbox-only until
+      their semantics are validated (format G3/G10).
+    skippable: true                # the run is self-sufficient without rail; rail is an optimisation, not a lifeline
+    entry_gate:
+      - {metric: research.completed, node: ResearchFuelStation}
+      - all:
+          - any:
+              - {metric: product.produced, product: Product_ConstructionParts2, window: lastMonth, op: ">", value: 0}
+              - {metric: product.consumed, product: Product_ConstructionParts2, window: lastMonth, op: ">", value: 0}
+          - {metric: product.net_flow, product: Product_ConstructionParts2, window: lastMonth, op: ">=", value: 0}
+        note: "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+      - {metric: settlement.months_of_food, op: ">=", value: 3}
+    orders:
+      - id: p7-research-trains
+        do: ResearchStartCmd
+        args: {nodeId: ResearchTrains}
+        note: "DLC gate node. Id exists in research_ids.txt; display name 'Trains' is single-source in research-tree.md (DLC section). A ResearchTrains2 id also exists (later tier — not this phase). Diesel locomotives are a separate later node family (ResearchDieselLocomotiveT2 is T2; the base diesel-loco node id is NOT sourced here and is not guessed)."
+        class: research
+        flags: [single-source]
+        verify:
+          - any:
+              - {metric: research.current, op: "==", value: ResearchTrains}
+              - {metric: research.queue_contains, node: ResearchTrains, op: "==", value: true}
+      - id: p7-train-tutorials
+        do: manual-step
+        step: "Complete the in-game train tutorials (new in Update 4) before laying any track."
+        why: "Starter phase 7's explicit instruction: 'In-game train tutorials are new in Update 4 — use them.' Detailed rail design belongs to the coi-trains sibling skill, not this plan."
+        class: manual
+        completion: human-confirm
+      - id: p7-build-first-line-manual
+        do: manual-step
+        step: >-
+          Lay the first line by hand in the UI: a dedicated iron-ore
+          shuttle, mine → smelting district, stations on sidings (never
+          blocking a through route), load-only station at the mine and
+          unload-only station at the smelter (a station cannot load and
+          unload the same product — the relocation plan's station spec,
+          applied here as doctrine), buffer storage >= 1 trainload at
+          each end, fuel station on the route. Detailed consists and
+          network rules come from the coi-trains skill.
+        why: "Track/station placement semantics via CreateTrainTrackEntityWithDirectionCmd are untested (format G3/G10); manual laying is the honest v1 path."
+        class: manual
+        completion: verify-predicates
+        verify:
+          - {metric: trains.line_count, op: ">=", value: 1}
+      - id: p7-create-network-command-sandbox-only
+        do: CreateNewTrainNetworkCmd
+        args: {}
+        note: "Catalogue command (wired, no args). Recorded here so the plan names the real primitive — but it MUST NOT be applied to this run until sandbox validation is recorded (format §6.1). The in-UI equivalent in p7-build-first-line-manual is the v1 path."
+        class: trains
+        requires_sandbox_validation: true
+        flags: [wired-command, sandbox-only]
+      - id: p7-create-line-command-sandbox-only
+        do: CreateNewTrainLineCmd
+        args: {}
+        note: "Same status as the network command: real catalogue primitive, wired, untested semantics. Sandbox-only in v1."
+        class: trains
+        requires_sandbox_validation: true
+        flags: [wired-command, sandbox-only]
+    checks:
+      - id: p7-rail-not-starving-the-base
+        every: {minutes: 15}
+        when: {metric: product.net_flow, product: Product_Iron, window: thisMonth, op: "<", value: 0}
+        severity: warning
+        action: pause-and-report
+        note: "If converting the iron haul to rail makes iron flow WORSE, the shuttle is wrong (blocked/mis-scheduled), not the plan — report with the trains route evidence."
+    exit_gate:
+      - {metric: research.completed, node: ResearchTrains}
+      - {metric: trains.line_count, op: ">=", value: 1}
+      - all:
+          - any:
+              - {metric: product.produced, product: Product_IronOre, window: lastMonth, op: ">", value: 0}
+              - {metric: product.consumed, product: Product_IronOre, window: lastMonth, op: ">", value: 0}
+          - {metric: product.net_flow, product: Product_IronOre, window: lastMonth, op: ">", value: 0}
+        note: "Vacuous-window guard (Round 5): the activity sibling (produced or consumed > 0 in the same window) prevents this net_flow leaf reading TRUE on 0-0 when the window never existed or the product had no activity in it."
+      - {metric: settlement.months_of_food, op: ">=", value: 3}
+    fallbacks:
+      on_gate_stall: skip-phase
+      stall_after: {months: 3}
+      on_check_fail: pause-and-report

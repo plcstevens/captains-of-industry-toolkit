@@ -1,0 +1,90 @@
+{
+ "totalEntities": 45,
+ "byProto": {
+  "Settlement1": 1,
+  "SmeltingFurnaceT1": 3,
+  "CasterT1": 3,
+  "DieselGeneratorT1": 2,
+  "ResearchLab1": 2,
+  "TruckT1": 8,
+  "StorageLoose": 3,
+  "StorageUnit": 2,
+  "StorageFluid": 1,
+  "WasteDump": 1,
+  "AssemblyManual": 4,
+  "FarmT1": 2,
+  "MaintenanceDepotT1": 1,
+  "MineT1": 4,
+  "KilnT1": 1,
+  "ConcreteMixerT1": 1,
+  "OilPumpT1": 3,
+  "DistillerT1": 1,
+  "RubberMakerT1": 1,
+  "ElectrolysisT1": 1
+ },
+ "machines": {
+  "SmeltingFurnaceT1": {
+   "states": {
+    "Working": 3
+   },
+   "recipes": [
+    "IronSmeltingT1Scrap",
+    "IronSmeltingT1Ore"
+   ]
+  },
+  "CasterT1": {
+   "states": {
+    "Working": 2,
+    "NotEnoughInput": 1
+   },
+   "recipes": [
+    "IronCasting"
+   ]
+  },
+  "AssemblyManual": {
+   "states": {
+    "Working": 4
+   },
+   "recipes": [
+    "ConstructionParts1",
+    "MechanicalParts"
+   ]
+  },
+  "FarmT1": {
+   "states": {
+    "Working": 2
+   },
+   "recipes": [
+    "PotatoFarming"
+   ]
+  },
+  "KilnT1": {
+   "states": {
+    "Working": 1
+   },
+   "recipes": [
+    "ConcreteKiln"
+   ]
+  },
+  "ConcreteMixerT1": {
+   "states": {
+    "Working": 1
+   },
+   "recipes": [
+    "ConcreteMixing"
+   ]
+  },
+  "DistillerT1": {
+   "states": {
+    "Working": 1
+   },
+   "recipes": [
+    "BasicDieselDistilling"
+   ]
+  }
+ },
+ "transports": {
+  "total": 11,
+  "fullyConnected": 11
+ }
+}

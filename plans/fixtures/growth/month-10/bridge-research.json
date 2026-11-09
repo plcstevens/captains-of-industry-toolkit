@@ -1,0 +1,23 @@
+{
+ "current": {
+  "id": "ResearchRubberProduction",
+  "progressPerc": 60000,
+  "stepsDone": 36,
+  "remainingSteps": 24,
+  "scienceCost": 60
+ },
+ "queue": [
+  "ResearchCopperRefinement"
+ ],
+ "researchedCount": 7,
+ "hasActiveLab": true,
+ "researched": [
+  "ResearchCpPacking",
+  "ResearchPowerAndMaintenance",
+  "ResearchTradeDock",
+  "ResearchVehicleAndMining",
+  "ResearchBeacon",
+  "ResearchTools",
+  "ResearchBasicDiesel"
+ ]
+}

@@ -1,0 +1,45 @@
+{
+ "date": "1-2-15",
+ "tick": 129600,
+ "products": {
+  "Product_Diesel": {
+   "quantity": 210,
+   "stored": 190,
+   "storageCapacity": 250,
+   "produced": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "consumed": [
+    10,
+    80,
+    90,
+    0,
+    90
+   ]
+  },
+  "Product_IronScrap": {
+   "quantity": 870,
+   "stored": 820,
+   "storageCapacity": 1000,
+   "produced": [
+    150,
+    1250,
+    1400,
+    0,
+    1400
+   ],
+   "consumed": [
+    130,
+    400,
+    530,
+    0,
+    530
+   ]
+  }
+ },
+ "unknownIds": []
+}

@@ -1,0 +1,2290 @@
+{
+ "generated_by": "tools/gen_blueprint_library.py",
+ "pack": "coi-blueprint-pack",
+ "testing_status": "NOT in-game tested — no blueprint in this pack has been imported into the game. Paste strings were re-encoded 2026-09-23 with the Update 4 header (lib 7 / save 315) taken from a real 0.8.5 export, after the old lib-4/save-248 strings were rejected on import. Do not present any as tested until an in-game import confirms.",
+ "count": 82,
+ "entries": [
+  {
+   "slug": "aluminum-v1",
+   "name": "Aluminum V1 -- one cell line, 24 aluminum/min (8 MW cell, machines manual)",
+   "module": "aluminum",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Aluminum Smelting [verified] (+ Chemical Plant II, Rotary Kiln (Gas), Concrete Production [verified])",
+   "item_count": 91,
+   "kinds": {
+    "buildings": 51,
+    "transports": 40,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "Caster": 2,
+    "FlatConveyorT1": 8,
+    "LiftIoPortShape_FlatConveyor__1": 2,
+    "LiftIoPortShape_FlatConveyor__2": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 2,
+    "LooseMaterialConveyor": 21,
+    "MiniZip_IoPortShape_FlatConveyor": 5,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 18,
+    "MiniZip_IoPortShape_MoltenMetalChannel": 3,
+    "MiniZip_IoPortShape_Pipe": 8,
+    "MoltenMetalChannel": 2,
+    "PipeT1": 9,
+    "SmokeStack": 1,
+    "StorageFluid": 3,
+    "StorageLoose": 1,
+    "StorageUnit": 2
+   },
+   "string": "B2120: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"
+  },
+  {
+   "slug": "aluminum-v2",
+   "name": "Aluminum V2 -- second cell line (48 aluminum/min total)",
+   "module": "aluminum",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Aluminum Smelting [verified] (+ Chemical Plant II, Rotary Kiln (Gas), Concrete Production [verified])",
+   "item_count": 91,
+   "kinds": {
+    "buildings": 51,
+    "transports": 40,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "Caster": 2,
+    "FlatConveyorT1": 8,
+    "LiftIoPortShape_FlatConveyor__1": 2,
+    "LiftIoPortShape_FlatConveyor__2": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 2,
+    "LooseMaterialConveyor": 21,
+    "MiniZip_IoPortShape_FlatConveyor": 5,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 18,
+    "MiniZip_IoPortShape_MoltenMetalChannel": 3,
+    "MiniZip_IoPortShape_Pipe": 8,
+    "MoltenMetalChannel": 2,
+    "PipeT1": 9,
+    "SmokeStack": 1,
+    "StorageFluid": 3,
+    "StorageLoose": 1,
+    "StorageUnit": 2
+   },
+   "string": "B2148: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"
+  },
+  {
+   "slug": "aluminum-v3",
+   "name": "Aluminum V3 -- hydrogen alt-fuel + red-mud recovery",
+   "module": "aluminum",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Aluminum Smelting [verified] (+ Chemical Plant II, Rotary Kiln (Gas) [verified])",
+   "item_count": 32,
+   "kinds": {
+    "buildings": 18,
+    "transports": 14,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "LiftIoPortShape_LooseMaterialConveyor__1": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 2,
+    "LooseMaterialConveyor": 6,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 4,
+    "MiniZip_IoPortShape_Pipe": 6,
+    "PipeT1": 8,
+    "StorageFluid": 2,
+    "StorageLoose": 2
+   },
+   "string": "B1080:H4sIAAAAAAAC/41TW0sbQRidmWyiMZqr0cQVyWNLjHghbNVSCPFCitaAtkhfwjY7xm03O2F21zaPfS1SRESsqIiUUkrf+tgX31voPyj9F31oKZ2dzT2RNtkQ8n3nfHPmfCd9XxB0T0/dmUp/Rmguo1llVbfKiUdziVQqsVtVKClhPSFrZmrHwloimaBYSZUthX0XyR6mVRdIQCG4QdWSqsvasm6qZjWnvLr2Aej25ikxiVmtYE9sXdXVx2qlkCN5Qs3NXbmCC3m1ggHs825RWTd2CC274yIAQOgPrGIdU1nLU5VQNhB4/RxTYdQs0Qh9+fvXz8DAcKOYKRax7rT+fHvzySPscwE+j33E1gyAgwMM+xQXTUKrQxAAxJ5REURE4Ba+f/UMiZusI5dwY+IKJeU8pvZY4B/v7D5k99Rq7evTwUC0BsiV7W5ddjBYry+/aKu7QrGcsUZKqmGqRSOnVyxzSTXkJxpWYDje0tqwzNZeZCSjaeT5A6JnDEMt6VhxAOyqw4O1o1Y0S1VgNMyRWNmiVvHZKiVWxWBWu0OOwcDrOOiY9doxi7kURABCgFw+EXhFtCiiTuhBA+oH3EYbtHgMu4CHDWDd7sUJFJpAUDjiHQ9XM9FDzXGDGagz2fwQ+0DhpMH1sAIjQ+G0OS6e7DHurEvIaBJEkmzvP9jegd9eXzDIVgLDMGIbCaNcWq9ZF41ZEaaGvQVfEgwlUYw980zeZVPL2DxXt3/OfrlHbveK/xohBl6XTUxVWcsSfQ9XCeX3yDKuq31FfM5o9AZO825ZEMmCPuHg3BOLt4WyNbIgHmsLZkvYmR2tpoAwsE0Zq6eLn19zqFvloaPS1sPE2JJ8WSBlO1BHTVQtQ1IWSRJqRx03UbW7SZIQkwQkXF37+vtZT7y1pu6Y/3S0UJix5Uq2XCS8rZHH/5c8y8kZTn5XP5nXJF57Xx/Ia2m+9RNn6zwHEq98aEmGgzltYqalHln72MjaCOL/SvfdSbQwKSykhfG0MJbusOusy65ZCdyTWBQuWBRA/Ia9OqtckrpWedk1774EtiUm/KopfNvm1V9/AY2xvEVLBgAA"
+  },
+  {
+   "slug": "chemicals-v1",
+   "name": "COI Pack - Chemicals V1 (sour water base: stripper + acid)",
+   "module": "chemicals",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Sulfur Processing [verified]",
+   "item_count": 31,
+   "kinds": {
+    "buildings": 21,
+    "transports": 10,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_Pipe": 12,
+    "PipeT1": 8,
+    "StorageFluid": 5,
+    "StorageLoose": 1
+   },
+   "string": "B1032:H4sIAAAAAAAC/31TW2sTQRidnVwbc9nmZprGdMmTRSy2IEjxJcTWBFobaFXwpWw303TsZmeZ3bXm0f/gi/ozfPTFR1FREZFSSikioiIiIioo4uxMupsm2mVgd893zvnOfDsbeQKl0Jmpc1NnH0A4W1tqKE1V21ROK7UN1MGaqlvKlWnlpEUcqmypNqLKmmqhWcWyKTZN9npKUTXcmgyAiUhQXqK4jQ1VnzNsbHcbre39cGhs2SZUbaNGxyTUvswqehNRDRk2CBd6tbmbbm2ekk6v9PBuPDLeK65Q1bAG6iBaGqz2OzP5SO5Q3ybFhLJMcix3qKeHB44VGtYCaWPLxprVMEzHvoAtdU1HLRAf6ystOXZ/LZGv6jrZukSMqmXhtoFaggBgcqRJiU3srolS8V7Ted3BLTnbe3NvqMVYLUezR0d7D6vLbNhX3VlL6TQ3R60V6mibFylxTAtImRG+6XVCO6FUGAAQCe6wQYOwOzUQdTcvx9iGQBwkWIyUnPWtbaR26ri9IaWZTygkc/Xukepc4kDdC+UqUwWu3DtSmU8dKKudDjGwKrR5kfn2vf9rjx8MbIEQC8mFpLcBR193ehmyae6zf2SGsbiXgZ1TITwfZUIp+OhDGEjJYmERG/gaNlcbpMlOxPKGaqLVJjaRS4WC+lhQOSJz5KmPJAXnWR8iOC84Mj75rwZ8Y4vuQLGq14hxA3UJdbXRPNe+FFoXqcQ48sr3r8Q58tpHZgSy7SMZkWqnDxGpdvuQIkf2fKQe5Mh+HyKc3/h5ChWOvPU5ZYUhgVLS+xlrRCf01u9fP1Insh5Y1dx/k5f+PL9zPxx8xx3KYXfYK9NAmogx7nWksU/fTUgAQLYyUQijMFASZkL3XuiYwGPJEMoDrI8eS5YggBIIZIqwwlZ8gPhpyC4pw/Kg3echO0apyMN2X3w7wP1cr7IywPrqsTLCLpiMwhJbQVgPDnC/DQWcicP6YN/vnKXk/nOyvD7sgClsxQA7V4cdfgqHvuSFIuBfW1x/AYhomBMtBgAA"
+  },
+  {
+   "slug": "chemicals-v2",
+   "name": "COI Pack - Chemicals V2 (second stripper + acid line)",
+   "module": "chemicals",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Sulfur Processing [verified]",
+   "item_count": 31,
+   "kinds": {
+    "buildings": 21,
+    "transports": 10,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_Pipe": 12,
+    "PipeT1": 8,
+    "StorageFluid": 5,
+    "StorageLoose": 1
+   },
+   "string": "B1040:H4sIAAAAAAAC/31TXWsTQRSdnXy1NV9tmpra2i59slhLDC0EEbGNrYm0NtCq4EtZd6fp2M3OMrur5k1FRERERIpWERER8dVHX3z3wb8gIqL9A4KW4uxMuptubMNAknPPOffc2buxz1CK5MeL45MfIZwsLVTkqqKuycfk0iqqY1XRLfliQT5iIZUYmmzZFJsmovJRWVGxJuvYQKMhMBwLpxcormFD0WcMG9uNivbtazTSv2gTqtRQpW4Sal9gFb2KqIoMG0RzzdrMDbc2S0m9Wfq0EY8NNItLVDGsQB10DAarrc5M3pnd1bdKMaEsU7oru6unh4cO5CrWHKlhy8aqVTFMxz6DLeWKjjQQ728pLTh2ay3RN6Xr5Pp5YkxZFq4ZSBMEAJOdVUpsYjdMlIo3m87qDtbSvc1/7hfSGEtzVLu7u/ljeZE49JJiIyr19HBzpC1RR107S4ljWkDKdPKhVwitR1LjAIBY+Du7aBB1bw10uMOnu9hAIA4SLEYq3etb20ipl3FtVephPpFIkat/7KvOJnbUzVCuMnWaK3/uq+xL7Sin6nViYEVo+0Tm9ed7aw/uXNgcIRZK55LeAI6+4jQz9J7gPpv7ZuiPexnYsgrhyTwTSuE/v6JASh7KzWMDX8bmcoVU2UYsriomWq5iE7lUKKhbgsqRIke2fSQpODc3fURwbnNkYPR/Dfhg8+6FYkUvEeMaahDqajtOce0doXWRkQJH7vr+IxMcuecjBYHc95GMSPWgBRGpHrYg0xx55CPlMY48bkGE8xM/T+4cR9Z9zlCZIaHBpPcylohO6K2tv79Th3s9cEp1301e2v7y7EM0/JQ7DEXdy146DqThLsa9ilT26BsJCQDITiYPYR6GBoWZ0G0IHRN4rCKExQDrhcdKSxBACYQy03CEnYkA8WWbXbIIh4J2r9rsGGWk2G732rcD3M/1GioHWG88VkbYhZN5OMjOGCyPBbhv2wIWJmA52PcdZ8nZPTbL68MWTGanANhe7XZ4LxxakuemAX/a4vMPd+65cSgGAAA="
+  },
+  {
+   "slug": "chemicals-v3",
+   "name": "COI Pack - Chemicals V3 (fertilizer I + II completion)",
+   "module": "chemicals",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Chemical Plant & Paper or Biofuel (+ Sulfur Processing from V1) [verified]",
+   "item_count": 32,
+   "kinds": {
+    "buildings": 17,
+    "transports": 15,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AirSeparator": 1,
+    "FlatConveyorT1": 2,
+    "LooseMaterialConveyor": 4,
+    "MiniZip_IoPortShape_FlatConveyor": 4,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_Pipe": 7,
+    "PipeT1": 9,
+    "StorageLoose": 1,
+    "StorageUnit": 1
+   },
+   "string": "B1176:H4sIAAAAAAAC/3WUTWsTQRjHZzbbbdqmTZqXmtqqa/VQ8YWKKF5Lbe2W1gbbingp62ZSp25mltmJWg+iUDx58CRav4JIqSKioiIioqJFiohXb34BD4o4M7vdvGnYIcn/+T0v+8wz0/pegy1DB44eOPxU046MTFtmwXbOm/vNkXOojB3b9c1Th8zBEmIcu/gyYqZl7jUty3Ro2XMRx5TsiQFT11PTDC9gYrujhGO+ZBXXXnS0pCfpAvY5dnyLeBU+RYsIGJlInK7wUNVbk8cRQcx2CwxTJgKkAYy3FRjllC95qC0xjNkM8mxmc8pge+tJ5GAP+bCjs2oQtcBE2yyziV+irNxyOg8AgPq9H4aI1ZmfwgSfwd68RQuU8ZlztofmCyIIgImWkqnQ+wGqlEGlrFYVElfKWo2SUMrH71LpMv+VYMy1+QglF9ASZdLlSrtyWQ9chGJch4H0UMVN7vlXlElKfTRlc8Sw7daEM27AlHJ+FDhL6WYofa6muBWmeByVbqxCXUkbVWo1pJ7UUkEXntVKQ0p6Xs24DGX3WvXbd41U74zYH3sBWWVPVD8nZsEtIOYgwkF3PrSNXpK2MUbLoenlSiLdFxrV9jXYQaa/0VobWbhnc3V5N4colcvV5Yz0WE/e8uuH8xj27bMuKoItvTWmYEQjW75n2HXpxROUDPs+XiCoGABAi/cmwlRqs7Zmw3/yCxXFIBcrDu/rDn/MT+Iy8jklCPanVUhUnGUV5/xxRiueL7t6FWZVV798N1LiDbtlk0BGvmsqJ+oHW2AeavFtHWGeOYL51u3Zzfhj0YG1LNgv461AQ8SL7eiKejhCXcqu/f71M2lmI3HYkS1Vpj+f7jww9Jdqo3ca8qjMHgRwoF2wi8gRaZc6IQCaeMZ1raBrsR1BsMDvVeAnHDYpgZBG6nWVAgqTCIk3UG8iKgUFAkFsfJ9W2Nec9G0EpiHQNABjIpyYdblAPfquqb6SqS+aej31oSmzQIh4Eg3gxwjMQahpGpSxFod0cV7kaki+3lRnaVDUqFYD+lWd0F1dtTeJ2oeusGxxpcg7pN7rW+AlsGSIyUtgtYn7rArZnfvPDTOQlL6iRHnGl8Ug1XtvBN6Cy4TdWYZpwaWAvJjq2S8Rmw7ZngFwE8rViH5tRicENgGCuy34/AXO/VbuugYAAA=="
+  },
+  {
+   "slug": "concrete-v1",
+   "name": "COI Pack — Concrete V1 (compact, 1 kiln + 1 mixer, 24 slabs/min)",
+   "module": "concrete",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Concrete Production [verified]",
+   "item_count": 39,
+   "kinds": {
+    "buildings": 24,
+    "transports": 15,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "ConcreteMixerT2": 1,
+    "CrusherLarge": 1,
+    "FlatConveyorT1": 2,
+    "LooseMaterialConveyor": 6,
+    "LooseMaterialConveyorT2": 4,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 7,
+    "MiniZip_IoPortShape_Pipe": 4,
+    "PipeT1": 3,
+    "RotaryKilnGas": 1,
+    "SmokeStack": 1,
+    "StorageFluid": 1,
+    "StorageLoose": 5,
+    "StorageUnit": 1
+   },
+   "string": "B1504:H4sIAAAAAAAC/4VUUU8jVRS+005bCgUGOhTYrevswrLAVhaQJTzsg1gWbISl2XY18YUM02u5Mp3b3Lld6ZsaY4wxxhCyWXGzMcYYNcaY1ZhNfNB3TUz8Cf4JHzTGM/d2OgPDanOTznznfN937rnnTuqXmJKYn1uZu/5jLPZ8cbtklE1r3/jjjSOjSB2LYY6NlxaMaYs2mqbFC8aCsU9sx7gKDw1ygFnBWFwyXNvcda81iDMTR1dUVdtmpE4c077pcMLbpdpbh+nE8CatE5cTyy05zRbfojWsJrNdcLvFfTQ1uIEdzEy7zAhlIDCMlJ50mVFOebuJ05kia7l7mG2arI6V3tRtbJEmdpW+gYpt1kWQOPXqopJJV5npuK9S1kggHSGkqm9DJWpSTXmS/f23KTdZ+0XY0IbpKr3KQLaIG9jh4FVrWZxQgWcSmiS/EyIPDvr92fLaAG69ipYLYVDCBjPvYtsrJFHwFOLqu1IB+EO9lQbdxxUO7YY9DI8Gr2u4aYNGrcKx2cgOBYHNpoD0EPSChEa0ANo+aNexkxsOkFuEMwrYaIh482DPbLl8LORbNNkuddYIPSA1DDXrU1BzSj36ODk+XuGUmXVcajQp43fgWO0yZha0Cp0b68RuHnixdUYbndDPx5nz5ztBcRCn4iifPx0NKwP9qZETvv48aBdGTnh28fjTYyX35JytEdfctXENGeOhkJy2buxibtW26eu3qLPquqTu4JpMQLGeS5mO1SalLp7QO2/eH6515mQy03nY8QZQuTws1HCtylrW/gajraaLoJ+jKdHPe9BPdM5rDsp7e9QuQN3IQBc9t4mpIV9rkzSwy6mDlcseOy7Z9/+TfSWoxHRqkjjpERPq778mwxTFUDzKtL+9dbtFahMz/T7/ZZNjJgVWpPPxE52VnksyE8mJefD/mZrMfCgzv0ydsZvZvk5pdxzCJ67qfmX+HYNe70qxJU9MUd87TINBYWaLOOQV0twp0TIMR2XPbOIdcXpb3p6IaYPCXdymTBxKVnDfl1zRaIl8IJBnxs5SK8P3RuxCpn4YkCclcijJonsSORLInHGW3Lpt8nBNy0uCci+QVfMCuR8gukSOpawwksiDIGdeIg8DpCCRT4LyNIl8GiDP5byPXQpdG+heyyK1KXvz77/+HJzXu+Cq5d1SEfrnt4++S6qfCY2FkSf0erEXqK9hCw613Y8UhGIoBt0fTQszqS6FPpdCQMkqCorFkJqNIwUWfET1SPajn/og+9nRM22ri6Diu8HJxqNu30s+5OWkW8JLz6AMLB1pUcMvRHlLSW8KqqJKqa/COGiDMS0PK0L6oeviVwOjMhmt5nE3T5PVxKcVNK2jQrSOr2QdIUmYtZWo5NfdPF/yhoJu5BAc9OnUb7qd9yVh8tSpSN63oROCJAWpyVmUnEfzsKJ7fxRRhenVJ6MnEVHNzaJZWHlUOKOjIvv6QPj2VMMmcCFWoqU/lrRQ3nIBLS8i//cvMP5b5BIJAAA="
+  },
+  {
+   "slug": "concrete-v2",
+   "name": "COI Pack — Concrete V2 (mirrored second line, 48 slabs/min)",
+   "module": "concrete",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Concrete Production [verified]",
+   "item_count": 39,
+   "kinds": {
+    "buildings": 24,
+    "transports": 15,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "ConcreteMixerT2": 1,
+    "CrusherLarge": 1,
+    "FlatConveyorT1": 2,
+    "LooseMaterialConveyor": 6,
+    "LooseMaterialConveyorT2": 4,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 7,
+    "MiniZip_IoPortShape_Pipe": 4,
+    "PipeT1": 3,
+    "RotaryKilnGas": 1,
+    "SmokeStack": 1,
+    "StorageFluid": 1,
+    "StorageLoose": 5,
+    "StorageUnit": 1
+   },
+   "string": "B1508:H4sIAAAAAAAC/4VU32sjRRyfTTZJ06btNmnT9q6ee9ee1561V2tOglSxJm0NptdwyZ0gQtlmp+nYzU6YnZzNm/4Lhy/qi4iI+urbeZxFREQPFTlEREQOERER33xQxO/OZLPbbk/LQJPPfH585zvfSeLziBJbXMgvXPwgEnm8sFnSK0Z9T7/70it6gdp1hjnWry7ps03CGGXY1B1cp7apW8TG83ourzuWse1caBJ7LorOqaq2yUiD2Ia1anPCOyXzxvVkLF2mDeJwUndKdqvNN6iJ1XimB262uYcmhtexjZlhVRihDAzSSOlLVhjllHdaOJkqsLazi1nZYA2s9Ccu4zppYUcZGKpaRkNsErtRW1JSyRozbGeHsmYMFRFCqnoTKlHjasK1HBy8TLnBOs8Qy143HKVfGcoUcBPbHLLMdp0TKvBUTJPiWwHx8LDXmg2yjxmk9StaNoBBCevMuIYtt5DYvOsQVQ+kA+hH+qtNuoerHDoNZ0iP+1+LuGWBh1nl2GhmRvyNcktAowHoaQmNaT60ud9pYDub9pFLhDMK2HhAuLq/a7QdPhHILRhsm9pFQveJiaHm0atQc0J94/X45GSVU2Y0cKnZooxfgWu1KpjVoVXoxER3b3Xf3VtjtNndOngtdfJkd1NcxJF9NDV1dDfoDPL7xg7levOgnRo7lNnDo/dPlJzDc1YkjrFtYRPpk4EtOW29vdPZFcuiL16i9orjkIaNTUlAkb4zqW5UmVIHT492v7n/sNmdk5lU98OWO4DK2bRww2aNtet764y2Ww6Cfo7vin6+Cf1EJ9zmoCn3jNopqBvp6LSbNv3AiOdVJk3scGpj5ayrjkr1W/+pPudXYtimFM64wph653Y8KFF0xZXMesdbs9rEnJ4b9PTPGhwzaZCXyW/fM1npOyOZKC+Y7/w/U5PM9yTz3cQxpzk/0C3tik349IOjXmXeG4Neb0uznGumqB9dT0LA/NwGsclzpLVVohUYjuqu0cJb4vY23DMRwwKHa7hDmbgULrQfS61otEQ+EchDE8e5VeD3RpxCUj/1xTMS+UyKRfckclsgC/pxdmuWwYM15ZaE5AvfVn1KIF/5yIREvpa2Ikgid3zOYlEg3/jIvES+9cvTygL5zkeeXHN/7BLowlDvWRaoRdnLf//15/DiaA9cqbuvVGz98+Wr78fV74XHw2P36PVSP0hfwHW41M4gikAqikD3x20RJt2l0Q/SCCQZJYIiClIzFlJgQfXFEPvGhwPAfmT82NjaErh4aXCz0XDaTakHXlamxdAOQs+jFKwi0sKBP4rycnF3CmqiSumvwjhorYhWhhUS3eqleNXAqMyEqzkI8WZ30Gy4iLuyiAAPBi0f9vupx9Pk6aLLO2h5DcEtH6X+3Gu7Zwljpz4R4v0SuB4gRZAaX0bxR9EirHChv/bYGlBBEIXRzcIKG/8WMs4uo/Owimg+bPy7YF8cCr6eWrB6eBD5cMgfUhbg5R5DuRzy/v4FueKM1A0JAAA="
+  },
+  {
+   "slug": "concrete-v3",
+   "name": "COI Pack — Concrete V3 (export refinement: T2 slab trunks + cement overflow)",
+   "module": "concrete",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Concrete Production [verified]",
+   "item_count": 8,
+   "kinds": {
+    "buildings": 4,
+    "transports": 4,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT2": 2,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 2
+   },
+   "string": "B508:H4sIAAAAAAAC/3WOT0sCQRjG311dXf97qPsctUDCKGLxklIhZApJhy4ybWNNTjPL7GR5q68QXfocHTsE0a1D36GPEFFREk27oEI2vKd5eH6/J/5oGtZCaaW0dGuaW7VmHbWw20PP51eoJrgriSJoZxEVyJknpEKSdCknx4QrB7XLyGd4Dyl5wns+mkduECDRJ7LLxGkxAnY0mtsgnEjMWpIKSdUArGxbYu7/4mqCCXkx/HrPxWZGn6uuqylB9P10fROL55uSHlCO2RpXGlDfv79LgWEnWlIooQYeSWTXGdYN3icDIdtlMJJJjTsirhJykDEATH2VArACGPGXy4Rup1CDcrpLvU5dtLR1+xB7pDPJASOdCEZ1hTy2eAEAolGwwrnhsodwiPaNJA4wR0teQ4lmWNyZ0nwL8szsphA+aWBFJMVsbE7mTQMMEyLZObD1LWvkR1DJFqft/geTtnTzr/wzlE9qKmDrq2rNMNQE5SqM3w8saOIDKQIAAA=="
+  },
+  {
+   "slug": "concrete-v3-refined",
+   "name": "COI Pack — Concrete V3 Refined (8x mixer II, gas kilns, buffered)",
+   "module": "concrete",
+   "layer": "refinement",
+   "version": "v3-refined",
+   "research_gate": "Concrete Production [verified]",
+   "item_count": 227,
+   "kinds": {
+    "buildings": 106,
+    "transports": 121,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "ConcreteMixerT2": 8,
+    "CrusherLarge": 1,
+    "FlatConveyorT1": 38,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 13,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 14,
+    "LooseMaterialConveyor": 52,
+    "MiniZip_IoPortShape_FlatConveyor": 19,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 24,
+    "MiniZip_IoPortShape_Pipe": 13,
+    "PipeT1": 31,
+    "RotaryKilnGas": 4,
+    "SmokeStack": 4,
+    "StorageFluid": 1,
+    "StorageLoose": 2,
+    "StorageLooseT2": 2,
+    "StorageUnit": 1
+   },
+   "string": "B3396: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"
+  },
+  {
+   "slug": "consumer-goods-v1",
+   "name": "Consumer Goods V1 — Household Goods line, 32/min, genuine AssemblyRoboticT2",
+   "module": "consumer-goods",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Basic Computing [verified]",
+   "item_count": 21,
+   "kinds": {
+    "buildings": 13,
+    "transports": 8,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyRoboticT2": 1,
+    "FlatConveyorT1": 8,
+    "MiniZip_IoPortShape_FlatConveyor": 8,
+    "StorageUnitT2": 4
+   },
+   "string": "B996:H4sIAAAAAAAC/41Uz08TQRSeLS200F+U3UL5IYNwJCgYEw9qUhFqE5EGiiReyHZ3KKPbmWZmFu1N/wa96L/h0YsJRw0SQowxxhg0xhgP3jxojLO/Sute2Gyym/e9971v3/d2+l5FlNj5uUtzF19EIiuLlHC7gRgsUWpyeHseHj98Am9Qm6Mdapl+2MIEzcILC+camMzCOiK2DMAi56hRs1prtEYFNqoLPUCLRrOrDNcx0a0lIrBolc3XezyWu0nrmMskXiZNW6xQE0V7h9rBVVsE0b5MCRHEdKvCMGWSIAeUeKLCqKCi1USJwVBXpb9vDRm4iThQBhJVphO+TVkjBlQAgBLd/9wrGZJwBRN8Bze3yrRCmVjf0Ztoa9nShZzALmpRJotj03FZ0pNKuyRNmbZILcoe/fn9K5NW28GiYSDiQX/fPH3eGz1wW2TSnXTVeaBk+2XNXWQIylopBYCIvGULLQ7i0f09PlhYl4heR+WGQ7sh52VVEHPIQW7Ex5YeONgyow0fevksOTTmg21JHThQx/9HO5lluaZ19Q0Gnc1rXT3b8eF00UJMbO4gUqzRXfTzcSI6MlLm3Z5ex1yvWchUCoUOyHM2wMBovmhZ9P4tSqSNuE6Q6SWAMa27xxLxyHri4ylf1QbBorowMbBoc0EbVSwsdGb0suHYcIUh8yqUS2LahoDX7O1txCZVv855IDMAU/7LVsnSOVemcq4gZFaZbdwrMWo3nTWKad4meNZ7Lh96LktbAy8zMikuV+zIWzGnTom7S/f2JDKthpjehZhkkqbKrTiQWwFyjsVAdZzK5rPD7riVAhgFY844Js5Mnm1/xLpAyFKmXMXhPu/DimWSKvV96FDs/SYfOxTDENOnsGIINCgVH55K8XQyULwpDxRfcLjNcViwTIJS3pcOwdAV/PUkkgx/+rcQk0zKOyM+OpXgmXwguH0WukehJz0fbvg91HBcBTPOrH+cCJ1x6oLrH2SCAPCJBQAA"
+  },
+  {
+   "slug": "consumer-goods-v2",
+   "name": "Consumer Goods V2 — + Household Appliances line (24/min total)",
+   "module": "consumer-goods",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Basic Computing [verified]",
+   "item_count": 21,
+   "kinds": {
+    "buildings": 13,
+    "transports": 8,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyRoboticT2": 1,
+    "FlatConveyorT1": 8,
+    "MiniZip_IoPortShape_FlatConveyor": 8,
+    "StorageUnitT2": 4
+   },
+   "string": "B1020:H4sIAAAAAAAC/41Uz2sTQRidTZO2aZsfTbNp0/TH1vagCFWDQg4qxiatAWuXNlXwUja703R0MrPMzlZzqyIi4k0v+m949CL06MGbiIgH7VmKiIqW4mw2mx+uh4ZAwve+7703877dvjcBKXR6Pjd/7lUgcGmBEsuuQaYsUWpYyvWs8nnnmXJSuUJtC25RbCh508RIIzq0FIwIVI5nz56qIaJwyjV8ogfIwWB8haEqIhouEo54vWS827VCiau0iiyOdKtETJsvUwMGe0daxRWbe9W+2BIkkGlYZYgyQZAAUn9YZVRI1E0YHs5bFqxVcH2VVqiYLWelgb5VqCMTWkAaDJeZRqxNymohUAAASMGvX3oFw5CyjAi6icyNElUp42tbmgk3FrHGxaG3YZ0yMRyazYmRnki0QWKKtgWKKbt38OdnLJpsFfO6DokLHb59/rI3uN+QiEU76cpngBQfEDO3oM4pq0ckAALiKyTkHOgPvt+1htNrAtGqsFRzaNfFfWEVMoccJMaaWPGugy0yWmtCr18MjWSaYMtSBw6SE/+incxiXJa7dL2LjqfkLs1WfTSax5DxG1uQ5Ct0G+4/DQfHxkpWd6YFZGkVDA0pne6A3GQ9DIyn8hjTO9coETGiKoGG2wAycrdGkbhkPf0TkaardYJ4OTs5uGBbnNbKiGM4NX5ed2K4wKBxURFLYtg6Vy7bm5uQTSebc84PNDxwpPlno4hFMIwSYVKaSTRsQaPMbP32EqO26SxTSHb3wV0AN+tvbtYiXC/RmGjKiUX77i6aMyflGqv3o12ZLfiYfvmYRJNcELvxQewGSDhBg6STVzwVH21cupQG4yDjXMrk1PQx+T9HKZWkmYZzv95vv3PRVBA+Dzqcuw/NYYdz1ce0s+dzrgJZFc4/Hsn5bMRzvsYhxE3Hfp37Pp2YaFKFvwd7bcdqw/HDdmXIf/ZHPibRlHLu+tORHM9lPMetd2H7Vej6T/lVH/tUJwpgzrnxJ223c86c9/kLIasMR5AFAAA="
+  },
+  {
+   "slug": "consumer-goods-v3",
+   "name": "Consumer Goods V3 — + Office Supplies line + manual CE/Luxury steps",
+   "module": "consumer-goods",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Basic Computing [verified]; Assembly (Robotic) II for the manual CE line [unverified tree position]",
+   "item_count": 24,
+   "kinds": {
+    "buildings": 15,
+    "transports": 9,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyRoboticT2": 1,
+    "FlatConveyorT1": 9,
+    "MiniZip_IoPortShape_FlatConveyor": 9,
+    "StorageUnitT2": 5
+   },
+   "string": "B1084:H4sIAAAAAAAC/41UTWsTQRieTTdp0uaraTZt+rk19SRUrQgeVIg1jYHWhjZV8FI2u5NkdLOzzMzW5lb/gBQtokVERERERPDoRfDowb8gpYh48uZBEWd3s2niemjIkvB+PO8zz/vM9n8KCMFTc+fmzr4PBAoL2KBWExK5iLFG5Wtn5P3tXfmEvFKrIRXKa5Zp6ghSWUcG5OGmYliKLi8UTi5ZWxZpyZRBk/aBUVFMrhBUR4aiFwyGWKukfflIg6klXEeUIZWWDNNiy1iDYmi4E1yxmBftTxShAYmilwnChAOkgBCOlAlmmLVMGBnKUwqbVb21iquY91bmhYH+VagiE1IgDEYqRDFoDZNmEDAAgCDePQhxhKi8jAx0A5kbJVzGhK01FBNuLOoK4yffhC1MeHMw1+AtfbG4A2LysgWsY3Ln96+fiXi6E8yrKjTc1J/Pj96FxB1nRCLeDVc5DYTkAO+5CVWGSSsmABDgXz5CaoCwuP+RDmXXeEapw1LThl3neullSGxwkBpt5wpbdm6R4GY79WEvOjzeTnYodeVBeuLfbDcyb5eknrme0MmM1DOzEx+J53VI2PUGNPJVvAl/3I+Io6Ml2rvTy4gqVR1qQjbblXI36+XAWCav6/j2VWzwNaK6ATW3AIxLvTMKhgvWF56ItVmtG4hV5icHFyzKcLOCmA6nxs6r9houEKhdlLlJNEtl8iWrVoNkOt3us3+g5iVj7T8bZW4AIsykHEJQqxBLvVUk2DJtGwUl1wnu6t0t33O3zNfq7TLBixrcYruuxew+oeGY7sFhJMd8SA99SLxIYtwVB9wVIGWvGKTtTSUzyRFHbiELxsC4Lcfk1PSxjHeIK9iisIF1zbm2woxD3T9wz0+dFzFO9HEXdfe+POlEQrltwQf1tAOV8LjzKok/YfHrkdjnJI99Qed3g2DDtlDJIR+S/jPymW9kwq7ijyA+P2QrOK2C+OLwSFG/FC99UvCijK39tyOxn+1o774avTejq33GP/CVb+AEA7O29q8Pic662r/p0n7HL8Rbv/a8Stqxtf9+JPbHox77IjdNW3Jnkvf5C4w/Wa8XBgAA"
+  },
+  {
+   "slug": "copper-v1",
+   "name": "COI Pack -- Copper V1 (scrap furnace + caster)",
+   "module": "copper",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": {
+    "node": "Copper Refinement",
+    "status": "U4-verified (Charles + Steam list + Medium guide). Unlocks the copper mine, T2 smelter and electrolysis."
+   },
+   "item_count": 10,
+   "kinds": {
+    "buildings": 6,
+    "transports": 4,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "CasterT2": 1,
+    "FlatConveyorT1": 1,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MoltenMetalChannel": 1,
+    "SmeltingFurnaceT2": 1,
+    "StorageLooseT2": 1,
+    "StorageUnit": 1
+   },
+   "string": "B880:H4sIAAAAAAAC/3VTTW/TMBi2s7TpR/qxdB0t60b4ODChVWwSEteqbFOllVW048BlMonXmaV25LhAj/wM+BscuXCnAgkhhBBCCH4EBxDCTtLSFsgliR+/7/O8jx8brzSYuF6/Wb/xQtPqzcOW3UHOmb21ZTeZ72Nu3922rwYOR759MuQUOdi+ZjsoEJhvLoEM1IuHnPQJRd4uFUSMWu7bcRLARLrDmWBi5OPkZptQco/4xy3WYVx0T5GPjw8YC3AbyTYEeU1GH+IR4wAa6R5HNDhhfJCwTQCAob8bJ1PVrmAc9XFr4MsOR5LJ62DuYCpAuhJju48VtsfZIIZePjMzazEYdl3AQba2iM52luVmeY63wwnjcsZirjzHOV1fyldawQHrk0AQJ2hRfyhukQDd97ALC9UZ6HAoZrHiasPz2KPbjDaCgPQpdqMN0sflfEwVGtbbgZYV7sVujw+ds33Ohn4gfUtYKenWUik/naXJPMaf/PzxvbCyMl1sOGq0EPr15unzpP4+PK1y+T/nsZqRpQ+wIzWMchoAEABtwwQ1U1JFvaM2H6I2smCyyzJBxgS6/nGcPGfNe9JmLtYrpQU3wtVqYR9TzJE38dSSbc8vdwfYE4T296IIShvWjDvYIT4OYK0cJXWyp7fTVXGVloDIklmdn0Kd61abeQLTNhZy2FNEKfaUdBBq17QU0Awp/bOUrlf0qtKwkWqGoVfU8EIpolRLkrHJmDpFI2Fk/yL8EhLa+T0PiYmtve0ZnwwDlA0Z89ffkikZubRKLciq8BVzMlCgAItQS1zMxjE4okRcWol/1Au78qa5Q0dczscfx5E4aKlYrOWkJKh/DWVcsf91FWelqZJ1A/x5fgNhhZAdIAQAAA=="
+  },
+  {
+   "slug": "copper-v2",
+   "name": "COI Pack -- Copper V2 (second furnace + caster row)",
+   "module": "copper",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": {
+    "node": "Copper Refinement",
+    "status": "U4-verified (Charles + Steam list + Medium guide). Unlocks the copper mine, T2 smelter and electrolysis."
+   },
+   "item_count": 12,
+   "kinds": {
+    "buildings": 7,
+    "transports": 5,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "CasterT2": 2,
+    "FlatConveyorT1": 2,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MoltenMetalChannel": 1,
+    "SmeltingFurnaceT2": 1,
+    "StorageLooseT2": 1,
+    "StorageUnit": 1
+   },
+   "string": "B936:H4sIAAAAAAAC/3VTXWsTQRSd2Wy+mjZJN01N2hjX6oPFtsSK4GuJbQk0NpjUB1/KuDtNx25mltmJNY/+DP0bPvriuwX9D4qIiIiICop49yNlG3UZ2N05995z7pk76ZcaTjbWbq7deK5p15u7LbNDrCNzddVsCtel0ry7bl7xqCW4bR4MJScWNa+aFvEUYFIcLyfQNNaLu5L1GSfOJldMjVr225MUwslsRwol1MilqeU24+wec/dboiOk6h4Sl+7vCOHRNoFSjDhNwR/SkZAIp7M9Sbh3IOQgaTYQQmn93UkqU+0qIUmftgYuVNgDJqdDpUW5QtlKhG0+8rEtKQYR9OLp9NRiBAZVJ3CUq02i8cqQPl0+w9uRTEjosThTPsN5up/IV1rejugzTzHLa3F3qG4xj9x3qI0L1Ri0O1RxrDi/4Tji+LbgG57H+pzaYQD4OJuPqALDeuvYMIJYavfk0DralmLoeuBb0lgBtxKl/GkvTeEI+fjXz++FubnTzQ3Lby2Afr968iylvw9Oq1z+z3nMT0HqA2qBhtGMhhBGSKs3UK0BVGHtsMyHsAwkjKOMBppqIF3/eJI6Z5z1pC1sqldKE24Eu9XCNuVUEmfsqQFlF2a7A+ooxvtb4RiCDYvpO9RiLvVwrRyO6zimt961JHHBEhRaEtf5KdB53mgLR1HepgqaPSScUwekFzUNYYwS+grSlxBeAvWfQb1e0au+jHqmGcy+z44vlEJWfwtIm0L4B5lOZmrAqetf4nl+OEC52l9yvgZyzPyWQ9TY9N41kFIKpeiZOkKwKqhcmUj9FqbGZOfqqASrAnfm9ZtUBuY3618BlPMnuTgD04kKuIi15MVcNFN7nKmluejHf1Ebrq09tNSlfPSxH7aJDX/GFhegA6z/CKgvm/+61/FO/JTzftPj5w98Ysk1cgQAAA=="
+  },
+  {
+   "slug": "copper-v3",
+   "name": "COI Pack -- Copper V3 (electrolysis refining)",
+   "module": "copper",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": {
+    "node": "Copper Refinement",
+    "status": "U4-verified (Charles + Steam list + Medium guide). Unlocks the copper mine, T2 smelter and electrolysis."
+   },
+   "item_count": 7,
+   "kinds": {
+    "buildings": 5,
+    "transports": 2,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "CopperElectrolysis": 2,
+    "FlatConveyorT2": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "StorageUnit": 1
+   },
+   "string": "B720:H4sIAAAAAAAC/2VSTW/TQBDddTZ28506cUloQZYQEhxSISokrpFJI0uURDQFiUtk7K1Z6uxau2sgN0D8CfgbHLlwpwiJv8CPQIKqYh0naVJsS2u/N/PejGeMbxrM39m9v3vvi6Z1nIFrDz3/xO50bIfFMeb2kz37Fo6wLzmLpoIIm+NjQgkNb+eAgVB9wElIqBf1qCRy6gZ/TvW8+ZCFREjiC5fGiTxgAUZ6YwkOErlAjVofU8y9aMgJ40rABHCjMORMMjmNccHMquitFACLxmPskxgLWGr/T6tcHwsBy4UR96g4ZnySdxBQNzpTpSEdGTMPWIQlWM47DUVBdH6qK7BiH6jWnpF47LIh4/LwhRfj8X7kSYfRV3jKOFApNwwAQK5anenHKsxhEePvzv7+rtWaS7Dr+5hm1PmPj5919PZ7alGvrsqN7gK4WVQ5L1UDjE8rGgAQAO2mAfYM5ZGJZvnvs3yV0NA0ACFAKqSvHgs8tdQofv7SzfahUvFC7E7SEo7USKIh5mkhXz+VG60523uTsvucTS7I5vacXDawwgNr5zJ7SXvLWnNeTLN+xVrzXOK5VssV61vygAjveYQD0G6vUNmuLDh4dasbRez1I0a7QpCQ4iALgNrGdmludUSJ3GnOP9IDB2opgsSX16rzl3G2N/C6OZPDwYgn/kmfsyQW6YjHDTViiD7MfnklRbxNcHH9AxzxH401AwAA"
+  },
+  {
+   "slug": "cparts-advanced-v1",
+   "name": "CP Advanced V1 — CP II line, 48/min (Cp2Assembly)",
+   "module": "cparts-advanced",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Assembly (Robotic) II [verified]",
+   "item_count": 30,
+   "kinds": {
+    "buildings": 21,
+    "transports": 9,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyRoboticT2": 1,
+    "FlatConveyorT1": 3,
+    "FlatConveyorT2": 6,
+    "LiftIoPortShape_FlatConveyor__1": 6,
+    "LiftIoPortShape_FlatConveyor__2": 6,
+    "MiniZip_IoPortShape_FlatConveyor": 5,
+    "StorageUnitT2": 3
+   },
+   "string": "B1100:H4sIAAAAAAAC/5VUW2sTQRid3SbdbZM26SVNel+tQqVSbVTogwoxtiVgbWhTBV/CNjttRzczYXZSzZv+Bn3Rv+GjL0IflVpKKaVIkSoiIlJE8EERZ2dy2SSIGAJZznfOdznft9FeqYr//OT05KUXqnohmTYS1oaJc9Aybk0ZRw+fGBxKpQwbYXjWuDh9Lo+wMZ4sxBOOA/MrdulMCxjx+cILFK0hbNozmCFWSlmvNx1/9w2yhhyGck4KF4psnljQ19pTBReKrIJqoTmIITXtNEWE8gTdQNHb0pQwwkoF2NZVqbZIVgjXZuJKu7YIc6gAHSUQ8LSjBNsy1MTOKqF5P3A/im/rfStP12HMI4zuoEI2RdKEsqV1swCzs7bJkgRvwBKhQAn6J3Qu0X1bm05n/xIj1FyDqXyB05f5YHYa0hzEDIRi5djMAzc2S0m+HHr5LBgeLAdFIw1x0DXUGPVm5vLuSF3diiPhnkhdzSre25mwIWW31yFOrJANePy4zReJpZx6868jx1yxoaX09XtCcgWVGIj2JWyb3L9JMLcTrWFoSQKIReprzGCZrEXv7yh3tYwRy8QHAsmiw0g+g5gNBwcu54hN6BUKrasG36ZVzDHjWnF1FdKh3rLO/YFWOTjcX37I8p04jPInRHDapMxRRrpFc9DKcPjeHCXFguNubMzdWMtoZ9XPpFvz0a+fP0JGbxVM5Fx7Rej3m6fPW33bm1ytn+j0HkAmDpST7VxzF+Z4W6UOBQCVf/lRRHVeQyaV+h2p54IKK6qrAV2tZ+02sQI60HR+lNviKMdGb6BV9reDzGan3AmjujjjHaE49Q9FXCjahWJX1nCRgMyxJ3MIRHL25cvhIprkHNSQCU28DXv8bQAh97RBl3uh4Z5wrzgzpQ9EQcw9g4HBoWFlROxDE/vwuvBWZDxd7/WUxxReJ6o1iA6lyGuwpga0BoPfNbECGtA0PsZRbfioJgb7UBs+6hfIR49BkvPJY5DkfPYY1DzaftOCuYnBRtZBEysI1BhQFd+XWgdB+W/1tdZBUBXIcY0Tk5xvNU5Mbba7qRqXTbuLPPyfRY7LWt9r808Dz+cP4qW5eTkGAAA="
+  },
+  {
+   "slug": "cparts-advanced-v2",
+   "name": "CP Advanced V2 — CP III + CP IV line (exact 1:1 chain)",
+   "module": "cparts-advanced",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Assembly (Robotic) II [verified]",
+   "item_count": 58,
+   "kinds": {
+    "buildings": 40,
+    "transports": 18,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyRoboticT2": 2,
+    "FlatConveyorT1": 9,
+    "FlatConveyorT2": 9,
+    "LiftIoPortShape_FlatConveyor__1": 12,
+    "LiftIoPortShape_FlatConveyor__2": 12,
+    "MiniZip_IoPortShape_FlatConveyor": 9,
+    "StorageUnitT2": 5
+   },
+   "string": "B1444:H4sIAAAAAAAC/5VU7YsbRRif3dtccre5u9xrci9tV6sSOSheVAglFmNyVwJpG9q0gl+OvezcZetmZ5mdnBs/VREREREtokVERERERFSkVJHiiQh+8F+QeoiISBGppR6HszNJdrKLyB2BW57n97z9nuc38R9kKfbAsfyxh7+U5XypphWNbd1uQEO7kNNuXLqsUVOlUtGW2ccFzTJtqGWhpzeItnJ8RWs0ddO+fwgcV5TUGWxumbZurdrEJJ2K8dOOG5uqoi3TJWbDrdhOm5xCBlSGp/vGM23Ss8YnTkIbYt2qYRNhmmAKSImRGkYEkY4DRyaLrgtbG1bnLNpANLaek0bjZ2HDdKArqWrJebAHkJIjdazb7ibCrRgoAwAk5dbPwzTdmHbKtM0nTGe9gmoIk3NN3YHra5ZOSsjehh2EgZSMLVdpSEK5seOOz58jCOtbsNJyKPw8HcyqQdyANgETma5v1fN9axi1uq7rV5Kpxa6TNRLyg8mlsFfMTMOnZgfq9hhJTc8O1OzbZ8aLFsTk8Sa0ixtoG958bUSZzVTcQfLLpqtvWNCQ5uYFF19BzwfSc0XLQk+dRjal09yyocEBIDM7WGPV5smGEvNj3a7O2yap5xbUUtslqFU3iQUXFwoNZCH8CIbGCY1u02jTy3msvbkJ8dJMN87/B42u89B892Od7sQlmH6ZyK7pmLjS4SnWHDTq1PzkSYzajutv7Ki/saEj430+S37NZ/b++XtCm+kbiw2fXuba//HNz4aV3R0anbhrXDyAeg5Id4/SmIuwQdvqjEkAyPRHjyJdpTV4Uh7/C4+nAT1UuiqrVXkQ9WsEpVZBvEqP8jY7yqNHquYm+a+DXF9f8SdMV9kZ32ER9/xPRI5FnGYRe7yGb1F5jn2eg1k45tIuE4dviXPMs4FlucDU8BtVA5jwTxtM+heamk7NsDOT5kAaZPwzWFhcOiQdZvsosH2ILDzHMt47yPWKQAqtky6Egp7nQSLBBVkthAh+IYJSCyBeoGO8uNsfPl1gg7202x8+fYJZXg4wKse8EmBUjnlVICg62u+RBSfKIFkOof6IoJJlOVOWJeVy0EGSv1avBx0k15jljQCT4ZgrASazFunpZqQaDcuX6SL/PMgis7zWW8H8ed+iKH/Rt10ZVuLskZZGpfvoA/xQ8ADHgBNp6VbQEmA9ydlHQbYZQt0OULRrH5dtymoztPI7UU01QbxJW307IIrm9pt/JyAqe5FZ3hVWzjHvCSvnmPeFlXPMB4ImPKaJvQNpwosw8mHkcGnitBdCfRQVgSerXoiRj6Mi8EDco31/IojAY5N8KojgaWb5XGCEY74QGOGYqwIj0VmuReonHJB0QqivIqikI2ccKoKvBRE4rN51QQSYWb4RRMAx3woiwJGevotUo2F5h25u/0Ai4LW+F0TgW3p//wJrQjoSQwkAAA=="
+  },
+  {
+   "slug": "cparts-advanced-v3",
+   "name": "CP Advanced V3 — Lab Equipment I-IV chain (64 LE4/min) + manual",
+   "module": "cparts-advanced",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Assembly (Robotic) II [verified]",
+   "item_count": 156,
+   "kinds": {
+    "buildings": 110,
+    "transports": 46,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyRoboticT2": 7,
+    "FlatConveyorSorter": 11,
+    "FlatConveyorT1": 24,
+    "FlatConveyorT2": 22,
+    "LiftIoPortShape_FlatConveyor__1": 30,
+    "LiftIoPortShape_FlatConveyor__2": 30,
+    "MiniZip_IoPortShape_FlatConveyor": 24,
+    "StorageUnitT2": 8
+   },
+   "string": "B2624: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"
+  },
+  {
+   "slug": "cparts-v1",
+   "name": "Construction Parts V1 — 2 manual assemblers, 12 CP1/min, buffered",
+   "module": "cparts",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Construction (Construction Parts) [verified]",
+   "item_count": 31,
+   "kinds": {
+    "buildings": 14,
+    "transports": 17,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyManual": 2,
+    "FlatConveyorT1": 17,
+    "LiftIoPortShape_FlatConveyor__1": 2,
+    "LiftIoPortShape_FlatConveyor__2": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 4,
+    "StorageUnit": 4
+   },
+   "string": "B1128:H4sIAAAAAAAC/4VVzWsTURCft9lkTT92Y5p+pdGueumhaFMQei2xLQGrwVYFL2Gbfa2rm33h7YuaWxUR8exF/w2PXrwLKiIiIiI2iIiIiKhoKc6+pGm660d4kOzMb+b3m5k3We2hQuJTh2cOH72vKIUC83zB6xXhMM8sWVz45pm8+Xb9tjltVi2vbrmm5fu0uuJS7k+a+WmzUMofqTrepLlSX12lnNoxGCdq6iR31hzPcuc84YhG0X60kQAST5Y4E0w0ajRhLjqec86plYusxLhYOm/VaHnetQRKuEQbjAPRksvc8vxVxqvxsV4A0NQnG4k9o0uCcWuNFqs1DDyNBG6J8gr1xIO7fcmRtnfuSuCd56y64+wZaztl3pAfenNhbyh33+Au5hJ3GMfiUv2Duzg79pg+UvSPszXHF07FL3q1ujjm+Bb2zgZjtMt1si66fCQ1NOu67PIJ5s36vrPmUbsFIEp8b2+b6rTniHSm/RB8URt7a+PkBvraP8pFzjySSctk1F7GsV5c4Kxe87G18eGgobFBvVNsgbmMX9389d0YynSMs5WgdunaenznXkJ9Kuc4rHdPajkPZKQHYy7QCipp9BMABQ/ODFmI+kzGJALWsZgc43McYzCsYCbQG7Q21Y/tAoOkgiLTo50azjJmk4wUHJOCWwpbYl60xCB7hzIGiCPqyy5KVVK++g9lNrNNiWVVOBV0ybVW2tRqhPp1lFoFxKnqm43EWHr31BeZTSE3EJq3tO4zFqhHueVu35o0pt2vz7aWrLEod46Ma6doxalRn5g9hdq2E5VpQVNU9S1yQg72yWAyTkx0paL9akZEGxrktBDq3Q4KJExRNFBiIdT7CCqrQTaM+tBBDRCCiUA1APbi0SGnh7AfuzKitgCug9ITQn2KoLI6ZMOoz128KI0g7x7ox6NCSg1hv0S60qeAroRQX3dQkhaU1B9Q3yLqEKLHQ6gfUVRc0ZPKbtTPKCoJuoG3e1N6Dowfd1bF3/4+y+V8cHWRG0PVLRlx8D8R0zIiJiPWm5JDWpLSck1aDkqLFrlb15vhLqLUCQM370bz35t3aLRr8zpvH/nyaa3fxECE7WaEbcqAmaA3t5qdzcfnnc9vW11uuugGAAA="
+  },
+  {
+   "slug": "cparts-v2",
+   "name": "Construction Parts V2 — second pair (24 CP1/min total)",
+   "module": "cparts",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Construction (Construction Parts) [verified]",
+   "item_count": 28,
+   "kinds": {
+    "buildings": 12,
+    "transports": 16,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyManual": 2,
+    "FlatConveyorT1": 16,
+    "LiftIoPortShape_FlatConveyor__1": 2,
+    "LiftIoPortShape_FlatConveyor__2": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 3,
+    "StorageUnit": 3
+   },
+   "string": "B1068:H4sIAAAAAAAC/4WUz2sTQRTH32w3iW3TzZpuNU1ju4qI9qC2KPRaqpZAa4OtCl7CNjuto5udZXai5qZ3EZEiKiIiIiIioiKiIuLVg/+D9H/woIhvJ2ma7iqGgWze+7z3fT9mk/mqkdThg1MHj37QtKkZ7odSNGqScd+uOEKG9plJ+/vVNTukNe67duAwYe+fPGLPVCYO1ZlvSy4d70APlIhuLgi2ynzHO+5LJptl9/p6GkiqtyI4Us2Apu155rNzLKiWeYULuXjeCWj1hOdI1L1Em1wAyfQuCccPV7iop0ZMAMjoN9bT24YXJRfOKi3XAww8jQJehYoa9eXne9neQtt7/ErkPSF4fdPZN9J2qrwxP/SX4t5Y7uzQFuWKYFxgc+bA0BbNjr3HKJTDOb7KQslqYdkPGvIYC51lj7qQG+5yLTRkl4+YO6Y9j18+yf3pMGSrPnVbANFS2/vbUqd9JvNW+0f0RV2crYvrGsy2H6plwX1i5VUy6i7hLi/OCt4IQhxtamc00J4ho9PsDPe4uPbr54/cDqtjnK5FvSvX7293X6f1m2qPO43uTS1NACn0YcwFWsNKmgMEQMODO0MVot9SMelIdaSg1riGa4yWFe0E+qPRmgM4LsgRM2oyP9zp4SznLrFUwQVVcKvCVjG3W8WgekeyAMgR/U6XpK0k7/1HsmhtSGJbNUElXfSc5ba0nZC+n5S2ATldf7CeHslv3fo8dymUBmP7VtZduVnqU+F4G7cmj2lHDVw8rS97zXnHbzgeGcucojUW0JDYfTPBhhMry0RD0fWHqAkl2KWCyRix0WUm5/UoUXTOgpIVox5vUqAwTbNAK8SoJwmqaEExTj3tUIOEYCLQcyXYjmccSuMx9llXRqwtwsdB2xejnieo4jgU49SLLl0sjaDuXhjAY4Npx9iXialkR8EYjVGvNiklC5r5F+pNojpEDDNGvU1SpmZkta3UuySVBUPH2/1eeXaPzbEV+a+/z2p1Irq6RvSaE/2jitjzn4hJFZFXEZ9aGsqSVZbPrRzKYiTu1pdktToY+NT+/AFzXDDKXQYAAA=="
+  },
+  {
+   "slug": "cparts-v3",
+   "name": "Construction Parts V3 — third pair + T2 export (36 CP1/min total)",
+   "module": "cparts",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Construction (Construction Parts) [verified]",
+   "item_count": 30,
+   "kinds": {
+    "buildings": 13,
+    "transports": 17,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyManual": 2,
+    "FlatConveyorT1": 16,
+    "FlatConveyorT2": 1,
+    "LiftIoPortShape_FlatConveyor__1": 2,
+    "LiftIoPortShape_FlatConveyor__2": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 4,
+    "StorageUnit": 3
+   },
+   "string": "B1136:H4sIAAAAAAAC/4WU32/TVhTHz3WdhP5yQprSNg2tx14KVCUtBVUoD5SMsEiURms7JF4iN76UC46vdX0D5A3+B162f2OPe0ECIcTQhtA0TdM0TaiaJjRNCKENbdXE8U2aH/YQkaXY93zO+X7vOddOfKORWH5hZeHU15pWLHLXl6JRk4y7ZsUS0jc/P2m+uHPPlNeYsE3PYsI8bm4umfS2x4U0506eNouVxRN15pqSS8s5OgAzRE+tC7bDXMs570omm2X74W4cSGywIjhSTY/GzTXmsivMq5Z5BQttXLM8Wi05lkQLN2mTCyCJwU1huf5VLuqx6XkASOiPduMHpjYkF9YOLdcDB1so4FSoqFFX3v9yZHCyHT2v/JUEr3eDQ9PtoKobisNwLhwN1R4Z71OuCMYFbi41Ot6n2VkfMCbL/kW+w3zJan7Z9RryE+Zb2w61ITnVE1pvyJ4YSR1adRx+6xJ3V32f7bjUbgFEix0cbkttuUymM+2H4I/a2FsbJzc20r6plgV3SSatilF7E8d644LgDc/H1sYmgoYOjBudzRa5w8XdvX//Th7KdBZXa8HeVei/7774Kq4/VnOcMHontbkIZHIIc67TGjppjhIADS+cGaoQ/YnKiQeq08tqjE9xjMGwgpnAcNDa1Ci2C5IkFWwyPdXZw2XObZJRhpeV4ZbDlplvW2ZQvSO5DMgR/VmPZEFJPv+AZDazL4nbqgkq6YZjbbelCxHp76PSBUBO13/YjU+n+6e+xm0KubHQvNXq4eQF6lJhOfunJo1lZwwcPK1vO801y21YDplNfEZrzKM+MYeK3n4QnSWCpuj6j6gJOTisksksMTGUivbrp4jpZB5y+RD1c5cChWlaHrTlEPVLhMrmIRumfu1QY4RgIdCTK3AQrxLkSiH2RU9F9BbgJdDOhajdCJUtQTZM/daji9YI6p6FUbwKkCqE2N8jXRk5A8aZEPWySylZ0FL/Q/0RcYeIMR+i/oxS85oxp/VTr6LUHBgmnu7XKvLR7EV2Vb7v81mtLgZH1whec6K/URlHPpCxpDIWVMZfLQ21MqdW3rZqqJVjkbP1T9StCcZMiHr6AD8+sY/7Px9LPa1fScKnSRTb677A+Nz9vQOr1+UOrwYAAA=="
+  },
+  {
+   "slug": "crude-refining-v1",
+   "name": "Crude Refining V1 - full-stream advanced block, 2 chains, 72 diesel/min + 48 naphtha/min, buffered",
+   "module": "crude-refining",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Advanced Diesel + Naphtha Processing [reported - confirm in-game; the base already runs CrudeOilRefiningT1/T2 and HeavyDistillateRefining per the 2026-11-02 census, so both gates are already passed in this run]",
+   "item_count": 77,
+   "kinds": {
+    "buildings": 31,
+    "transports": 46,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BoilerGas": 1,
+    "DistillationTowerT1": 2,
+    "DistillationTowerT2": 2,
+    "DistillationTowerT3": 2,
+    "Flare": 1,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 7,
+    "PipeT1": 44,
+    "SmokeStack": 1,
+    "SourWaterStripper": 1,
+    "StorageFluid": 12,
+    "StorageLoose": 1
+   },
+   "string": "B2356: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"
+  },
+  {
+   "slug": "diesel-power-v1",
+   "name": "Diesel Power V1 — 6x Diesel Generator II, 30 MW, buffered",
+   "module": "diesel-power",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Power Generation II (Diesel Generator II) [verified]",
+   "item_count": 21,
+   "kinds": {
+    "buildings": 11,
+    "transports": 10,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "DieselGeneratorT2": 6,
+    "MiniZip_IoPortShape_Pipe": 1,
+    "PipeT4": 10,
+    "SmokeStackLarge": 3,
+    "StorageFluidT4": 1
+   },
+   "string": "B1024:H4sIAAAAAAAC/3WUX2vTUBjGT9J0TeuaZl27Zq7T7H8vxqg6RfBqrN0sbK7YquDNyJKz7rg0J5wkrL3Ti3nthVdDRERURERERFRkeOtXEC/ED+JpknXbae1Nm+f3nPd5875JYz95LlpcuLpw+SvPXysh6EBTreI9SNTbF9Q/9x+rV1pqKK9CCxLNxUStVObVS0V1/c68uuVtb0MCjQjIRgV5g6AGsjSzbLnIbVeMg305ml7DDeS4SHcqlu2569iAwsBwV9zw3FAFsVQQYVYJwoQWSIvjZRPqLkE6vQrzEbaOeAZw8XiVYBe7bRsmhoJGu33WLwLuTLxONMvZxqQZFQUggKjwhDYlDIBYWuycT1BPVBz0ydM+JOOTZ31I3ifP+5Bpn7zoQ+YpEYWX+/LgaI12qDVgpWlj4t6iAzOrkOjQckFSCVm51WErBDdDdHgwKI2F0L8vhoNUnqUnK9PjcvZU7tEk5aHsqcyunpZDfXkHav6a+MiwUnFOL7WEHG3LhAbIjJ5AwWq7LDuyZJp47wa2lhwHNSxoBAbAx0ekMGXF9JBRX8xlwuvOFzToig1PdxUp/LEZLJobTfsVoVEnnr67SrBnO50x5xQAQOSs1B3CMjYxefDo4avEWKYrLumdmQTo7+9fKeH1vkwXlR+oIhvWFwE3nqDee/T5w6SdBBwAPOBzEZAbBJzwxveeU9aRhe4ie7OCq7RkbUez4WbnvN9GxG8jyA0i3gYRtHbSrwf4pAJiCuN6d+wKY6klVmRc70+4aCUucImM60NPIrVIrOtjr0sGksy4PvW6FCCx3X/udalAUhnXl15XAUgFxvWt11UEEp2E8N1/uwRKz6dqTbxLHxVN313TSANyauwm1OkSHHEiz7AStE3oQqPmQq05OcLQNdvXp1j9eqBPs3ot0GeyjL7RajegNZtj5BvIJZiCObZOubWjeY5bYLtd1sgWtkoIt5AB6ROliPT/IyIcHt87p4oTk1PTM7NzhQ5XfP7jv7xA+dHnHzDuplf8BQAA"
+  },
+  {
+   "slug": "diesel-power-v2",
+   "name": "Diesel Power V2 — second block (60 MW total)",
+   "module": "diesel-power",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Power Generation II (Diesel Generator II) [verified]",
+   "item_count": 21,
+   "kinds": {
+    "buildings": 11,
+    "transports": 10,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "DieselGeneratorT2": 6,
+    "MiniZip_IoPortShape_Pipe": 1,
+    "PipeT4": 10,
+    "SmokeStackLarge": 3,
+    "StorageFluidT4": 1
+   },
+   "string": "B1024:H4sIAAAAAAAC/3WUX2vTUBTAb9J0/WPXZl27Za7T7H8FGWVMEZ821m4WNldsreDLzJJrd22aG25uWfumD/PZB5/8An4IX3wQERUREREZQ8YQET+Et0nWbbe1L23O73fPOTknaeiDKARzCzcWrr0SxYU8gg401RLeg0StLqpHj5+rDtSxZag7JtbravZ6Tt28p1JMNfNKAKSDkrxFUA1ZmlmwKKLtovFmXw4mN3ANORTpTtGym3QTG1AaGO4Gt5rUj4JQYh1akGhmiSBMWIJkeKJgQp0SpLMrD1KErROeAkIkUiKYtdC2YXTIa9n3MKksAuFCpEI0y3mISSNYkoAEgtJb1pQ0AELJcOd8lDnBUswl7/qQlEve9yEZl3zsQ2Zc8qkPucpIWPq8L8fGyqxDrQaLDRsTepcNzCxBokOLgkHFZ4VWh60R3PDR6xex+LgP3fviOEhkeHo2Mzsup8/VPZmkPJQ+V7MbT8p+fHUXau6axMCwUnTOLzWPHG3HhAZIjZ1B3mq7LD2yYpp47za2VhwH1SxoeAIQIyNxv8qa2URGZWk05V93vqDBVmw0darE/R/b3qKFsaSbERoV0tTr6wQ3bacz5pwCAAhcjHeHsIpNTJ48e/oyOp7qBlf0zkw8dHx4kJC+7MtsUZmBErJhZQkIE1HmPmLPHybtQSAAIAIxFwC5GBCkr657SdlEFrqP7O0iLrGU5V3Nhtud824bAbcNr65X4ptXguUedPMB8aYClhXO+n5q+WWZspzjrB9nLJZJ8KwwZx30VGRKlbcOey0ZVGXO+tlrKaDKd3/Ua6mgqnLWca+VBdUsZ/3qtXKgyiYh/XbfLonRy4lyA9fZo6Lp9Q2N1KCghu5AnS3BCU9mOJaHtgkpNMoUao2pEY5u2G58mo/f8uIzfLzsxWfTXHyr1a5Ba26UC99GlGAG5vk8hdau1nRolu92VSM72Moj3EIGZE/UgzD7/whIf07vXVDDk1PTM7Nz89kOV1z+9788y/jJ5x8nTdCF7wUAAA=="
+  },
+  {
+   "slug": "diesel-power-v3",
+   "name": "Diesel Power V3 — emissions refinement",
+   "module": "diesel-power",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Power Generation II (Diesel Generator II) [verified]",
+   "item_count": 6,
+   "kinds": {
+    "buildings": 6,
+    "transports": 0,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "ExhaustScrubber": 6
+   },
+   "string": "B356:H4sIAAAAAAAC/23OT0rDUBDH8fdi/jRtoaW6cPnoqqsiiOABrFKoNFRxn6bTOJK8F+ZN0O7ceANv4xG8hQcQEZEural1lVn+PvBlgldHekfD0+HJi+MMzhAsZCoy90Dq5li9PT4ryNFaNNoqgiVqyEHznvBdtzslTFHH2Ugz8mq8eH/qer2JSdEyJnasi5IvzQKEv/8/TkverUHnAjRQnEWEhjaBnpCNMCLDhlcFhJ3Rw21cWr5KqJzPgWQzmEGCBVjZOvizc8wYCHU6wRxkO7ymWNulodzrN4QjXPdj85LwRVC1ZVO2ZNvrH1b0WUeDir5q6G4b/K6jbXBdR7/B3f0ABf3kYGwBAAA="
+  },
+  {
+   "slug": "diesel-power-v3-refined",
+   "name": "Diesel Power V3 (refined) — MomoEngi 24x Diesel Generator II, 120 MW + exhaust scrubbing + steam bottoming",
+   "module": "diesel-power",
+   "layer": "refinement",
+   "version": "v3-refined",
+   "research_gate": "Power Generation II (Diesel Generator II) [verified]",
+   "item_count": 84,
+   "kinds": {
+    "buildings": 42,
+    "transports": 42,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "CoolingTowerT2": 1,
+    "DieselGeneratorT2": 24,
+    "ExhaustScrubber": 2,
+    "Flywheel": 1,
+    "MiniZip_IoPortShape_Pipe": 2,
+    "PipeT4": 42,
+    "PowerGeneratorT1": 3,
+    "SmokeStackLarge": 1,
+    "StorageFluidT4": 3,
+    "StorageLooseT4": 3,
+    "TurbineLowPress": 1,
+    "TurbineLowPressT2": 1
+   },
+   "string": "B1992:H4sIAAAAAAAC/42XbWgcRRjHZ697eWuT26SX5NKmcVqjpu1Zt2la8uE+5L13cGkPs2oRoV7u5i5r93aO2T1y8VMsNSmllFJKKaWUUkRFREREREWKiIiKiIiIlCKliIiIiIiUUnx253LpzSylR+Byz/838/zn2Zlnd5u/Dilhfc/onv0fh0LWlEkcYuEMXSQMP7sPDzFSMG2S34lvLZ/Hs7REp+2iiYdHqriGHiQ2YVmXMpxKxfHeYR3PPod3Y1JdyFYcFzs5VpmfN+0ixByXZEt4nrouLUFkAzLCqnaYmUXTzlrTtmu6S6n8nVe1cFeaFk3HNXNOyi5X3FmaJ2rT5nrwcMWtRVFzhOe3MsykDCboatk2bZGcy8wc/KqZM6m9pkeR0tqaYdSl7lKZtHXyVdQXYQwjZWOrwbK2U6CsFN6lIRWF1btgSm1CzV0t3vg2YMK7Yr5yL0DBvrK8IitDvnI8QNF95USAMuorK7KS4N5OBijc26kAhXs7HaBwb2cCFO7tbIDCvZ2TlUPc2/kAhXu7EKBwbxcDFO7tUoDCvV0OULi3K7LyIvd2NUDh3q4FKNzbawEK9/Z6gMK9vRmgeN5a1LdWtE19c7DrskWSKpUpc5+BQ2BlCMsR20XtsZo2XfW0GUZLNen6pU0dW2uiv1cFHUX6RfX+mWG41t2Qd+10aJ3dDTnr8S6tFp9cIFn/6IU2bI6lnMaDOmU62XmL5FG07z6JH9e61t0zbll08RC1xx3HLEJz4QAKtfZ01LLMWBUzb4z0Rmu/vS+Sh2Obr+TcWEftn6P88Cp9Xf6MJG+wSu7YQUYrZccrs9aDEJT5bSgzavdqhiLe0rVOrQvcoyjq9nL2xpQ+n4779DsPSU8AvWFLR73Ak9Si7JWzK2+0bY3Wg+M5r95cun3zRkR9d0WDTdDflDHLxBhByrY2YF+CfkXZUruCUAj+mmFHDSFFfc9nB2Kzpm0+b5aPpmgGppxbyJbJUW+8ZwNYzwbPy1O8z1PA3O3InzGkYaTtEKgPZOoA0kYF6sN1qmZuSxwNxAXqI2mugU1oYEygPpHmGoiiQlSgPpWpflToF6jrMjWICoMC9ZlMxVFBdP+5TI2gwohAfSFTCVRICNSXUiUsDVki9ZU01wJQmkB9I1MxZMUE6luZwsjCAvWdTA0ha0igvpcpHVm6QP0gU6PIgo6m/gidDnmdDvRHItP8CWDOfwAgTMHNT5McbFtH2R6taTOm5RIGjwJps0RgN5cxzKeqP90/j4KV7Z6kg9Ro5GfJCKzbFpd+Q6Z0ZMOi1Jt+Y1ZB3RGZK9Fj0GWyuWPpLCsSBbc82i/EpkjZIi7Jz3lPMYM9gpou+/HHxHiSxx8X43M8/kS3ED9cXSoSe6hXCB8yXUZB2CnOU6vkLtHtZJbNU3vKpFUz75d2DG45jZX5RdqsLkaueGxvSfVjQIlVvi1TOnLFrfPrOgWIB0I6NgZd97cHdt3da/eFNKUO9M3eeOfaLcDbOY5LbeK35aZlBftd/PcHz9cbX8N1H//jYfExqd3+WV9TpFbFZUVDy0oMOvhfvIPzoZo09O+AoYMwVDyX/wRwI8CJ3fpfqbwv66gqXoT/pMte7UdVsd/dkeaqYsTEy35XpnTExIz3pIx6AulTArW8KlITCTQhUsclykggQ6ROrIrbEdIBFVJXVrVmTXly43jFpRNZK2vn4D7auqfTqDB4S4ENtphhxHH894BwIg3XLKSe5GOAeyoicB6VTEtX9pTkMjGFEkmBOi1RySmUTMLGOeMresuMtbS4QIjlpdENKc1ZOU0GJQyBOienyaAkUOp5WFhXCzyStu7V/Fe+9fegvV7KI/7K1AvrmB99wY9ebIwuyPYuSVchk0ZGWqAuy5SBFjx7V1bXGvRwxySlFtwoDM+lMaxgdV+330DnypPUzhPb8d/yjOERHk4K4f08nBbCB7b64bXW3ijCovARqWtelaqJMwh7i+ef/wF2WUf7UA8AAA=="
+  },
+  {
+   "slug": "diesel-refining-v1",
+   "name": "Diesel Refining V1 - one basic distiller, 27 diesel/min, buffered",
+   "module": "diesel-refining",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Basic Diesel [verified]",
+   "item_count": 27,
+   "kinds": {
+    "buildings": 17,
+    "transports": 10,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BasicDieselDistiller": 1,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 2,
+    "LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 6,
+    "PipeT1": 7,
+    "SmokeStack": 1,
+    "StorageFluid": 3,
+    "StorageLoose": 1
+   },
+   "string": "B1280:H4sIAAAAAAAC/41V32/bRBy/s51fndt6cdK4xAwzWOigK3QqgtfSdiNSu0ZLxwMvkWtfsqOOzzo70DzyP/AC/BeAEBIP8IhgAjRNE0IIIYQQQ3vnYQjx9Tl2nGyTFp2U3Of7+Xzve5/v3aX0nYQLr2y8vvHql5K0vUtJSDzrOulTn/oD661N65LFfGId2yF1LJeGEfU8wtety6/BLCa/PKT+unU86vcJJ66MmoqiHXI6oL7t7fkRjcZt95t7xUJ1nw1iuRO2/WAUHTCXoKKegYejKEVLy1eJT7jtdThlHBJUES5XOpxFLBoHpFJ7Iy4mKXU3rQgvlK4ThwYkxGcaMzE7oswXEqxWjrjth33GhwVUQwgVlNu3iovNbsS4PSAiGDAeXeFs2CHcIX6Elsz56A3YlTcJf/2RulyfENrDOJoWrWkpvnc6g8tnjXY4awZUah97xMXV1VwosSSL6Svbnsfeu8b87TCkA5+4CQFJ5Zo6WeqKN6JuvTaZxV/EBePckROtaJMfvR0+cskh9XCjKjIS94iPnJOrnI2CEGG10CyDNbKxlO14h3mMv//vg3+WV2sZuO3EBojQfz98+GlR+fZeERr1VLEDXTjaRLi5ANx3iANVjBcRRkhCUlNHkF02kmSJ7laiA8EKxkiSUKGpoaYmNQ1JjgcqKR98XDRXZ2zONwE9bcxYnWsf9GcRLcVd0jRwHlWRDn6dS/3aZywk9WfUzBpmgy2xB3pJeJCv83tRp1UXogM7Ipza3g7z3yVjxqH6dI96A4F6Vvtjoo1ZggQsGVXkOdbtjKUlTsgVWapokqxJkvLJV2dKZQg/u7ZP+1GbdWCn3Zt2QHqPLKjX24z3AWvAYspnE/H5JxVfFmIsxJ+nK8eYrAnsizShwKriLt2Bu5QzG1dxbHat/txS6m9yMROHTVWI7j5ONGFZD/XhTu68gN0YFVQDqYZkwVBhzNHvZnQNCb4cEy0Yc8SfMqIedwgjpWWgliG1dBhz3J8zrpnUUFJNpJqSaipb8ZC2TLQFIuUXePqUogLk5xe6Q3YCl9J2TvBC+UJjOt0lgUci4nYjYg9bZ6eB/UBAL+SgNxNoLQd1E+iiNoUOT8cD4r9YnSLXaMQZYC/lhHunN+1RGK3nStmx+THzdyk7pS4B/5X1h/z/Ndt7euKVc0hZQ1j5TUQuGQfw7/E2DXr5cxa/CuJx0SEhVn5PqOL0GAL5Y4qoCfJnDjEF8tcUaSV5/p4iWwlyXyAbFx9VxGOuLlz3Bpp+/geRgaoEFAcAAA=="
+  },
+  {
+   "slug": "diesel-refining-v2",
+   "name": "Diesel Refining V2 - second distiller (54 diesel/min total)",
+   "module": "diesel-refining",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Basic Diesel [verified]",
+   "item_count": 27,
+   "kinds": {
+    "buildings": 17,
+    "transports": 10,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BasicDieselDistiller": 1,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 2,
+    "LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 6,
+    "PipeT1": 7,
+    "SmokeStack": 1,
+    "StorageFluid": 3,
+    "StorageLoose": 1
+   },
+   "string": "B1292:H4sIAAAAAAAC/41VXW8bRRSdHa/tON0krj8ShwRYMIQEaKCVKyHBQ9I4LZacxqpNhSpL9mZ34g5Z76xmx2C/AUIIIYQQD0jAz+ANEPQdJF4R4g+0DwghBIhWVe/Oetdrt5VqjWTvuefcuffcmXX6J6wkX95+Zfv8dxi/WqXEI7Z+hRxThzo9/eo5/YzuEZM5lm5RT1DbJlzfPF+BJ5/5Up86umDCsLcSaE1Vs4ec9qhj2PuOoGJUs/64mUrm6qzna02v5rgDccAsglL5CDwciBBNL10iDuGG3eCUcUiQQ8pcpsEZbDFySaZwwfCoGRRZDctR5tNXiEld4imnVqZihqDMkRJFy7S44XjHjPeT6E2EUFL99efUwlpTMG70iAy6jIuLnPUbhJvEEWhxfTb6BnRlj8M3vtKWimNCre9Hw6Kz2RDfH07hidOlmjdtBlRqHNnEUnKrsVBgSRTLL+/aNnvnMnN2PY/2HGIFBITnCtp4q4v2gFrFwvjJ/yIWGGcNTLGcHf/o7PGBRQ6prazkZEZitfjAPLnE2cD1kKIly3WwJlFajDreYzbj7925/e/SaiECd03fABm6+8uX36TUP2+mYFCPpRowhdZZpKzNA/ctYkIVowWEEVIQLgsE2ROlIFmg+yvQgWBZAQpGyXILlVu43MYJf6G0+sXXqfXVKZvjQ0CPl6asjo0P5rOAFv0pZbPgPMqhPPj1ROhXnTGPFJ/UImuYAbb4HuRfkx7E6/xb1qkXpejAEIRTw95jzttkxDhUH/aYb6B8dUb7T6D1WQryeTi/gzI7M6z/IlY2cCKR2cGZFk60MFa//fFUeg7CT23W6bGosQZ02rxuuKTzwII6nbN+H7AHbKZ+PxY//ajic1J8QYp/CHf2sURLYjfChBK7Ku/Sb3CXYmYrOcU3u1AsL4b+BhczcHi9IUW/P0w0Zln3zeH/2HnBCCsoqbWR1sY6rAasGfqdiJ5Fkp/wiRasGeLdiJhHckjqRhtttPHGENYM991bIXc9mFRa6yKti7WuWvEXrnRRBUTq+7dSSTWlAvmZ+WafncClNMwTZX7u2ZXJY5W4NhHEagpi9DdOTwJ1V0LPxaDXA2gzBjUDaCs7gQ6Hox5xns9NkMtUcAbYCzHh/vC6MfDEi7FS9gx+xJwqZUNqEfBfde/z/4Oo94XAJ6weIdVGivqhjJwpHcD/xjXqduLnzH8ryJeLgISK+lFAlaenLZGPJ4gWIJ/EkK5EPp0gMBIf+WyCVALkc4lsbz2oiIdcXbju/mEMP/cASDTCMg4HAAA="
+  },
+  {
+   "slug": "diesel-refining-v3",
+   "name": "Diesel Refining V3 - advanced distillation wing, 90 diesel/min total",
+   "module": "diesel-refining",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Advanced Diesel [reported - flag for in-game confirmation]; Boiler (Coal) is also unlocked by Power Generation II [verified]",
+   "item_count": 77,
+   "kinds": {
+    "buildings": 50,
+    "transports": 27,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BoilerCoal": 1,
+    "DistillationTowerT1": 1,
+    "DistillationTowerT2": 1,
+    "Flare": 1,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 4,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 4,
+    "LooseMaterialConveyor": 8,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 4,
+    "MiniZip_IoPortShape_Pipe": 22,
+    "PipeT1": 19,
+    "SmokeStack": 1,
+    "SourWaterStripper": 1,
+    "StorageFluid": 7,
+    "StorageLoose": 1,
+    "StorageLooseT2": 2
+   },
+   "string": "B2132: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"
+  },
+  {
+   "slug": "diesel-v1",
+   "name": "COI Pack — Diesel V1 (single distiller)",
+   "module": "diesel",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Basic Diesel [verified]. Unlocks oil pumps + basic distiller. Confirm exact node name in-game.",
+   "item_count": 25,
+   "kinds": {
+    "buildings": 15,
+    "transports": 10,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BasicDieselDistiller": 1,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 2,
+    "LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 3,
+    "PipeT1": 7,
+    "SmokeStack": 1,
+    "StorageFluid": 2,
+    "StorageLoose": 1,
+    "Zipper_IoPortShape_Pipe": 1
+   },
+   "string": "B1272:H4sIAAAAAAAC/41Uz28bRRSeGa/X643jbOx1k7gGTFvA4UcglZC4BictlpLaqgOHXqzt7tQdst5ZzY4h5gT/QNUDF/gLEEdACIkDHBFEgFCFEEIIVQg1iDsHUNW3s17/SECwsrSe773v2/e+eTO5rwjOPrfxwsbznxKy3my36h3HPajfffPt+jajEfXrr2zWGxEL+j6teyySzPepWM+gNU2z2oL1WeD4O4FkctTyvjjWs6Vd3o/T3KgVhEO5xz2K9PIEbA9liuaWLtOACsfvCMYFCJQQNvIdwSWXo5Dm7RediLlJFdvpl7GZu0pdFtIIL6zMxRzJeKAouJDfF04Q3eBikNUKCKGs9t2Rvni2K7lw+lQFQy7kJcEHHSpcGkhUrJ2Mvgxd+ePw5+8WlirjhNYgjqZFW1aK7xzO4Znl1VY0bwZU6lz3qYdLazOhxJJJrHxmy/f561d4sBVFrB9QL0lAxLAL409d8ofMq9jjVfyiHhjnDV15xhr/6TXF0KNt5uOVklKk3r4YugeXBR+GEcKF7BIBa7D25bEOxq+u7rGAXWNhr8U70Ef3phPSXgecVqkYUjNrxYk5Te5z8dbff/25VLUn4JYbe6VC979550NdO1LSZ/VYZn8T4ZoJua9SFwoeLSLQJIiANBSSWUvEEt7XCQ8IFkYYkjJZHRGd1HQyn/jtJHFR5WFi6MQoxBt+rC+iYrxvlgV7gUqoDA4+lDq4y3lEKw8XJmZxB4yKW7VyypU7SvmR9X9yRZH3HEkFc/wmD16jIy5irr2gbJqt8HulU6/8C6eW2gBUO3eC+0PChawyUT5oNiG2SUz4GSec+HGSmyqaBjJNRLQPPlvIGRB7tLHLbsj/7KPX21StxMNBtI/G5HP/l3xRkTVF/jj9coxBOTH2SSqoMFN5/VPitUIKpxz8eWYYMCaEZAwbGVViVwnWflHB8yuwRSEVp2c3A8VUQfJCrhPfESJa1m7r7+Vv6+/nb8H7Frwfs8Znlr0BpwjoUT4uVT3zldydHUtCEM5ADdUqOleFgbtzNDdwuITjgbMrjxfTGUuuq2TKLtin1H+dnWW1g40aasCOar8lJzTmwRp42j24aTVdA/QJszvgB3AHwLWNTaOxMl1u09CnknpdSZ3B+vI0sBsq6MkZ6KUEemoG6ibQ09YUah+O+jR4pjRFrjApOGAbM8Sdw5vOMJLPzpTSdMR1Hmwzfsg8Gh+y0qn2f5+0X1bdI61oIdsiGxa5aIEJf0xNgPX0eQBr4i2PwgYAAA=="
+  },
+  {
+   "slug": "diesel-v2",
+   "name": "COI Pack — Diesel V2 (second distiller)",
+   "module": "diesel",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Basic Diesel [verified]. Unlocks oil pumps + basic distiller. Confirm exact node name in-game.",
+   "item_count": 14,
+   "kinds": {
+    "buildings": 8,
+    "transports": 6,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BasicDieselDistiller": 1,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 2,
+    "LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "PipeT1": 3,
+    "SmokeStack": 1,
+    "StorageLoose": 1
+   },
+   "string": "B956:H4sIAAAAAAAC/41UTU8TQRiemW63pSxlKQUKVK1YtSSEAImJV2wRmxTaUPTgpRl2hzKy3dnMTrW94X/won/Dmxrl7sH/4A0PxhijRglxdrefEKN76e7z8b7zPu+kkfcIhleWby/feo3QYr5czFSwcZj5ePQsU6DEJVbmwVom5xKD2WbGpK6glkX4YgjEFUUvc1qnNrY2bEFFu2h+PlHDiRKrezLDLdpOU2wxkwB1sgeWm6KLRsY3iU04tiqcMi4LJACMjlQ4E0y0HTKSvINdagSnKHQ7w1hkhxjUIS4cnRnisKDM9i1QG9nl2Hb3GW+EUxoAIDQW9xGHcZFnFuNPT3//GI8ne+C6YRA7oM4+PH+pKl9OVHmacbUiW+2uAqjHpPYRMQTj7TEAEUAQpVWU1kBY+XqiTsxXJYPrpFfxLmeNCuFeWZBIn2fvy8SsDn38Qpuc6giKDY/tBqInu/hGawgPTaWK7nDQMgW8ZxETTM8OUEHcPW5met2y2JNtZq+7Lq3bxAwEAEVTWqdViTGXzCY7X94PMeVSzKYh5rTOSy3PsAXnE341Yu7ypnG4yVnTcQHUwjkkI4fKNz/C9OIWtelD6tSKrCJnqB5gh9T8JltYEE6xlWf2Y9Jm3PMuQX9dwX6CVXz361ya+otHl+sAQC5EWpfQOe/PwOup5KE83ZKGshoaVv26oMpqYEEDSHn1bjQSldzlXInui39OUKut+kN4dw4pbzrmK/9rXvPNcd/8ttvZw7JBweNuQR+LX0jqNLi0cg4dQQgRCqWTID2HknPnBj7rC6F/mUMLOsjpaEVHIeXokxpWVEUKMrFqgx3KOyD/EmAsenWm/1kgjkUEMauC4MbCRJ8oOT50bQC6F0DZAagaQNf1PlRutevEvpHoI9tUcCaxmwPGjdYBbroiN3CUPOZ7zC5Q1qImkcGkpkH/+QNd4pQ/4AQAAA=="
+  },
+  {
+   "slug": "diesel-v3",
+   "name": "COI Pack — Diesel V3 (rubber from diesel)",
+   "module": "diesel",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Synthetic Rubber [verified]",
+   "item_count": 20,
+   "kinds": {
+    "buildings": 13,
+    "transports": 7,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 2,
+    "LiftIoPortShape_FlatConveyor__1": 2,
+    "LiftIoPortShape_FlatConveyor__2": 2,
+    "LooseMaterialConveyor": 4,
+    "MiniZip_IoPortShape_FlatConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 3,
+    "PipeT1": 1,
+    "SmokeStack": 1,
+    "StorageLoose": 2,
+    "StorageUnit": 1,
+    "VacuumDistillationTower": 1
+   },
+   "string": "B1184:H4sIAAAAAAAC/41UTU8TQRie3W63gHyUUqDUCquiAiIu+IUeTLCANgFpLHrw0uzHUEe2O83srNKbGmOMMcYYYxB/gWePXrybqDH+Ar3xBzxojDOz/diCRntp53nf533feZ+nE3svS1F9anbq1FtZPppdyWl5w1rXvt55rs0j6EFHu3ZCGyO+aUKirRFc1mwBj0dAUlHiKwSVkGs4Cy5FtJqz722r0cQSLiGPIsvLuRWfLmMbArWvAa74tI7Gei5CFxLDyROECSuQAFJbe55gimm1AtsHrxmW75fnOdFxDIqwu4pvQyJ1xK5AC1WgJ++ZzvoexeXgXPwLoThr2/DsGR2a5lm98/8op0zTPnnSOn1mxjwtdbWvEsP11jApR9smAQCR7m6BVDChWexgcvfnj+89PckGOGdZ0A1Cvz6+fKMq97dVdru4mmdNV6eB1NvBcm9Ci2JSjQNJBrIUSabl5KicnABR5cG2mthbYEGjBBtFF5kAeUh4ZdCX2Rm9ykRwauF3W53J/lpCrsyj9R3H++v4wkYLHhlI5bxW7dhWDNOBNhgcCoUCBRux1MCc4+Dbl7E753mo5EI7SABy21BnrdUSxh5MJ2sn/gVtprPtW3Rvd+1HseA7az6RMglRD9qrxLfWLxLsVzwgdUVjfO+S8lDscd/4MnLRdVQp5nCe3aJww2BaijbLBoUEGU4Wu7dgFRPBHROaBSIFejwSdYb7/8Lp7QISAEwVRmWdW7mPAy7PEklAlnWg6my6J8F0vCc77+z5/BWPjnQvMqPVWwkv1MsM6HJGlyXlwzeeqI0soTUavmCYWCxO8zYDuljLJ8HY/w/GjGDMCMbnoAdHMkGNL0ENgfCcmPLilXpgqMVGYZOBg6kWK4Xs+e51LAH6uAvj/cxZYBCkmB9G99Tyr7qIpg81lL8i3hcpwzsPT+5a22awttCeRnUwwde9JSKHtT+ZIXxzXniSXzKqPGV/rN2TDaWPdNanyWLDCWZJnxN7edYUdXhxt6hNM/DZJCCzpOELO7Je7MpKnQepWRBRNtmbqagKi451FMp4nf092BMsdbSNDzaP87DiQArtAoVGeaK3GViqCOhoCLoUQJMhqBBAx+JNaGWjWoLuVKKJXEaUYIYdDxEXNm4Y7LXUQ6NkDWJidx7hDWRDtpIUF6z++Q3zFbU1UAYAAA=="
+  },
+  {
+   "slug": "electronics-v1",
+   "name": "Electronics V1 — T1 copper cell + 2 Electronics I lines (12/min), buffered",
+   "module": "electronics",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Copper Refinement + Construction + Synthetic Rubber [verified]",
+   "item_count": 68,
+   "kinds": {
+    "buildings": 37,
+    "transports": 31,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyManual": 2,
+    "Caster": 2,
+    "CopperElectrolysis": 1,
+    "FlatConveyorT1": 18,
+    "LiftIoPortShape_FlatConveyor__1": 6,
+    "LiftIoPortShape_FlatConveyor__2": 6,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 2,
+    "LooseMaterialConveyor": 8,
+    "MiniZip_IoPortShape_FlatConveyor": 3,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_Pipe": 1,
+    "MoltenMetalChannel": 2,
+    "PipeT1": 3,
+    "SmeltingFurnaceT1": 1,
+    "SmokeStack": 1,
+    "StorageFluid": 1,
+    "StorageLoose": 3,
+    "StorageUnit": 3
+   },
+   "string": "B2048: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"
+  },
+  {
+   "slug": "electronics-v2",
+   "name": "Electronics V2 — second cell (24 electronics/min, 24 copper export total)",
+   "module": "electronics",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Copper Refinement + Construction + Synthetic Rubber [verified]",
+   "item_count": 68,
+   "kinds": {
+    "buildings": 37,
+    "transports": 31,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyManual": 2,
+    "Caster": 2,
+    "CopperElectrolysis": 1,
+    "FlatConveyorT1": 18,
+    "LiftIoPortShape_FlatConveyor__1": 6,
+    "LiftIoPortShape_FlatConveyor__2": 6,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 2,
+    "LooseMaterialConveyor": 8,
+    "MiniZip_IoPortShape_FlatConveyor": 3,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_Pipe": 1,
+    "MoltenMetalChannel": 2,
+    "PipeT1": 3,
+    "SmeltingFurnaceT1": 1,
+    "SmokeStack": 1,
+    "StorageFluid": 1,
+    "StorageLoose": 3,
+    "StorageUnit": 3
+   },
+   "string": "B2088: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"
+  },
+  {
+   "slug": "electronics-v3",
+   "name": "Electronics V3 — Assembly III Electronics II conversion (6/min)",
+   "module": "electronics",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Silicon & Electronics II + Construction III [verified]",
+   "item_count": 11,
+   "kinds": {
+    "buildings": 6,
+    "transports": 5,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyElectrifiedT2": 1,
+    "FlatConveyorT1": 5,
+    "MiniZip_IoPortShape_FlatConveyor": 4,
+    "StorageUnit": 1
+   },
+   "string": "B780:H4sIAAAAAAAC/11SXWvTUBh+T5K269q1tV+2bkouFWRf4thFEYp2I+BccZ0XuylpclbPTM8JJ6dqwQsFf4II+je8U5EhQ0QF/4PsP3ihiCdNmrYJB5I8z/M+7/s+Seq7ghLrq9urNz8oSrPlYEtwRonl6Q9u6L+ev9KbnocHPWekG4ahz/Ly1WL0MeYeYVS/urU2IPSaChlNK+xz0ifUdFpUEDEy7Ndn1xPFu6xPPCErDeoOxR6zsZYsReD+UEzQVH4XU8xNp80J49KgCGgh3eZMMDFycboyGSmYhhwTbHc20WLqPraIiz2Uqc7MuTlRdzZQNt3hJvWOGR8k7G0ASGnvz5NL9QPBuNnHxsBlXBzKoZ025ham4vRtNlcL2dZTn93hbDAl88shOfaN8VBYibMx7wuVuc6TfQvFylzPCFdLNcObz/EO8cyeg20o12eoIM0JhyrVpuOwJ/cYlWGQPsV2IEDKQjUTtjqkRFwshy/+DdsycntoiVo5fOjOxorqxbGpzJ4PrUe7nA1dD1A2Ifxg1Uu5aOnbzGH8xd8/v/PL5QhsWn4GY+rfzzfvktrH86T8zCu5HceUsPyvRox3NgBdXpQ1J7Iv46MCUkBBoB7dgp48Ddkm8A0sPgUWsmYJEIDU2irYWzHVaaQqSS/pqLkquOvgyBPXfp46jg1BcRvA433PIlUuVD1rwEvUAKR9GVNX9D1CyRFxuwZry+UPHpou7s5u6gcntwJZ8jUo8RE5vo98myJugPyIkKTfZ3r9B1H/6DrPAwAA"
+  },
+  {
+   "slug": "farming-v1",
+   "name": "Farming V1 — Potato & Vegetable Base (2x FarmT2)",
+   "module": "farming",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Irrigated Farms [unverified — confirm in-game]",
+   "item_count": 34,
+   "kinds": {
+    "buildings": 17,
+    "transports": 17,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FarmT2": 2,
+    "FlatConveyorT1": 8,
+    "LiftIoPortShape_FlatConveyor__3": 6,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 3,
+    "LooseMaterialConveyor": 5,
+    "MiniZip_IoPortShape_FlatConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 1,
+    "PipeT1": 4,
+    "StorageFluid": 1,
+    "StorageLoose": 1,
+    "StorageUnit": 1
+   },
+   "string": "B1316:H4sIAAAAAAAC/31V34sbRRyf2dskzV2Sjbkf5trU29ZY7xSKPRF8yMv9aLqBu17g0hZECGt2ko7u7Syzs9q8nXBw99BHkVpKKUWklFKKiogWKVLKoUcrchSffPCf8EERZ2Y3m58aEpKd7+f7/XxmPp/dJH5WYOyN02+ffut7RVksm3QLOy394hn9j+1P9CphJiP6Kf0iaiFmvmcjfdn0kD6/eEUX0Nriwhg4GVOzGxS3sGPaZx2GWbtifbqbjOXWSAt7DDe8iuP6bJ1YSI1PRosbPgtXQUI7hxxETbtKMaF8QPaIVkaUYZv/rpmUcz+6noLJ3HnCcLO94ZR92172m01EIRxPVilhhLVdNBEPRMFUaoUSd7NxGVm+jdT0hLisB7vJaPIi2pGXzkAtWaOm4zUJ3YoB8Yqp1/gO1DhIZI9Ias4zAVNqJp1JQy32rsBA9fpuEsDxbH4dO/gd7NYrpEoo27xsuqhexS4CHKoZHDr2QkYSuLy8QmxCP/77rz+13FS0uNRoICco/fPss6/i6g05ejIuxtTOADg1zrHvowYjtJ2GACj8zUfHDJBQb+4mp2c3ecVsocqWGHeB22BXERVDufyZfFg9e0VUy5RsdYsvHguLkZieOsgXBqsDs2en+5gjB49O93FG62PH8hWvPxmr2BNGWKAw21MK8hHVjs8s2Tb56DxxljwPtxxkBQCgjL+UCqnKto+tuanwSnwhi4fD8htMT4c/6pdMxmNzIifHIatG/cYH5yjxXU/YFVuWdgX+BFbcCqzgHmTCgwcGeACNAdjtCJYWIAiUlAFSpQHU50Mo1wBuiYfpC1k5Ob+Gm6w3SGuEeGhdiMamvUKcD1Gb0Hp9UagtGENq78gxL0+PbJO0chNKoQQKg1u4G/T27LRgKNvQUKB6L1DHSeN8YYj1ftSphfO3YQlsDx3Sgy4uZBDjdyTFl12KnREUX0etk5AfmwLGBGoHVsFV/kmo3/C7AMyIQIO8yGX2KM8aKIDjPCHFTkLkqcy9kumEIXgkwBOC9Cpck3f1t5Lo1MKou/o/TlWLX+MaRPN3svnVuUEXy7bJuua9KcwrrsqOh0GHXBne9Q+yOp/p7ZfPg46PxRLgg/qbHgVNvahVpWgo/agfI1TH7aKh7kFDherjSFN8DwYyn/QuDevcj4Z1ArDHAyCa+3E/jcCt8s+guIMuLhQnlO1LdU+7UvalFKj+0l06GKHu16FpvFE5GGI9jHCdjIlpB9zbQ5mx5/+TsYWJMGMXHMzmXst1Itb9owlidhjG7DfJ9bo+Kma9boue32W6Oq9/ATeagSezBwAA"
+  },
+  {
+   "slug": "farming-v2",
+   "name": "Farming V2 — Double Harvest (2x more FarmT2, independent)",
+   "module": "farming",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Irrigated Farms [unverified — confirm in-game]",
+   "item_count": 34,
+   "kinds": {
+    "buildings": 17,
+    "transports": 17,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FarmT2": 2,
+    "FlatConveyorT1": 8,
+    "LiftIoPortShape_FlatConveyor__3": 6,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 3,
+    "LooseMaterialConveyor": 5,
+    "MiniZip_IoPortShape_FlatConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 1,
+    "PipeT1": 4,
+    "StorageFluid": 1,
+    "StorageLoose": 1,
+    "StorageUnit": 1
+   },
+   "string": "B1348:H4sIAAAAAAAC/3VV34sbVRS+d3aSNLtJJk1312ybutO66q5K0RVB8GndNjWw2w1sWkGEMGZu0quTucOdm7p5i7K4QRYRKVKLf4SgT9qHffBhwQVf+iRSpIiUIiIiKlqK596ZTH42JJPknO+c77vnfJMkvtNw7PlzL5976RtNe6Vo8SZ1G+aVVfNu57p5nrXecoj5msWvEV+Yy6s7ZpNxYkpYZfU5k7o28QhcXLEyhc7G9OwWpw3qWs4FV1DRLtk/7CVjuQ3WoL6gNb/kei2xyWyix09Ewa2WCKMoYVwkLuGWU+aUcWiQPWYUCRfUgc8VizeIOLiZwsncJSZovb3lFluO82qrXicc4+lkmTPBRNsjM/FAIU6l1jnztmtXid1yiJ425NfqFQKNLDiZn5lRgTITlmDpDDaSFW65fp3xZgztIIRi+o9wAj2OEtljihp4ZnBKz6QzaWzE3pQYrN/ZSyI8nc1vUpe+Qb1qiZUZF9tXLY9Uy9QjCBtx4wADdup4RjF4kF9nDuPvPfjvbyM3GwXXajWYpko9/P6zL+P6T6r3ibjsU3kB4dlpwL5NaoLxtgEtNXjK3jF4JfS7e8m5hW3IWQ1SasqGl2ETTplw2RZOMJ8Psxd2ZLbIWbOffOxUmIzkDORRvjCaHem9MDfEHC3x5NwQZxSfOpUv+cPmOE99uRgbFRYGUoFFotzp+TXHYe9eYu6a79OGS+wAgLTpx1MhVdFpUXtxNvwm34gN/rBbNWGmww/V1y0BzjmTU+2IXeGt2jsXOWt5vtxY7OtgY8GKgm38HGwD1pANZ49g7l9guAwDf4mAhoRhpKUAk/pqFHdvDOcBzgMc1u+r3NnlDVoXg5baYMwnm1I7tZx15l4jbcar1VUpunAwLvpX1eeJuYl1ilmdRSsAa2HsJL8F1QNHBozWgSNrWP89kAjMCRkZo/4jKj4eknQwsHTGB/ZnHxnSKIrdgOevPs/uJJ5/oup5DDPU0JSC7eJDjPblJaH/C7cGmpcuR3lp1uxJMCAqoNNgm6WebdSIFp/M9BwS/DLgM5J4H3+L1e3+QJE9tTLpdn/EjI3EDalCVj9U1U8vjm616Fiiv8wX5TKXbgUlna4qUaEJh39fpZczgx3UT0VvsUswctlruGw3KBvE3cIaEGjDuA8iXM8AgNG7MF8d3iJpiS4O5X44GJugdz9q2DNFV5pC1Q8jP5qABI2y64jIj/vIUKQSeBio/KSv6DBQhPXr/djRJJWfjnWUpdrROPeNCNkzn2p4JDd+OzDfze6jzbcyE5rvskvF4jO5nvf6f1OB/273/Pe54nvWnOS/QQ/IojuB7XqP/wErp78h7wcAAA=="
+  },
+  {
+   "slug": "farming-v3",
+   "name": "Farming V3 — Fertilizer Import Manifold (stub)",
+   "module": "farming",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Irrigated Farms [unverified — confirm in-game]",
+   "item_count": 5,
+   "kinds": {
+    "buildings": 2,
+    "transports": 3,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "MiniZip_IoPortShape_Pipe": 1,
+    "PipeT1": 3,
+    "StorageFluid": 1
+   },
+   "string": "B588:H4sIAAAAAAAC/12RP08bMRjG7Usu4SCEQAlKBEgnMUAXBEJIrBEl1Un8OYmUgQUdd+Z4U8c+2T5BmGDjA3QpA6qqql+gY5fuDHwBJr4EAwjhu4vSEMuD9f4ePY/9uHhnYHNleWN5/a9hrDQ90QEW2gdr9uPlN7tJhAIKF0TYTifiQtk7HoMTTgN7Sar4+GMOmThf2RMQAvPoFlOguk5we20hbFqu4IqrbkQKtR1gcAjRkcNd7bJ/6kXkyIWIIFy0WsJj8oSLjrnYRgjlRsrpJInb5JSLq5fnpwlruj9s+D5hGXq9//6nkP+Rxo0WEsPWKsJjo1rbJr7iojuOETL01tbzbVTM/7y2SvV9TbyQZE/6oi9NXSIS0383pfFaj26dJ7QpeOc/LM/2YP8yAxxNzA3TIe9K9V2yK4ALXVhlsvousz/PTdUcuc1DkAp86bAoVp9AeseUBOhDfQDtxWqQTc80KOVnu5w1pISQkSAT6JaqpV5Uk8YQ4JmpVEmCloj9r58FjyOp/8RcCNKfyKrPWv6VtazrrRgGwhjl6m00q3dxSPi7LyyjtH0jUT3oY2+9AVgHaWFzAgAA"
+  },
+  {
+   "slug": "food-processing-v1",
+   "name": "Food Processing V1 — compact mill + baking unit infra, 24 bread/min, machines placed manually",
+   "module": "food-processing",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Wheat Farming & Processing [verified]",
+   "item_count": 25,
+   "kinds": {
+    "buildings": 15,
+    "transports": 10,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 4,
+    "LooseMaterialConveyor": 4,
+    "MiniZip_IoPortShape_FlatConveyor": 4,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 4,
+    "MiniZip_IoPortShape_Pipe": 2,
+    "PipeT1": 2,
+    "StorageFluid": 1,
+    "StorageLoose": 2,
+    "StorageUnit": 2
+   },
+   "string": "B1076:H4sIAAAAAAAC/31UXWvUQBSdbJPUtttNbHfjrvUj6otiqdYPKuhL/VhZsHahrYIvZZpMt2NnZ8IkUfdN/4OIWhER8QeoiOCDvisqRUREROyP8EERZ5J0N2vUJbDJnHvvOefem/S+yina/rEjY4ef53LzVcZcu86Zg3wf04Z9btz+dvW67bCmB53AbmJC7L32AlyWYEhxYGO6yOGofeCQvcARdPc1MR21m9BZwhT5tkegg1zxTENISKsHVBTVnOa4gSkkp2iAg1bNvb6iA0XrE7QBC1oe0vdMYYovYG++xuqMBzNL0EPzZxjz0RQMEMeQnGD0EmoxDpTevlkOqb/IeFM7mgcA9GwoRCeeyDzBCOPXfv74bvQV24eTjoNoDP16e+uxrt6I+PtL/2AY6BepF5ETMN4aVADIiUswTeRBr3pzRc9XZgQCG6jWlNXnhClSR1xygMFygp26IrEqZ80Eenk7XxhJwLayFA6MLX+i6coi3Sx18dY5Zly009xY6uJsn/cMlWv+GdbAfoAdv0a9MDiJfbhAkAuGKyloOgzSWNGaJIRdPsvopNiJBkVuHAByWimfUEWds4rJk/xDrhinGzrBpsHkZv78EoKBUh6KyiF3lofO8mnOQs8XU9QOxrOLhxXP5XY8FzGB9bbvy4NKHijqnQjRZd4mmaeoj14MiJNK+W+bU8cekqFHLRGqbjZOI4o4JOudAV2kT6JCI7pMmh1PcYvsCQto6uprvQAMOQBzo2iqMqwURSu2rLeiSkLsWls7ruU+KeXIYszfzfc05kubtETPhaVnsSWZWbQik2/WpO1t9t9MVgkMUm+FppmZfr6L0rcX0qFdFmWOKbZ6dU3PC4ODcklTVoGwquQ0eyCxOifef2tH22mVsDBxqmbJ38fkKbYNJiiYwtWH2JXMM83I58fOyc5spU+ZSiJot9T9+f+6rZ1trcfltyrWOppl+JJh2G+CY1Lr146yY7HWu51VNPRMpXudFZZ1FJATQUaP0HpffDlAVimQy1Sydg2tK52kuAlJFaFErtGXIXmQJTGAIVZKfZgSNwI6v98WutMa9QUAAA=="
+  },
+  {
+   "slug": "food-processing-v2",
+   "name": "Food Processing V2 — compact chicken farm infra (7 eggs + 10 carcass/min)",
+   "module": "food-processing",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Chicken Farm [verified]",
+   "item_count": 20,
+   "kinds": {
+    "buildings": 12,
+    "transports": 8,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 4,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 4,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 2,
+    "PipeT1": 2,
+    "StorageFluid": 1,
+    "StorageLoose": 1,
+    "StorageUnit": 2
+   },
+   "string": "B980:H4sIAAAAAAAC/31UTWsTQRieTbPbr3w3iamtOnpKKfRji9RrqE0JtjbQVsFLGXen6djNzDK7UXPT/+BF+wdERARvKtq7ghd/QSsiIiIieFDEmZ1N3ZhqWMjuPPO8z/u8z+z2v4pp+szUuamzz2KxC1XGbFjnzMKeR2gDXjLh/q070GJNF1k+tLaJtYMp3EK8CQnd4giW5yFuNDw4CWdnoIW4hTxvuknoRB/Ia/HMKicNQpGzSH3it2v2/V0DaPqgkPCZ33axMbFCKLlC3M0aqzPur20jF28uM+bhFeRjTpCzwOh13GYcaP2D6xxRb4vxpj5fBgD0DaSCFVcwF5jD+O2fP76nB/OHixXLwlRBv97cfWLEHwT6Q4V/KAwPCeo1bPmMt5MaADFxCaW5MuiPP9w1EqNrAkENXGvK6hvClFPHXGqAZCnEFm9KrMpZM4T27iVSYyF42FkEB+nxv9FoZUHPFLp065wwLsaZyRa6NA/X+3KlmrfMGsTzieXVqNvyzxMPXXWwDUZGI9Bqy49i+WLFcdiNi4xWRP4Nim21AcT0QiKUCiZXzIdP8g/bIk67ZfnHcuHNZoWSJnKqGNtaKRfUxPY6b1k7S5y1XE9EqU+rAFViKpxHKhwRQ2f2k2UwUgZa/HGAGJKXlTwt/vTlsFgZLR11fOrExXLrvCm2xo+nlzDFHDmd8YAu0edBoTFDktZnI9qCPWcCPf72tZECaZlCJismq41oeTGP8c48qk6L2MUTyY71y/JQaaXAotLv1nuh9KImTZA1haU9ZSkwaQYm9w+k7ZPwKJNVB/mRV0Mf6J3nu4B+KhXd2mVRcFLyaL8/MBLCYFKe1IhVIKxqMR0Oh1Y3KPGLpxMdp4vivVdGc73aH5R2RKxYBlBm+VGZkjyosvz0Z2XA7Kn0uaeS2JQyRdtf/t928Uyx0+qC+nAtqO9T2HSv1Nfepk0AZTbfIk1LXuf3GwO8b34/BQAA"
+  },
+  {
+   "slug": "food-processing-v3",
+   "name": "Food Processing V3 — compact fermentation tank infra, 12 ethanol/min to plastics",
+   "module": "food-processing",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Fermentation [verified]",
+   "item_count": 18,
+   "kinds": {
+    "buildings": 11,
+    "transports": 7,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 6,
+    "PipeT1": 5,
+    "StorageFluid": 2,
+    "StorageLoose": 1
+   },
+   "string": "B888:H4sIAAAAAAAC/3VTTW/TQBRcp45D0ny2SXBoQb4iUEupULlGTVxFap2IBA5cqsXeuEudXWu9huYG/4EL9F8AQggOIIQQggoQQhVn/gQHEGJtJ61DQxQpzpt9b2berFMfE1Ly0tLVpSsvE4lrOqWW1mHURJ6Hia3dWNV+3HugmXTgQpNrfcQGiHDIMSUah2RXw6TP4EVt5bKG+A4k1FkeYAFRzXWgx7HpzYA5SS62GbYxgU6TcMyHLevxvgKkZFowccqHLlLOb2GCb2J3u0U7lPHuDnTR9ialHtqCHDEMnXVK7qAhZUBKpXsMEq9P2SC51gAAzJzKhxVXdK5Th7L7v3/9LKTLR8W6aQrZIfTn88Mnivw05M9U/sMwmxGtt5HJKRvmJAAS4iuYVhsgJT/bV7K1rkCgjVqDYPp1YcrpIBZwgJw6wpp7AaYzOhhBrx9l8wsj8EhZDAeFxX/R+GTRXqxM8HYYpkyss1iqTHAe1Wfm1Ja3SW0cJtEirs8b2IO3HGSB+VoMavs8jpWrdcehdw1K6uIa2ARZ0QGQSFayI6pwc9Xy6F/wgywRp+Wb/HRu9LDd9W3IJHUuHIesHvPN3Q1GfdcTKSaXo+yisKJcnke5iATGa7/QAPMNIMkvQkQJ+kpBnyS/eTUrKjV12s3pYBcFR9cMcVQ+U9hABDHojDcDJkjfhoMWlKCptxLjFt2rBkjKhwdKHhSCAIolsVRpXiqLVSyOV6E7PraqZ/Nj1+29oY2IpIYeIwGThO8iwrhLA5QM4el95Cl0aYQuPxxXgD5l1sGJWeKYogvV36errp4rjIU2o1c2UpqZNv3Tiel5Hai60PXlWJeqh0q/xpROc/3tpFIDqIHrw9isoHP8+QvjMPHenAQAAA=="
+  },
+  {
+   "slug": "glass-v1",
+   "name": "COI Pack - Glass V1 -- one line, 12 glass/min",
+   "module": "glass",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Glass Making [verified]",
+   "item_count": 97,
+   "kinds": {
+    "buildings": 62,
+    "transports": 35,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "EvaporationPond": 1,
+    "FlatConveyorT1": 1,
+    "GlassMakerT1": 1,
+    "IndustrialMixer": 1,
+    "LiftIoPortShape_LooseMaterialConveyor_1": 18,
+    "LooseMaterialConveyor": 31,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 26,
+    "MiniZip_IoPortShape_Pipe": 4,
+    "MoltenMetalChannel": 1,
+    "OceanWaterPumpT1": 1,
+    "PipeT1": 2,
+    "SmeltingFurnaceT1": 1,
+    "SmokeStack": 1,
+    "StorageLoose": 6
+   },
+   "string": "B2080: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"
+  },
+  {
+   "slug": "glass-v2",
+   "name": "COI Pack - Glass V2 -- second line, 24 glass/min total",
+   "module": "glass",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Glass Making [verified]",
+   "item_count": 97,
+   "kinds": {
+    "buildings": 62,
+    "transports": 35,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "EvaporationPond": 1,
+    "FlatConveyorT1": 1,
+    "GlassMakerT1": 1,
+    "IndustrialMixer": 1,
+    "LiftIoPortShape_LooseMaterialConveyor_1": 18,
+    "LooseMaterialConveyor": 31,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 26,
+    "MiniZip_IoPortShape_Pipe": 4,
+    "MoltenMetalChannel": 1,
+    "OceanWaterPumpT1": 1,
+    "PipeT1": 2,
+    "SmeltingFurnaceT1": 1,
+    "SmokeStack": 1,
+    "StorageLoose": 6
+   },
+   "string": "B2160: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"
+  },
+  {
+   "slug": "glass-v3",
+   "name": "COI Pack - Glass V3 -- broken-glass recycle furnace",
+   "module": "glass",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Glass Making [verified] (inherited; no new gate)",
+   "item_count": 23,
+   "kinds": {
+    "buildings": 12,
+    "transports": 11,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "LiftIoPortShape_LooseMaterialConveyor_1": 5,
+    "LooseMaterialConveyor": 8,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_Pipe": 2,
+    "MoltenMetalChannel": 2,
+    "PipeT1": 1,
+    "SmeltingFurnaceT1": 1,
+    "SmokeStack": 1
+   },
+   "string": "B952:H4sIAAAAAAAC/4VTz2sTQRjdnd1sbW1NmrZJrQq5iYcUSxVy6CGa/jCQmCUJGry0m80kGbuZWWYn0twU/AuKFBURkSIiItKKiIr07sE/xaMHRfx2lmTTVnGZPeyb99735vtmR74iNXJxPjN/+RNCi7lSPmVa9mYqnVpzLM9L3VhMpdOpOmebmKZbEuLY7tkOTjW7nFo21pSkrsdKnLQItZwVKojo5RsPto1IvMBaxBPE9vLU7Yoia2DFmBqApa7ooyPRNUwxtxyTE8bBIK6oJ0ZNzgQTPRePTlY62BGEtlaDmtUFdWykjG3iYk89mZRR+5SbRLSvyrzq+GiVW9RrMt6JVJcURdH0HcilGzrYT4xVOsCqCDguuJ1Khp/L2HWwwI2KwFYnOhluFFwJxYagawE0GQuh0lavhWk8HiLXieAMsKkh4cpW2+p6Ynqobs7idUaXCdsiDayOR2oFyKzqD7cNyDtzoUgouUXc9TwzGReVtuXi9QJjHi5aAnNiOTlG7+Ae4wpoy1mpfSy1ifMF0hT/1a0v+MpMQiqfBEofMX0vLXlKdtMFjxxzGL/36+eP6Oz0ALxi25gGW7+/Pdo39KfS4fTMPzLOjYH0NrYF470JVVEQrEsJBcprycA7sHkW2IBgSlUVhBQ9k0AFWFlkZtFh7vMBt+8I2aEVqr47OI6R2VHleYaFLwbCaD8KsHzmYd7LAS+uIgXBNnBQwX+zSNVfBaPym9YOBvA6RDYC5E3Y2GaAvA2RevZYtL3wTJDLTwfWoDzMeneM1cyi+tH+vD/GgoIbfn8+yJ0zs3+7ZCb8Z3642qqM+zGgSsQM4h7s+SW+7+8a+me5e9bwRVW4UHMxRXZKq62imgnrSPAvkn8uXmSOwLSIBdyRtkUpdnwtjBuGrpWXFA2WfkR7EGiBmIBRQBkdiOW7IPDf+/6Yg+cP0qA+ZuYEAAA="
+  },
+  {
+   "slug": "gold-v1",
+   "name": "Gold V1 — one furnace line, 9 gold/min, buffered (machines manual)",
+   "module": "gold",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Gold Smelting [verified] (+ Concrete Production for crushers [verified])",
+   "item_count": 79,
+   "kinds": {
+    "buildings": 52,
+    "transports": 27,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 1,
+    "LiftIoPortShape_FlatConveyor__1": 1,
+    "LiftIoPortShape_FlatConveyor__2": 1,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 5,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 5,
+    "LooseMaterialConveyor": 15,
+    "MiniZip_IoPortShape_FlatConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 26,
+    "MiniZip_IoPortShape_Pipe": 7,
+    "PipeT1": 11,
+    "SmokeStack": 1,
+    "StorageFluid": 2,
+    "StorageLoose": 2,
+    "StorageUnit": 1
+   },
+   "string": "B1916:H4sIAAAAAAAC/41W4WsUVxDffffuYswlOe8uuc1dWrdptGtM9SL0sOCHBqMmIZrQxCJBEtfbl9zWvX3H3l6bgB/a/0FKq6WUUkpbSilWRKxoECligxURERERKyJS+rUfWkpn37u7fXd7xcaBmN/8ZubNzJt52/YLksPZHbt3vPETQmMHqGWo74yojz84pVKbqEsVx9bzRLVMmwyrb6rLoN9ZNO1h9XhlaYk4xFC1op4vgLqsFnW7olvbQtK0jGPTjrls2rq1z3ZNd3XCOHUmIsnh9hmHutRdLZHItoOmbc6bpcUJOkMdd7agl8jiFKVlclB3iWPq1l5qv0dWqSPJbe1zjm6Xl6hTDG+PSZLUhj86E9nQN+tSR18mE8USeDgMkawZ4uSJ7UrtSlW3b8XT7XdosapaOx3dmKkqmdcmvdTR36wVPYN5tKch7oxjUgdyjHX2NMSs46EuZaI8RZfNsmvmyxN2qeKOmWX9uEUMqbtPUE1XXFEX6x21LPr+IWqPlsvmsk0MTpBQeFO0GooVLJ6s/uX9IgbU2Kjk3UR39T+LXlenHSIn48whMeacSv7EAYdWSmUobniLV9JQT1c94b3Uos6Hf//1Z3dvsg6O5r38meqfXz/5MYI/Zi1N9fxH05SNYPouycOZVjtlSUIg0LxUDEJx39zNae4GDDolRkNASSkSwmevdPR1HyA2cXSrVs0NwE1rU+aS+8J7s7g44mWX8rJD+Bw484wz/9d4FzOOs9KI5/20ft6YDIeVpVAqhmQQjBA+X42SZsYKi3yhFplh6YDDz/wCVMuUUpAMgj9nmohnJ2Owk/EXAtLFkC8FRAn4/ko4rCwhJIWiGKVBulAj8es6sZcTw9EulARRUBpkoIn+bZCuoDjIMEqD5ODw3/kHi/LDfy8g/PA/CIjCkLM+kuZW5wSEW50XEG51QUAGGHJRQIYZcklAcoFCXa4nlOAJYQ0jTUE5kGhT8msCl90ArA0gLYdyIP2Q+VU/ksZzuCYgPIefBYTncF1AeA43BITnsC4gOYbc9JFclCG3BKSfIbd9ZLvGtucd2J5Su7cKpQ5vo8U6YUtJ3VLM2y3x/mhtc8zqtiEn2Y7QAiW7G7i34D2jNbHuBVgZDSW0ppLeD7ASGl7QcCPrQWD0FjS0kEbH0jB6F8XRy2hs9C6Jo5cZYthlkZfgvDWRl+C8qyJvgfOuibyFIVbdh351j6V5b690APKS0uqFmzFLxKPuHAdqGN9ej4gtkLtlrwUv19b7fqtiGvHN9X6M5s1aPzx73Cc11Oc6C6xGvCBzI0IxIVpmPEC/wels87LVizIeDzXz1uu8ARl5/9qBlAV5C2V342wWZ4ci2a2RrIqzCm42vikEQV4YBKTshgDvVp1X6y2Q9oBEAtTbvstqfuByj4JlfIdX3ivQngjrxV0BCa7HR4Gpn4yioyAKmlearujjwNRP9qOj/VWujJ/492CST+JTAeGT+MxH5hU2ic/5JH7T1mISX+moXoPDtunGB6Lie85vQSnGl8BvnttXNze/bPst3W16DQtJviSYxeALLNgTWOgNlO13lsaWLpHdcN8KSXQyCTX5gxG3qq0mQTT24pxMtrjR94RbISOE5NBkDB0BSQao98ULBEygqugISDpAfSDcSf7JAf5a8B6K0dnrCaQjg5I7CCV85N+sSd6GxwKisvG+03q8468lar2coytmftaqOM4qb+n8IPP1xPflDrYozNPA0QppVFBRSUUh/OxKhxZv/OI8SA2CtyWavjUZCn6GNs4W6Qn4ftTzJ+TtbW+TPGyQcttwyofHSMkiLjFmXaIXX9/kK6ZKDNohQOMc2hnzoemV1WViZ+M+csh0HQrYiGC4b6WgV8ruLiHuXt05Tu0xE+pkEK8aKqvPc78+BW/r1n7+BfEpzujQDAAA"
+  },
+  {
+   "slug": "gold-v2",
+   "name": "Gold V2 — second furnace line (18 gold/min total)",
+   "module": "gold",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Gold Smelting [verified] (+ Concrete Production for crushers [verified])",
+   "item_count": 79,
+   "kinds": {
+    "buildings": 52,
+    "transports": 27,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 1,
+    "LiftIoPortShape_FlatConveyor__1": 1,
+    "LiftIoPortShape_FlatConveyor__2": 1,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 5,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 5,
+    "LooseMaterialConveyor": 15,
+    "MiniZip_IoPortShape_FlatConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 26,
+    "MiniZip_IoPortShape_Pipe": 7,
+    "PipeT1": 11,
+    "SmokeStack": 1,
+    "StorageFluid": 2,
+    "StorageLoose": 2,
+    "StorageUnit": 1
+   },
+   "string": "B1952:H4sIAAAAAAAC/41Wb2gcRRTfmdvbJM2ld71Lekmu2vNP9Npqm1Qs/dAvof9MSJtgUimhJN3eTnJrN7vL3l7dhHyIJZQQgpRSQm1DKaWUKiKiIqKiQUREBUFE/KxfRUoptdRSfDOztzt3e1Iv88jdb37vvXnvzXu7TT9gFO/duXfny59j/NJhy9Dyr+3O/75wMV8mRcvU8lMVx1SLJG/oJskX+vbmp4Gza0Y3867lqsa2mDSM5NSwo0/rpmocNF3dnR3Qbl9RJBRvGXEsYM3aRNl2RDf1cd2eHLBGLMcdLak2mRyyrDI5orrE0VVjv2WeIbOWI6GmljFHNctTljMT32FLktQk37miNHeNupajTpOBGRssHANPxghxisR0pZZOf++gR/cOOdaMv7V+ObEh528yq3X7UuuW+l3RMqgnOmr8jji65UCMqbaOGp8BHtvYOVAesqb1sqsXywOmXXEP6GX1lEE0KdklbA1XXHEvtbnfMKw3jlpmf7msT5tE4wQJxzclfFcsYel2/xf9RzTIsVYpupmk/2WSFnHYIag9zQwSbcypFE8fdqyKXYbkxntoSmMdG4OA91uG5bz58J+/k5vbA7C/SONnW49+evsjRb7LSprt+I+idW4A1ddJEc4024YkCcOC4mVtcMVtczP3uBlQaJMYDQMl60lY/vOr1q7kYWISRzWq2WwGbndhSJ9yH3tvJif7aHRZGh2W/wJjVDn3f5V3M2WHpUY87/3gvCkEh0VSLGtjBEvDWL7te+lmyh7zfKfqmWFzEYMPwgT4acp6GMGSH7IdheohDfSQ/EhATIYsrIWIF7F9di08LJIwlmIJDXfDMnEtcTEgZjkxnjBxOywPd8M6i+r45wJ+V5Xv4TSsFYS7qawiCGApPFyCB7AsIDyAFQHxGPJWiHRzrfMCwrUuCAjXuhggChyXQasCtMKhSwK0iiL5uhyEleFhyQUNFzy8B5ZRl4K1gLuZXwS5AGkqQOB7qMxD/FfDUxZ4JNcEhEdyXUB4JDfCMxb8SG4KkB/JLQFa5dC7oak9BkPeE5B5hrwfqu1YQmyWfrCmNEstdDBKrXS+pdpgZklJKUUnTXpLojpHRlVTQ+1Us2cpmroPg3Qkq90OrBxILe/jCA84OLNUf8M+ifCAI0+A1PI+DXib/H4EDp6YwyfnoCHvCg2p5NixsXxP6Eglt8zB+yIz4zMfiMyMz3woMid85iORObHMC/JZmP6Tc7xd11sBeaKz0dNvRLcJ1d51i2rH5V9/VMSKoCSiFXmyOvsPGRVdS28NytNf1KvlYQbkLql2FjDXeYW6GesT8kr95UDqFRa5AmVKbDTjHGfieua5gLkd2h7+Wiirl8o1kEtI7j0PsoyU3nMgC/Ddk+uNLAVG2uixoP2A1FuK8JYDXnUAA2kfrKkIdSU06ccKJvd5MswYXgdamX1TfMYISHSQfhEZDIMGPgHLw+Ne3c39UuDywTA4j0/M+1wkr4e3YpC36dcCwtv0mxAZ91iXfsu79J2mBl36VKt/J46Zupt+OiE++dmViNs2M/vzH9TsM1vrn4GHDNWte26WXKbxC9N49jEa7GFZOhNJ23csjJ6NIpvdvWo9Si6edyEn3zPic/lGfSEqUz/zboPbfUG4FQhjjGKDNj4Oy41QLwbUNGMCdQHh41TmIuRV4Vby1xOw2IB3STDKn7RAOr6IJBcEyZfD2zXIS7EWIAq4Zw3/W+OGTz+fqRZ0zPL04qhRcZxZ3urji3zSXA2tuYuNuv9a5HylOVyCmG2QmHx9vbWQrn1JPWJpRN6WqXs9ZShY2r5hdMY6Da+cavE02tH0KinCWCk3vZAN4QPENohLtFGXqDMvbgo3hmwG7RSgVzi0KxVCw97sNDF70yFyVHcdC7A+QfGgV1IrZXe34He/6pyyzAM65EojNCELPEc3whqU6DSufv4FJiu3vPMMAAA="
+  },
+  {
+   "slug": "gold-v3",
+   "name": "Gold V3 — scrap-feed flexibility + slurry decoupling",
+   "module": "gold",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Gold Smelting [verified]",
+   "item_count": 10,
+   "kinds": {
+    "buildings": 8,
+    "transports": 2,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "LiftIoPortShape_LooseMaterialConveyor__1": 1,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 1,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 3,
+    "StorageFluid": 1,
+    "StorageLoose": 1,
+    "StorageUnit": 1
+   },
+   "string": "B812:H4sIAAAAAAAC/41TPW/TQBi+c2yn+ardNClJE8ALEqii4kMg1qi0VaSURkrKwBK59iUcXHzW+QxJJ/gPLKDOCGZGluxUgBBCiJE/wQBC3DlOcCtVYJ1k+338PO/H8zr9ToHalfVb6zfeKsrNbUpc6+516/uTZ1bgMNu/3EfItfoEjfA+JpiPrTUrICFjY8tFDg19gr1BCmShau4yPMCeTTY9Lr5rukeHOoBaps0op3zsI/3SDvbwPez3mrRNGe/ct33Ua1EaoB2bI4ZtskG9R2hMGYDpTJfZXtCnbKitGQCAtPr+UF+odjhl9gA1h75Q2BOZSBsxB3kcZCoxtjmS2BajwxiavMhnazEYqZ7AQa5+Ek0qC3q+fCxvm2HKRI9moXws5zyeWqw0gxYd4IBjJ2h6fshv48DeJ8gFRjUB7YY8iZkrDULo4zvUawQBHnjInX4AFG0pH6eKBlYsxW/yhlwxYzd0+PJS/NCTPnakf7BUjCSR22Wh83CbCcsCMV7tghxqqrw4b3mDEsqe/vr5w1gpzYMNR04ggn5/eP5GVz9Gpp4pn2JbJSuoD5AjqhoXIACKOMK+mgEU9eUkVzW2kYeYTWaTWhBiqxdbuM//uRO93lVZd03WraivhJgk1/6XfC0iF6Kmp11OG/o0bUiUbkIIFAWkaobiinOgQPVzBOqS6q4KKlS/JCIHIqKp3470LMjJJTELwnhoQFPYVZ/ZtUVC7BbPLs+c6dIRdjrRHwRLUqZdj7b7q9hukJm8TifFgAGk2LlcLLbnYV48n0+6PBXxVfD3+gP2G9Lw0wMAAA=="
+  },
+  {
+   "slug": "household-goods-v1",
+   "name": "Household Goods V1 - Assembly Electrified II line, 16/min, buffered",
+   "module": "household-goods",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Assembly Electrified II (HouseholdGoodsAssemblyT2 in its dataset dictionary) + Housing III era per relocation plan S3 Phase 5 [dataset-verified machine/recipe pairing; research node name reported - confirm in-game]",
+   "item_count": 21,
+   "kinds": {
+    "buildings": 13,
+    "transports": 8,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyElectrifiedT2": 1,
+    "FlatConveyorT1": 8,
+    "MiniZip_IoPortShape_FlatConveyor": 8,
+    "StorageUnitT2": 4
+   },
+   "string": "B996:H4sIAAAAAAAC/42UTU8TQRjHZ0sLW+ibZbdQXgfhiCgkGg9qUmupTUQaKZJ4IdvdaRmd7jSzs2iPfgYTE/0aHr2Y4E2DhBBCCDHG+AG8edAYZ3e7ZeteaJq0ef7Py2/n/+wMfYpIsWtLN5euv49EivepbaEdSgxYptSw4ONleAUWLAu16qQDSwTpnOEGRgasVCDBJlqEyzeutrC5COt2o4EYMgaAGo1m1hluYlMjJZNj3qkYrz8uxrIPaBNbHOtWxWzbfI0aKDo42guu29yPDqXLyERMI1WGKRMNskCS41VGOeWdNoqrPlKAqLYiDQ89QjpuIwtII/Ea00yrQVkrBhQAgBT9vCficgKuYRM/we3tCq1Sxjd2tDbaXiUaL1JzF3UoE8WxeVmUDCRTbpO2SCtSQtnLP79/pVNKL1jQdWR60t8vb94NRvd/DIoR6VSwXW0ZSJlhUfNUoFLWSUoARMRXjFBlIEf396xL+Q2haE1UaTltN8WZkSpiTnOQHe9qpReOtspoqyt9eJsYneyKPaSADpSp/9VgZ1Guqn1z/cPO5NS+mb34WKpAEONbO8gs1Oku+vkqHh0fr1j9vt7DllYnyJDy+YDkuetrYCJXIIQ+f0hNYSVumsjwEsCk2j+jZHrNBuSpZJdq08S8tjI9UrQtTls1zAmambilOzbcFgt4B4pFMWydw7vuSs4q3TrnBxm+mOz+2S4TzbKkuawLJPaI2fqzMqN221mjmOptgme95/KB57Kw1fcyLZJksWIH3oo5dZLsLt3heWReCXU6DHUSSaoituJIbAXIOhYDxXEqk8uMucct5cEEmHSOY3pm9nLvITY4QkSac4nDc47CxCJJEXzHAWLvNTkJEMNQp+MwMQQqFMSnFyKeT/jEW+KC6QKHx5yEgUUSFHhnAWDoAn89jyTCj34a6iSScs4Rf7sQ8ELOB+7dje7V6KHnwgPPQgOnFLDgnPX3c9AFp87//ANKxt7hgwUAAA=="
+  },
+  {
+   "slug": "iron-v1",
+   "name": "Starter Iron v1 — scrap base (1 furnace, 2 casters)",
+   "module": "iron-smelter",
+   "layer": "v1-base",
+   "version": 1,
+   "research_gate": {
+    "node": "Iron Smelting",
+    "status": "single-source — exact node name unconfirmed (Charles says only 'smelting'; full name from the Steam player list). The T1 smelting furnace unlocks here. Confirm in-game."
+   },
+   "item_count": 26,
+   "kinds": {
+    "buildings": 13,
+    "transports": 13,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "Caster": 2,
+    "FlatConveyorT1": 5,
+    "LooseMaterialConveyor": 4,
+    "MiniZip_IoPortShape_FlatConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_MoltenMetalChannel": 2,
+    "MoltenMetalChannel": 4,
+    "SmeltingFurnaceT1": 1,
+    "SmokeStack": 2,
+    "StorageLoose": 2,
+    "StorageUnit": 1
+   },
+   "string": "B1260:H4sIAAAAAAAC/3WTUW8bRRDH987ns2M7Z+diu4kb0gstoSklYKRKvEZuUizVJKpdHniJNndb55rzrrW3TpM3+A4VggYhhBAChBAChBAgVFUVLzzwHfgSPFBVzO6dL/YlWJbsnfn9/zM7N5f7U9eyr6+/uX7jV12/0RWYC8KdNmfUOWw6f7/30AldjofOHg6Jc7Xp3Btxil1y3XnDcXEIbLiWQY2sUdnmft+nONikwhfHbe/hiZm1b7O+HwrfDdt0OBId5hFkzifB7ZEYR3PlW4QSjoMd7jMOBnZ+sbXd3jwShHrEW98+JNwNmHtwBwvy+FEJaTMzO5wJJo6HpDDXHZBA+LS/FXXXa2rF3B3i+kMS6qV5eZsx0Wt25X1m7elgi+FAs2Z6HNPwHuODrIHgYxgfwC0M08hHJcuF7oAdEJiSe6AVs5W50+Pm0T4ehWLuwmmohfkeozd9duR7xC6/RQJ/NHiHUFmxO5i3Nnif0eRcrbUCgmnsk4Q1K1vXVCsfTrei6tvzVQmYAGSNRwAgE+XsGKmZLfWEtKJWL8rryiOYggJVlOLjtEKikC7IdM745MS8sNgVjOM+aQ+GjIu70FWwA48C2kMLC3Fu80jmtjgbxClwW7wYJ9VIU3nUWEpnJ51BfrE2VXe8FZWl2lTNJJ55YaEdTm/bTT/EewHx0PLiRCrauSR3qb4RBOzB24xuhKHfp8SLAKTPOKW41G3GQrJSjU/yh3iwe97IFS/OxX921TrJzdIu28qSeD0+cg9ucTYahgiGqs+qoX4KQ0ULckKoIS9aWYLm0TK6JEuuXCmNDdVGXpZCKxJ+Fgm/yp0jfKkYd3eX+mJltTTZVWRSL4GJZnx+YsJzfnmt41P/XX+422Y7MMbuPh6SXXXPDrxf3MdBi9FDcsy41EJdqf0i0sqIHUW+VJGrznluWwEWkyarlpJ8rSRrq+dJOiyA171DBJTfx5SSQArzUeffREI1EBnJXLOS5WmxgPH3n/37T/mVahLccOUuqdTzvz76wTS+VQ7Xa/9zz1cLIL1PXBjk8SyCd05HOtzcLEOpyDuy+S6yAcGYgmnYaer7M5SZQaaWon5MqIquIU1HGTuDbANVjBT4kwLX7fNGlFTIFxAMa1r4cySUlIKAKiErTf1ySo29SihvpajfzlBgZKWp3xX1mjW5AL3mhMioI6OREj2ORJPWdWSlqSenVHwZMDpDPU2oCkwU5poBpAHfagr844zdsoWuyD2NPv8BUJUx4hwHAAA="
+  },
+  {
+   "slug": "iron-v2",
+   "name": "COI Pack — Iron Smelter V2 (ore/coal upgrade: slag export)",
+   "module": "iron-smelter",
+   "layer": "v2-extension",
+   "version": 2,
+   "research_gate": {
+    "node": "Iron Smelting",
+    "status": "single-source — exact node name unconfirmed (Charles says only 'smelting'; full name from the Steam player list). The T1 smelting furnace unlocks here. Confirm in-game."
+   },
+   "item_count": 6,
+   "kinds": {
+    "buildings": 5,
+    "transports": 1,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "LiftIoPortShape_LooseMaterialConveyor__1": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 2,
+    "LooseMaterialConveyor": 1,
+    "StorageLoose": 1
+   },
+   "string": "B624:H4sIAAAAAAAC/42RQW/TMBTHnTRN6ei6MNqRAgcfx2XAJKRp4lKVgSIVGqmDa2USL5i5fpHtjPUG34EL7GNw5MIRAQLER+BLcAAhHDdU3cQBy5KT93v//3t+bnx0nfqNrZ2tW29d9/ZgFOGYJIf4+/OXOJIg8HhKuaYSP9rGmyDp9QQIx0WeSZLSXaw4yTA9zkHqazXkN7xgJFnGBOF7QjM9i9L3J369N9YgSUajaZn40BAeU5lQoZEfVmzPmtyVMK3Qu9etxpUK7ksi1BmOzl09S5edjbzZPVU3lgyk6SlY6Z6quYjXzoeRGkLGlGaJikRe6DtMkcecpqjVW0KjQi+z1Y0+5/DsAYi+UiwTNJ0nILfdjCVo0LOcrrWqokMARYNO9VceNDVZaZHoC63qYzI2c3XW160vTfdlkRzek1DkCjkXm/a+ByCn9cvIrFqnvZjAADjIF79+/ljrdhbBflIOxKLfX1698b0PJz5y2htd28p9Yp6XET4AcURnIJFzacVIn9LEtDZbdRByzQ5cN3Rdx/tkpeHmkB3oCGLjPn5Ccjr5p9VkctP0Ww+MAXK8z1ba+1/ptpV6Vvp1XrWMhHOzb3MzGylz/q4/HW3GE88CAAA="
+  },
+  {
+   "slug": "iron-v3",
+   "name": "COI Pack — Iron Smelter V3 (second furnace)",
+   "module": "iron-smelter",
+   "layer": "v3-extension-manual",
+   "version": 3,
+   "research_gate": {
+    "node": "Iron Smelting",
+    "status": "single-source — exact node name unconfirmed (Charles says only 'smelting'; full name from the Steam player list). The T1 smelting furnace unlocks here. Confirm in-game."
+   },
+   "item_count": 21,
+   "kinds": {
+    "buildings": 9,
+    "transports": 12,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "Caster": 2,
+    "FlatConveyorT1": 4,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 2,
+    "LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_MoltenMetalChannel": 2,
+    "MoltenMetalChannel": 5,
+    "SmeltingFurnaceT1": 1
+   },
+   "string": "B816:H4sIAAAAAAAC/42RQYvTQBTHJ2mTNE3adNtt1T3lJOvBYhXBq5RdKbS07BYPXkpIp91xszNhMl3sTb+DF92P4dGLdw9eREREZBERERERFV3El4nddtM9GHLJm9/vP++9GE9VRbtUv1a/+lhVLza7Lbfn+bvu4d37bosz6m7v4UBg7t684q5H2Gd06I4mnHo+vpBBVS1b6nIyJtQLNqggYtoaPj/QtXKbjUkkiB+1aDgRHTbESK8cF7sTMasazg1MMfeCHieMQ0A5dw6a2LgjMB3iYb27j7kfMH93yxP4yUMbKabZ40wwMQ1xfkV2R+h4M2mp31AsYwv7JMSRYpfjAWZEv9FkXqAUzD73aDRifE9zEDxa9gU0jHRklHNJflFvehGMrFiKY8UR8SckKAWtUpLGy7QRo3BsxsdK9tWBDsXS+Q6h5BYJBy3WY1xs73ghHnQYbJN2sPCC5o5HKQ4QiJYtxdeJGFe0uJJZKcpuQ9CbLGD83tHvH0559bh43fcxTY7+PHvwSM++kQmVapuxCHdgZZzARYzu4ynjSFnNg3ob+4LxaUlVkKKiDDJRBt74tiQ+SXqbJIFTUKE3hFTbVC1TPUkdzinJIECQBcHZd/Kkut4mI7G4gFM7Gwwa8dC2KdfwXqq1/1UvS9WQ6ofkVrnTJOxjEiYrBkpP+Umenimf9lvmI+UR/KCT4udEjCkJAWUjLU19WaIAyaWpr3NqdqONrGKK+rZEQZaWpr5L6mxxM/DEbEX9xoLk1JCzlpJ+JtJidA1paerXnPo3DAQtUUdLFCDZNTR7/gKgziuccAQAAA=="
+  },
+  {
+   "slug": "mechparts-v1",
+   "name": "Mech Parts V1 — 1x robotic assembler (96 MP/min) + Maintenance Depot I feed stub",
+   "module": "mechparts",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Assembly (Robotic) II [verified] for the assembler; Maintenance II [verified] for the depot",
+   "item_count": 18,
+   "kinds": {
+    "buildings": 10,
+    "transports": 8,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyRoboticT2": 1,
+    "FlatConveyorT1": 4,
+    "FlatConveyorT2": 2,
+    "FlatConveyorT3": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 6,
+    "StorageUnitT2": 3
+   },
+   "string": "B1080:H4sIAAAAAAAC/41TW08TQRSeLVuupXQLBdpyGRAVIkEpajRRk1ouaWKlgaKJL2TZHWB0O7OZnSJ909+gL/o3fPTFhEcNEkIIIcYY/QO++aAxnu12e4EXN5vsnvnO5Tvnm9P2MaAEr83cmrnxPhBYyRFjG+d1IR38aBZ/f/Eaz+5iwTe4pAbWHYcUNywi8OTtmziXv1qkbApfwTmdMkmYzgyC54nNJc7iTUJM7MjSRguKqmpkWdAtynRrgUkqy1nz054TjD7gW9SBxE6W2SWZ4yZRW3trh8sl6Z+29SwRRoRu5QXlAhJEkdLekRdcclm2SYeW9piVVzymhZTS2bZCDGoTR+3qzNg+HurK2Cnf6AZjzjfCYFz3DaWnoyB05mxyUQwi91HU/R+tUDSCc5TRJ9Rez/I8F3J1W7fJ+qKlywxnO6TMBVJ6gkkVQtrV/T1Hi69KLvQtki3a4L4G7Vt5IgzCJIoOVrGFXRdbFLxYhT68DfUmq2CFyBkc9Q2dRRszQ3gs1lTXn1ukP9ZUs3Y+EE6DrvLxNmHpDb5Dfr7qUAcHs06zRPPU0UF/U4nHGyBPKB9Dif60ZfHnDzmDcdItRkzPASVjzTUWmJespX2ou8pqjVFZSA13ZUqO5MUClRYZSdwxuMXFXUHMexg0N0uGxPdLm5tEjPZV49wPMX0wVP1ZzwrOlLFohQ8xC6JkPFsSvGQ7rkhxV9eW8XBthBm3zMs/v3/1XOirHaYNd6IV6O/nN+9a1YM9iG6fCDdqXphDysVOiHlKDGBS7lYQCsAL9yCuQg0vqRd/6MVDgO+lwW1R4bocwXVBUVd71OdKGOmPDFR0UOIogZLunIZHRi8N+N25u6ozasBauAurjLldJbyuGiseVypebmacaiAQUlHiLM0TL6jBa1xF0yoswoG3CG6xafVcscMKOtlcbBbSRAIBpCioZQihIQ0lNMh0VM8Etrtkx/WTpFbZodP/GspUrz+UBQskANnhXnoDicfOcTzxODb0BsXi2hmv03NemoZCLu8vdZYh7Vz2r7W4iBJAAWg5EUMT8I5C6Ld6KNj15x/oNIxPhgUAAA=="
+  },
+  {
+   "slug": "mechparts-v2",
+   "name": "Mech Parts V2 — second assembler line (192 MP/min total)",
+   "module": "mechparts",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Assembly (Robotic) II [verified]",
+   "item_count": 9,
+   "kinds": {
+    "buildings": 5,
+    "transports": 4,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyRoboticT2": 1,
+    "FlatConveyorT2": 2,
+    "FlatConveyorT3": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "StorageUnitT2": 2
+   },
+   "string": "B912:H4sIAAAAAAAC/11Tz08TQRSeLVtoobSltEBbfiz4OyG4Fk3UqEmtQJpYaaBo4oUsu0MZ3c5sZmbR3vRv0Iv+Gx69mHD04D9gjEFiPHrzoDG86Xabls0mu2+++eZ78773Rj5HtKi5cnPlxsdI5HYN2wdG3eJSGI9LxvGrt4bANqOOYQmBW3su5oZLKDYuX7tVMmr1qy1CDcmk5V4ZQnFdT29y0iTUcteoJLJddb4eiWjmIWsSIYktqtTzZY05WB+e7C1u+jJcHUltYIq55dY5YRwOyCAtFq9zBhJtD8cnykEW7S22x4DbKGmjI1vYJh4W+thoxQvxxFjFK4XBOASrYZCE4HoYaKl4g1tU7DPeiqJlhJCmH/8YBtG0USOUPCXebpXVGZfbB5aHd9ddS1YYPcRtxpGWihZNoMT0b0diIr8tGbeauNryYPsOXN+tY25jKlFmpoutvVTYOmetLvTpfWKy2AU7iZzBUXb2LNp/MtBzuQHdsG7pqdyAZm99OlkGD+WTA0zLe+wQ/34T12dmqmLQogdEWOC1o+XzfVBgVIihwlTZddmLR4xCOUmTYifYgIq5QY01Ghw2FJsd72a1Q4lslObGKr6QrNUg0sXzhTs2cxm/y7FzzwDPHd+Wxn1/fx/zhWyXpz7YCcFE92e3yhnVFjOdfLDT4L79fIMz3xPKpLzydWgp2SthRcm8/vf3T+pctrdYtlVFO9D/L+8+DOvfj4AdO5/s97yxirQLo8B5hm3IpD2uIRSBF/ogb4JGcGjAPw74QAh3TUC3mNAuJ9AuKKO8R1llYXoqPd3xQcujAiqqOs3NL1ycDm+nZtKixIaxUIOpLapbFYJb9Sv+7CheGsy41JdAwkSFs2n+Ckh9u5ZMtGzCIJwEg6DEllWfh88pmlKGQjEEAAA="
+  },
+  {
+   "slug": "mechparts-v3",
+   "name": "Mech Parts V3 — Maintenance II/III depot feed infrastructure + manual",
+   "module": "mechparts",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Construction IV [verified] (Depot II); Datacenter [verified] (Depot III)",
+   "item_count": 19,
+   "kinds": {
+    "buildings": 11,
+    "transports": 8,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorSorter": 1,
+    "FlatConveyorT1": 8,
+    "MiniZip_IoPortShape_FlatConveyor": 8,
+    "StorageUnitT2": 2
+   },
+   "string": "B1016:H4sIAAAAAAAC/21TT08TQRyd2baUQimltEBbwDUhXExAMSYeKEnFQjaKdEOricY0S3daRrczm9lZtDc0fgO96Nfw6MWEowe/gxJjCCHEGDVKiLN/bJfWZpLu/t6893szv7fRDxKMXF64vnDtnSStb6D6jlzWGLfku1flT3uv5A0NE46IRupIVpRFRVFkHZmUyw2EdBmTBtMszuw6txmSL8ktjdiaEQLjMJzcZLiJiWaUCMe8reiH+xaQIrEyo5zytokGUmuGxlcp2UVtyrYo44hFh1dti9NWBXMDDS4t16lBWaGNDIM+WXlgIS6bjOqi3cPlRRdbkcteQbZcARhLrmFDPCDdByw4lPUfa6KZ5xZT4h4TDscqTCNWg7JWZD4MAAjFE27FFHKrTodnp39+jo6kO8VivY6IB519fP12IPzl8wCAkUQieJrKFQBHhwTnEapzytpJSQIQgpBoMV8AuQKA4a8uLSlvYILvY7Om0LJQ39rRTFQLSgE4HBEEx5lnxet66HUVbTraBTCvgpwqtI88bZeqCioMH3creUdsMHy0b41lt4Q5rYmUlnOyqhiUUUbMOR9ITflY6amDrTHa8qH3b+LjeR/s3EoAB+npXjSoLOiZzLm+ZYYpExFJTmTO9ezUJxNFAzF+bweR4jbdRScvY+GpKcW6TZvY4rhuKcS0+U1sadsG0mE2G4A2bR7AQG6i6GTpDiVFy8JNgnRvA8hnzvcoEU8sFJke8V1VCeaVpehMzo+lyFg3fjfsRgOx2bS/1/nrRPBC+l8AS4bIA6NEGFuCcsr1gvSKiOTjdUZt03IGlC32TfukM+0RCIAklphittCz61vfrrECiDth+94df7zgBuJHIBCqG4hjEQiQcqYL0s6QkhPJSfemYRbkQN65iejM7MXx/5wFyq7vap/vX/2+VZBVe3b97vetgrgT5NOAb7VP/az7DUAJSOIbyBXBnFi3BHXvoEMV773U5wd91CqYE6smqC8C1Bro/v4Cx8+cay0FAAA="
+  },
+  {
+   "slug": "microchips-v1",
+   "name": "Microchips V1 — Stage 1A entry recipe, 6/min, buffered",
+   "module": "microchips",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Microchip Production [verified]",
+   "item_count": 28,
+   "kinds": {
+    "buildings": 16,
+    "transports": 12,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 5,
+    "LiftIoPortShape_FlatConveyor__1": 2,
+    "LiftIoPortShape_FlatConveyor__2": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 4,
+    "MiniZip_IoPortShape_Pipe": 4,
+    "PipeT1": 7,
+    "StorageFluid": 2,
+    "StorageUnit": 2
+   },
+   "string": "B1004:H4sIAAAAAAAC/4VUz08TQRSe2V9t2VIWaGmRGjfhStCaaLg2CKYJSJOCJl6aujuU0e3OZnar9qb/gxf9Nzx68WiUICGEEEKMAWPUf8CDxvh2trRli7Fp0u173/fN+968fYkPElavzS/M33gjSQur1OLM2qKeb94tmSfPXpi1oNEkZqlsEjfgHZMTi3pkzrx5tUXdOfNBe3OTcGLLqIgVY43TJnUbzpIb0KBTsXdONYTVVJWzgAUdj2jmKnXpferVK6zKeFDbanikvuw0gkXmPiYdxhFOpNZ5w/U3GW+pqowQwsq776FMsnARuQrVAElVFQF9H0FFBInIrqhBCyOaJCJ7/cjsJEQSyv6plpquBYyD1UrLA/ENcOBUCbfA9dtX6ZFCN7v0NMwuc9bqJ/WZblIUHsujdDGejWmP5s6dXOWUceiekcmdO7MXl8cKFX+FNakfUMuvuF47uEX9xgOH2MiYHkittYOBHB6fKjsOe3KHuWXfp02X2BEAS+qE3j1qw6XBZLb7J/whNlye3baCbLb7UK9Rh1rMvdeAi8e5CSFK7HXeth7d5qzt+aKxOjRWnsr0TC8yh/Hnv3/9HMtne8GyFfZApP58fPlaUw7E1RQygyOxXkJ4egQ4D4kFFXVGEUZIQhLc3ewYnBGJRvzDiA+EHiqBZuUY6qiPEiBAyVJClrByLDKXrqzQzeBfI1qvl4TDaDY/CcbMfxjXBQMLxufojDCSiDROIg0RiTDb/THOhyOqKnvbmo7S4bgYGRgBbOBxQBTT3btadtrUxjlBSInWDxreEXKXtfBlEe086w6I50dj4N0IDCgDYYwkSc6rKI+lvKScB+71gD05SckrMdR+HxWKIRBSFHhbsXLQN6lHJvcvNhn50od9HQ5VAEJ63NDRMEpFelzreLBOMRQAUeOoL73RMURvkAxLJQ3fJKyRr7BGwmUR7oQBGwhsYKxORDaM5JCNb0PzmE2iIjRG+dFfVcWQd/b5C0VkRpW1BQAA"
+  },
+  {
+   "slug": "microchips-v2",
+   "name": "Microchips V2 — stages 1B-2C (5 machines), 6/min Stage 2C",
+   "module": "microchips",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Microchip Production [verified]",
+   "item_count": 80,
+   "kinds": {
+    "buildings": 50,
+    "transports": 30,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 13,
+    "LiftIoPortShape_FlatConveyor__1": 4,
+    "LiftIoPortShape_FlatConveyor__2": 4,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 8,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 8,
+    "LooseMaterialConveyor": 12,
+    "MiniZip_IoPortShape_FlatConveyor": 14,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 6,
+    "MiniZip_IoPortShape_Pipe": 2,
+    "PipeT1": 5,
+    "StorageLoose": 2,
+    "StorageUnit": 2
+   },
+   "string": "B1596:H4sIAAAAAAAC/41W/2sbZRh/73KXs03aZmmSpi66+yl0Q6dtmEiFHrVuI6TNQprtB38paXppb17uwt1V7W91DBkyxpAhOkREREREZI4hKjpERFTUv0BkFnFljDHGHFqKzz1vmrx3b2WGN7983s/z5fM+z/O+p/wgCvLjB588eOhzUXxqzmg4dmPFaLvqiQn12voF1fXqy7qrjj/96MSMOnZIbdVh29Ld/Y+oTzzWMix13ieoEzMRUhGkxDHHWDasunnY8gxvrbh04/coEeS+imN7trfW1qPqnGEZzxrthaJdsR1vfqXe1heOmHVvxrae19dshwhKX82pW27TdlpyNEkIEaSb6Ab+ihzNIHKLQfKI3GaQA4jcYZBJRO4yyBQi9xikjMjfDFJFZItBFhHZZpAmIr9e95EH9u8mb9a2XX2u7umOUTcZnbJM1a1vdL3JVN1v1BsiVN01RPqyu/mvGG0dqVTkBqUiQkX+wbijIk8xIanIPxmOLynSP4hlaEOYGdu0nZe2/vlrKJbqgtONhm7Rre2f3/gkKp1Gn/FBtpq1cSIM9IPNSb3h2c5aQhSIIJJIIk4SSQLVjfRTv9TFy9QF2AwTgRCRSFDuOKw8gSoHuWd47gEShzVJoNpB7is8d4rEYZUJVD3IPctzqyQOa5FA9YPcc11uQhCICMKgHeKwTKJI5zeig6PzoBoGpNjyj+w4TIVZ0R3/4K5ejA9lO7uHX/R3jzh2q7eZ2NvZ7B44s0/25MK7Id/JdCByxTFsByYyMZwOxOzikVS26M7ay4brGQ23aLVXvWcMt75o6kskPcpsHVv1mD0hk5k2TfuFsm1Nu66xbOlLlCAI8kisE+q4ZXhCNolEfanmrDaeO+rYq23Xb7aEic3Gnuqr3VMdwAIQMWWSnAlNeqHXtjkT23az17aFYUBk6cb1aILs8Y8gMQyySJpkgDEa7ySDwyhk0SDGhb6J7h5M/8fIDgzQlhAhVmEoZHuL2rIshRTCLX67x+qIKyRFJSmK0qWvYnuHjuqW7tTNnbqAMDk3Nms0vfteKAsL4yjKv1NE6TI4840f+r/GE2icQuMrHeOcjynU4ac7DhFLcSd3h1efJIXwcN3l1ZdFpQzqP2NjFsoY8ws2ZqGC2JeB3CjvaiC3CpfbPT63MilUoX1e6zWU5rePIr0OU+vPpj+CgTYSMn5P087R+M652GvaTgxwqIV75E2epRAtE2K9xQ2AlhGVjChIb+POw/vCRWXv3E4jaPQpeQct9t3HAquvZdHiXRoDz5L6eI/6QCTLKX+f15QhWjXE+oDXVBWVKmj6sBdPo2/RR714Wg2Rj5mcKOcSk1ONy+kyn1OVaCf85713YZTohbG1+4VBK13iK73NdRM4KoUrvb7JsRRSCj9ipzbD81DKi0oe5uFrts9Leezzb9g+L40h9m1gHijvu8A8jHEKTvO55UmpGX6M+dyaotKE3L4P5NbEmD8GcltB7KdAbpT3SyC3FS63M3xuTVI6GX7QkaVG/U8f/MbYIUO5YuHX/ywlM0KAIodZ53qsHV+TJDYVYp3nWCOSNDIlhV4wNiJ8FggiUPBjjP7+BbBh+Q52CwAA"
+  },
+  {
+   "slug": "microchips-v3",
+   "name": "Microchips V3 — stages 3A-final (6 machines), 12 microchips/min",
+   "module": "microchips",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Microchip Production [verified]",
+   "item_count": 81,
+   "kinds": {
+    "buildings": 48,
+    "transports": 33,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 13,
+    "LiftIoPortShape_FlatConveyor__1": 4,
+    "LiftIoPortShape_FlatConveyor__2": 4,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 8,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 8,
+    "LooseMaterialConveyor": 10,
+    "MiniZip_IoPortShape_FlatConveyor": 15,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 4,
+    "MiniZip_IoPortShape_Pipe": 4,
+    "PipeT1": 10,
+    "StorageUnit": 1
+   },
+   "string": "B1632:H4sIAAAAAAAC/41WX2hbVRg/9+beG9ukbeyapXWdi28b6LQLE58WwtxGSOui6/bgS4jJbXdncm+496aze9JXGWMPQ3RIKUNERESmhFHHLGOEEsuUMcYIpYwSxihjDBEVHcPv/MnNufdUZukh7e/8vu/8vt/5zjkJ/yxL6mt739i7/0dZzkwZJdsqnTRqTvJEKrnx4YWk4xZndSeZyrwyY5jFSnL368lqERim7ux5OTmxL1n1Ql6tGmYIvS0psaO2MYvZh0zXcOez5UZHQ5Lal7ct13Lna7qWnDJM412jVshaect2j50s1vTC4UrRPWiZc/q8ZSMp3DdtF01nxrKrqjaHEJKUKyQNjLCqnSHIkodo2scSga5y0DkKXeOgBQotc9AlCl3noMsUusFBDQo1OahJoRUOalGoxUFtCq1y0DqFLmxi6LnRrczIGzUdF6rS0j+hVILQ0j8lSN+erYInLcvRp4qubhvFCmeppjKTbvbEqMykizQfgZhJn3uLaipzZIGDmCOLXCBz5FcuPXPkEscijoT6B8kG10D1Qati2R89+efPociIB2ZKJd2kU09/+ex7TblFskYH+T6ZnkDSQD/EnNJLrmXPx2QJSTIKxWooNoegb0L9NC9NcZumgJg4AhEyUqCRovALvuAG8rPveOxElw1mRfEAh3Ar+fl3RT70VhQPsA83lZ/fFvngaRQPMBK3l5+/JvLB3SgeYCluND9/3eNvkyQkgy2486J4dCQUVu51tMGxY2AbHPFsFXt+HA5sJa/b2Pnli9GhUTZ76AM8e9i2qr3J2A426e0YN4+eHw/OBnIPx30r523DsuGyiG2L+9b08NDIaNaZtGYNxzVKTtas1d03Daf4XkUvo/gYN3W07nJz0vbtmUrFOv2WZWYcx5g19TIlSLKaiLCljpuGOzrC/sEfehnuqnK95I4Nsz8KvatRemGYpNTL03a99P4R26rXHNzYsQ5tbH4PNrw9GCJbhuQRYI3DkJRO75iMbxH6BTkyO+L/cZoHBmkTyKl3UEro3S9pMLcucOQwDFm59VNkfOiIbup2sdL1F460unP3pDHjPvMiKRQmsOQUuUtk5TZkw9Ev/t/ofST6LI2+w6J3YjDMUt7tpiTgWdGar3rVdU2A0JRwYr4WXWiCC03sQptfOdWkK6/xK6dWKLju08iY93waV0SN34gaITTVCmq873VId0PTJ1D6XJD2QGgk4MhhGJKySeZ27QpuAH9Tsl1Ls+v+IQlJPiOEbFX6PA15RFch9bIsj2kWAp0XLfitp7lbGgSmBQt+F2trQW0tXNsfvVXT7C35q7dqepVCf3PaGOsJp21V1PZU1AaB6ZtBbd9629jdntwplBPu/u+ETgOOHF7AnbbB909ugfZPh++f3CIF7/s6jTEf+DptUSzlstBpeJGc8B78IGpsg8Y21rjp09imKz/0aVyj4COfRsZ87NO4JmpsiBohNLce1HiF8F7S8Pcf8rgPMHrkAIoEn/MlSsYsVhBQ1CDrqsfq7iCwIsJrfM2jdd3BHFXgLfd43XTAiTSCvOs9cYyXOKAkzih+1g2+BHiiJRko8BXPz2oKJQAr0ZACyVb4Emgy4KiCtJZQAuYlliQFsZ9/Ad00eoYXDAAA"
+  },
+  {
+   "slug": "nuclear-v1",
+   "name": "Nuclear V1 — single X3 reactor block, compact (rebuild 2026-09-23)",
+   "module": "nuclear",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Nuclear Reactor + Power Generation IV [verified]",
+   "item_count": 100,
+   "kinds": {
+    "buildings": 62,
+    "transports": 38,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "CoolingTowerT2": 3,
+    "FlatConveyorT3": 6,
+    "Flywheel": 1,
+    "MiniZip_IoPortShape_FlatConveyor": 4,
+    "MiniZip_IoPortShape_Pipe": 29,
+    "NuclearReactor": 1,
+    "NuclearWasteStorage": 1,
+    "PipeT4": 32,
+    "PowerGeneratorT2": 6,
+    "StorageFluid": 1,
+    "StorageFluidT4": 1,
+    "StorageUnitT2": 2,
+    "ThermalStorage": 1,
+    "TurbineHighPressT2": 6,
+    "TurbineLowPressT2": 6
+   },
+   "string": "B2232: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"
+  },
+  {
+   "slug": "nuclear-v2",
+   "name": "Nuclear V2 — second independent block, compact (rebuild 2026-09-23)",
+   "module": "nuclear",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Nuclear Reactor + Power Generation IV [verified]",
+   "item_count": 98,
+   "kinds": {
+    "buildings": 60,
+    "transports": 38,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "CoolingTowerT2": 3,
+    "FlatConveyorT3": 6,
+    "Flywheel": 1,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 29,
+    "NuclearReactor": 1,
+    "NuclearWasteStorage": 1,
+    "PipeT4": 32,
+    "PowerGeneratorT2": 6,
+    "StorageFluid": 1,
+    "StorageFluidT4": 1,
+    "StorageUnitT2": 2,
+    "ThermalStorage": 1,
+    "TurbineHighPressT2": 6,
+    "TurbineLowPressT2": 6
+   },
+   "string": "B2248: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"
+  },
+  {
+   "slug": "nuclear-v3",
+   "name": "Nuclear V3 — fuel independence, compact (rebuild 2026-09-23)",
+   "module": "nuclear",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Uranium Enrichment + Wastewater Treatment (slurry recipe unlock node unverified) + Concrete Production (crusher) [verified]; uranium mine outpost discovery gate unverified",
+   "item_count": 111,
+   "kinds": {
+    "buildings": 61,
+    "transports": 50,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyElectrifiedT2": 1,
+    "CrusherLarge": 6,
+    "FlatConveyorT3": 5,
+    "LooseMaterialConveyorT2": 34,
+    "MiniZip_IoPortShape_FlatConveyor": 5,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 28,
+    "MiniZip_IoPortShape_Pipe": 7,
+    "NuclearWasteStorage": 1,
+    "PipeT4": 11,
+    "SettlingTank": 2,
+    "StorageFluid": 2,
+    "StorageLooseT2": 2,
+    "StorageLooseT4": 1,
+    "StorageUnitT2": 2,
+    "UraniumEnrichmentPlant": 3,
+    "WaterTreatmentPlant": 1
+   },
+   "string": "B2344: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"
+  },
+  {
+   "slug": "plastic-v1",
+   "name": "Plastic V1 — one plant (ethanol route), 36 plastic/min, buffered",
+   "module": "plastic",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Plastic [verified]",
+   "item_count": 24,
+   "kinds": {
+    "buildings": 15,
+    "transports": 9,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 4,
+    "LiftIoPortShape_FlatConveyor__1": 2,
+    "LiftIoPortShape_FlatConveyor__2": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 5,
+    "PipeT1": 5,
+    "SmokeStack": 1,
+    "StorageFluid": 2,
+    "StorageUnit": 1
+   },
+   "string": "B1056:H4sIAAAAAAAC/4VUTU8TQRie2W6/oJSyLdAKygpV1BAUjMYjyIc24aOx4MFLs3SnZWS7s5mdanvT/+BF/4ZHLx6NEiWEEEKIMXDyF3jQGGd2W7rtamzay/O+zzPvPO8zDX+SYPDW9L3pO+8k6X7e0GyGS+rjGfX0xSuVmEi1DM1k6jXEtjWTGColNYauT6m374qKaL5ZxeaUulUrlxFFegCkoZxYp7iCTc1YMhlmjZz+4XsIwGA0TwkjrGGhUHoVm/gJtoo5kieUFbY1CxXz2EIAhqMbVDPtMqHVYFQBAED5o0Pnv3AwKjnI5zOBRNS/ySwbGlsg5jPUIFRQIq7IblskMuSKtJHJAEcC0bhztMWlFohB6MtfP3/096TOwflSCZlu6feX129D8p6j0BsSk2/MABjr4b1PUYkR2khACCQJBLj0pAJGFBCU93dDfSMFXtQq6Fx0mZJqHlGhDOKj3dVN7qDRLL9/E+sfbDbkqqKap5hQ7nAi0cKX6h14YCCds1dIBYtN2TnTqrFFbGtbBtKhkvGU1mvMW0sOzRsGeb5GzHnbxhUT6W4Dv20q1jxq2ahhHQ4qTifSN2ittPOA58OyhaOZuOOoa6Hr1r7rFrepDwLAFyklFcBXDOWD9iYmAj7e4Tmv5SlvmpDAiMQ9PeCegriwJpHg14UKTIoh4aAzBPSJHfmHkABPVWfXnpOvobg3S86CWyQeqpjSfT+X5OmKKVJWkTq7DnxdWQXcEC4cOpXhsRVcZv8KdLE4Iy4WczN95DDS/2HMOoyUwzh2zxBI1tU4cTUcRPSE5a9noUymI2ddKbyQ7kibJ8G86N0G4NuAMDjS2+zfNDFzNzPlj8c3nzGzCpgTxpy6r13w5sTQAfn4e2hU6cz1KtGRfDHZlWgH5eRLPYUq2UEFppV24Fj4ESrxJ2tH1OE2vIgsAzGkFxjSqpcH2oUVy4HGPdBDF5rwQAUXyiba0Hq9UUHmFaWNrGFGCceueohL9W2tZrNJzygLGt0i5iImdawjfuvUuM+tE9+j4P9qKf5VQevzB7Qs2uTcBQAA"
+  },
+  {
+   "slug": "plastic-v2",
+   "name": "Plastic V2 — second plant (naphtha route), 72 plastic/min total",
+   "module": "plastic",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Plastic [verified]",
+   "item_count": 24,
+   "kinds": {
+    "buildings": 15,
+    "transports": 9,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 4,
+    "LiftIoPortShape_FlatConveyor__1": 2,
+    "LiftIoPortShape_FlatConveyor__2": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 5,
+    "PipeT1": 5,
+    "SmokeStack": 1,
+    "StorageFluid": 2,
+    "StorageUnit": 1
+   },
+   "string": "B1068:H4sIAAAAAAAC/4VUz08TQRid2f6GAqUt0ArKKlXUEJQGoydDl1Jtwo+GggcvzdId2pHtzmZ3qu1N/wcv+m949OJdE2/GkzFgiBBCiDFqojHO7ADdthqb7eV9733zzfvebuC1BH3Xp29N33gpSZmCrtoUl+V7aXn78VPZRmViaLKpqwaVLxuqWaVVVbZInaIrU/LNNK9w/rUaNmRKqKp7QAJ6IysWrmBD1RcMimkzr33Y8wPoCxUswkhNE/kTS9jA97FZypMCsWixqpqoVMAmAjAQWrNUw94kVs0XUgAA0PvRkbN/wBdKO8inHY4E5b+1yekqnSfGQ9QkFpcERZPtVpNgTjRpIZOzDPGE+p2jTdZqnujEevLr5/eBnvgpmCmXkSFKv98+e+H37jodev188rUZAMM9jPsAlSmxmhEIgSQBD2s9qYBRBfi87974+0aLrKhW0GnTnEVqBWTxzqB/rLO6zhzUj8uvnocHho4J+RqvFixMLOZwJHKCLzTacM9gIm8vkgrmW7LzhlmnWWyrGzrSYDTpKq3UqbsWG87oOnm0TIyMbeOKgTRBYLeNh4+Pyul1rMGhqMNE2ppVL2/dYdkwbe5o8rbjqLBQuPVZuMVs6oMASOyJKYCtGHr3W5uYmO3SHZzqIlACEgQeRppIg9E08/Q98xT0c2siEXZdGIUxPiQccoaY7mp22D1EGrBUtbN2nXwN97uz5Cz4RMRCFVY67ydELlZYkVKK1M7a72KlFHCVu3DgVEbGF/Em/VegS6UZfrGwyPSho0j8R5F2FFlHcSTO4EhK9PgiejgI5wS8X3f8yWRbzjpSeCbRljZXglnRvQ3AtgGhb7T3mL9uYCo2M9Udj29dxqQVMMeN+SHedq6b40N7vEd7/rFoe66XiIa8Z2MdiXZQJj7XU6yRLVSkankLjgdWUZm9snZQHmnBWWTqiCKtSJFaOz/YKiyaDnTBBd0V0IQLKgooFWlBK41mBRkXoy1kGVOLMOySS7jQqKp1m066RplXrQ1iZDFpYA2xW8dXu9z64nopxIeGfdXi7CmAk98fwJNWyNsFAAA="
+  },
+  {
+   "slug": "plastic-v3",
+   "name": "Plastic V3 — chlorine buffer + consumer-goods export contract",
+   "module": "plastic",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Plastic [verified]",
+   "item_count": 7,
+   "kinds": {
+    "buildings": 3,
+    "transports": 4,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 1,
+    "PipeT1": 2,
+    "StorageFluid": 1,
+    "StorageUnit": 1
+   },
+   "string": "B668:H4sIAAAAAAAC/2VRz0/UQBj9pktb9nepgEskpuGyBwORgAmHTcxGWdNEpQmLBy+ktLNltDvTTKdKb/g/eNF/w6MX75p49yhevBtNlBCn7YLddY7vve/73nujf1SQentjZ+POe0W564RuLIhnPdmyvp6+trzjkHFCsXWUjEaYW7csj9E4GWO+HjDmxxY+iRgXGSq464kK6JW51pC7NM7we0yOvzr/86utLl6Bfc/DtKAuPr95p2nGHicBoW64SwURqe3/+K4B0qsOZ4KJNMLzmkMiPNwEVK3JNc+wJxhPm4AAFFC6JnS3oTJX3ClW/sw3zMuBpgK5rrsG62ugal8+abUb+3LeDfCVpQFnYwfzzBfUV2fZA2krnNAf3jYaSxOBPc5YhxNZkUiN5iW+ezKFV1odO37IApIVG9s0SsR9ErtHIfZRe6VE7SWizBnL/TBkLx8z2o9jElDsFwIZbKExOTUIE+Ij08yV2B/yxHv+gLMkigFdq+YJRoyP1a2bADMV/T7LKlpsDUJXfgZ9gVPG84ove+2Z0FsFXTs/05ZWpiLPFLLcmQpeKlOSNahnnRlN2QO0kYGQfr0+0R9QIpApnao7//u7KPyVDVnQ2waknX7LmI71iFDylESHNnPk2f1jN8KH5TTZYjnw7/0Fx3xbpOsCAAA="
+  },
+  {
+   "slug": "power-v1",
+   "name": "Power V1 — one coal row, ~6 MW, buffered",
+   "module": "coal-power",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": {
+    "node": "Power Generation II",
+    "status": "single-source — and the source player list uses this name twice for two different nodes, so confirm in-game that THIS is the node that unlocks the coal boiler + steam turbines."
+   },
+   "item_count": 24,
+   "kinds": {
+    "buildings": 16,
+    "transports": 8,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BoilerCoal": 1,
+    "Flywheel": 2,
+    "LooseMaterialConveyorT2": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 4,
+    "PipeT2": 4,
+    "PipeT3": 2,
+    "PowerGeneratorT1": 3,
+    "SmokeStack": 1,
+    "StorageFluid": 1,
+    "StorageLoose": 1,
+    "TurbineHighPress": 2
+   },
+   "string": "B1276:H4sIAAAAAAAC/21Uz28bRRSeGY/X643jbB0ncZq0bENI0zaENgTUA5c0P1qjpLGw+SGEFG12J86Q9c5qdpbEF9QghBBCqEK9wJ/AlQMHLhzCCSQkBBJHxAEJVCGEUEFQRczO2msn1FrJ3u973/fevPfGua8QzF6dvz7/zOcIXa6xfcKtl65ZP925ZzGfWA6zPYuz/TnrzWetjZfnrO1oZ4dw4mZABWNzk9Mm9W1v1RdUtKvur0d6trTOmjQU1AmrfhCJDeYSoA2n4GYkumhu6CbxCbe9GqeMSwMTQD1f40ww0Q5I3rjBqEf4sqwBGrkXiEMDEsKB4bogdiuRCsp8xRfyDW774Q7jrSwqAwQy+L4sBmtYeg4a9RbbI3VhO3vSqTjWe10hgUcEcZXn0JkesR4oyOyDbiXQGbMHbR60m8QvlXrIbSo4k9hwn3D1YNeOQlHuy7ts823mr1B2QF0CC1mtDDBA+LcjPWfCkYGlSLAbtmf7DpH1j5qNiG9Tn9yizd0aJ2EIYsk00KTk90QShyn0qkQh/uNIl8iYvua193cJ8RT1nOwLxH8mlEKeV516IC1KlXOrHnEEp46cRK+73dkYUjNuqgXpkIw3rimThjL5W5moMIW+otB/TqGvqRIeqhLOXtqgPn2VBltVVmNc1HftgGytMxaSDVsQTm1vmflvkDbjsVbXAACZiaIadCDjl5nH+OHDf/8amiyn4JLjED+hjr/56FMNH6tc58Ye6dtYAPC8IcWvy6Mz3h4EEMgKkcylGyCHf/hRe2y8Lhm7Saqt2P9FuepejfA4C7AqHW71IObWOGt1qC8+LlyY6JBpbX08mJo8zfY7S/njIyfypndkeuREzhTPPFGphifv3goN7W2PuGBmvI9KbmDKXRxd8jy2f5v5S2FImz5xkwDZhNlCJ5Xq3aVy5y3+Iq68p27kiMuFzo8tdQ+vlJQbcRs8cvZuchYFalmxIfc7M5FMKxnMnS/VYOQABhFQfcdFgIpyPd5SzFzlUetRk38CahvyahsOv/vke2Py+LP7P+v4bSV7UotDGk/Hvt1p5oGeBVn87dfaBTAV99aclv2CM/CiFMx3T7nmRdSFV1S52f+5v5O4S1sTQQDj5Yaq7GIaeHj3wS8D+F0V+FRSRrxfoxBChFAWnQV6/CBDPucRxO8l54wTGhYCp3zeT3z6zmFMIeM6Ohn1QRqVpplBaBbh+MGFWQzx3V6a4iw+nebD1GA4McBoAaEFjBZxYVGq7/WpF6W6+/kPcLdV5ToGAAA="
+  },
+  {
+   "slug": "power-v2",
+   "name": "Power V2 — second coal row, ~12 MW total, buffered",
+   "module": "coal-power",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": {
+    "node": "Power Generation II",
+    "status": "single-source — and the source player list uses this name twice for two different nodes, so confirm in-game that THIS is the node that unlocks the coal boiler + steam turbines."
+   },
+   "item_count": 24,
+   "kinds": {
+    "buildings": 16,
+    "transports": 8,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BoilerCoal": 1,
+    "Flywheel": 2,
+    "LooseMaterialConveyorT2": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 4,
+    "PipeT2": 4,
+    "PipeT3": 2,
+    "PowerGeneratorT1": 3,
+    "SmokeStack": 1,
+    "StorageFluid": 1,
+    "StorageLoose": 1,
+    "TurbineHighPress": 2
+   },
+   "string": "B1288:H4sIAAAAAAAC/21UzW8bRRSfGY8/4zjbjeNsPlq2IaQpDaE1QeqBS5qP1ihprNp8CCFFm92JM2S9s5qdJfEFkf+AA0JQIYQQQqhCCAECBAj1khNIXMqFE+oBCYkzHEAVs7P22gm1RrL393u/33v73htnf0QwfXnx6uLT3yG0VGcHhJvPV837r79pBsRmnmPazHJNzg4WzNeuVM3NF0zBhOUumDvh7i7hxEkBA2Nti9MW9Sx3zRNUdGrOW8e5tL7BWjQQ1A5qnh+KTeYQkBlNwK1Q9NDsyHXiEW65dU4ZlwYagLl8nTOZq+OTfOEaoy7hK7IUWMjeIjb1SQCHRhuCWO1YKijzFF/MN7nlBbuMt9NaGSCQwm/LYnAGS8/hQqPN9klDWPa+dCqN9x9Xie8SQRzlOXKmT2z4CtIGoBsxdEbrQ1uHnRbxdL2P3KSCM4mNDgjXDvesMBDlgbwrFt9h3iplh9QhsJgulwEGCN8+zmU1ODa0HAp2zXItzyay/orWDPkO9cgN2tqrcxIEIJLMgoyUvBtLojCFXpYoxO8d5yQynlt3Owd7hLiKekb2BeL3Y0ohz6pOfSAtdOPsmktswaktJ9Hvbm82BamZ0NSqdEnGm1eUSVOZfKhMVJhCX1ToR6fQl1UJH6sSJi9uUo++RP3tGqszLhp7lk+2NxgLyKYlCKeWu8K8V0mH8UhbyQAAUlMlNWhfxq8wl/Gjf//5e2S6nIDLtk28mHrw8ztfZPAdlevs+EN9m1UAzxWk+BX56ox3hgEEskIkc1UKIIt//S3zyERDMlaL1NqR/3Ny1d064VEWYBpdbu0w4tY5a3epu7eL56e6ZFLbAA9mpk+zg85S/ujYibzJHZkdO5EzwVOPGbXg5N1bpYG14xIHzE0MUPENTLgLlWXXZQc3mbccBLTlEScOACg3X+ymUr27WO4+RV/EkffUCW3xeLH7Y1vdw0u6ciNOk4f2/nXOQl8tq16Q+52aiqcVD+aTeDByAMMIqL7rJaCV5Hp8qpgF42HrUZd/Amob8mobju7d+aUw/eDrP3/P4c+U7IlMFNJ8KvLtTTMPKmmQxvd+ypwHM1FvtVnZLzgHL0jBYu8t192QOvCSKjf9P/fPY3dpqyEIoFxuHYKSPKUk8OiNv/4Ywl+qwCfjMqL9qkAIEUJpbRJUooMMec4hiL+K3zNKaJgInPL5JvYZeA9jBhlX0cmob5OoJM0c0uaRHh08OY8h/r6fZnoen07zQ2IwGhtgrYq0KtaW8OSSVN8dUC9Jde/zH/vfkoBEBgAA"
+  },
+  {
+   "slug": "power-v3",
+   "name": "Power V3 — repeat coal row unit, buffered",
+   "module": "power",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": {
+    "node": "Power Generation II",
+    "status": "single-source — and the source player list uses this name twice for two different nodes, so confirm in-game that THIS is the node that unlocks the coal boiler + steam turbines."
+   },
+   "item_count": 24,
+   "kinds": {
+    "buildings": 16,
+    "transports": 8,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BoilerCoal": 1,
+    "Flywheel": 2,
+    "LooseMaterialConveyorT2": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 4,
+    "PipeT2": 4,
+    "PipeT3": 2,
+    "PowerGeneratorT1": 3,
+    "SmokeStack": 1,
+    "StorageFluid": 1,
+    "StorageLoose": 1,
+    "TurbineHighPress": 2
+   },
+   "string": "B1272:H4sIAAAAAAAC/21Uz28bRRSeGY9/xnG2jpM4Tbpsg3HdpoSSBqkHLml+tEZJY2GDEEKKNrsTZ8h6ZzU7S+Ib+Q84cIE/gSsHDlwQIghBBQi1FUJVVVVVBahnOIAqZmfttRNqjWTv973ve2/fe+P0DwgmryxcW3jtS4TmG+yAcOPtq8ajDz82OPGIKQyLmY7B2YERuFRcNnaC3V3CiZ0AZYy1LU7b1DWdNVdQ0a3bXx9nksUN1qa+oJZfd71AbDKbgNR4DG4Foo+mx24Ql3DTaXDKuDTQAMxkG5wJJroeyeauM+oQviIrgLn0m8SiHvHhyHhTELMTSQVlruLz2RY3XX+X8U5SLwEEEvgbWQxOYek5mmt22D5pCtPal06FqcHjKvEcIoitPMfODIgNT0HaEHQzgs5oA2jrsNsmbrE4QG5RwZnExoeEa4d7ZuCL0lDeFZPvMHeVskNqE5hPzpUABgh/e5xJa3BiZDkQ7LrpmK5FZP2TWivgO9QlN2l7r8GJ74NQUgEpKfkukoRhCr0iUYi/P85IZCqz7nQP9ghxFPW67AvEtyNKIW+oTv0oLYrlc2sOsQSnlpzEoLv92eSkZlpTG9IjGW+9qkxayuRnZaLCFPqOQn85hb6nSrijSjh7cZO69F3qbddZg3HR3DM9sr3BmE82TUE4NZ0V5n5AuoyH2koKAJCYKahBezJ+hTmMH/37z99js6UYXLYs4kbUs58++TyF76lc56ae69taBFDPSfH78tUZ744CCGSFSOaq5EAa33+YemG6KRmzTeqd0P8tuepOg/AwCzDKPW7tMOTWOev0qK8+zZ+f6ZFxbUM8mJs9zQ47S/mLEyfyxnekMnEiZ4wnXirX/ZN3b5X65o5DbFCdHqKiGxhzFyaXHYcd3GLusu/TtkvsKACgTC3fS6V6d7HUewq/iC3vqR1Y4lK+92Nb3cP5onIjdosH1v4NzgJPLauRk/udmImmFQ3m12gwcgCjCKi+GwWgF+R6/KaYy+XnrUdD/gmobciqbTi689nd3OyzL54+yeD7SvZyKgxpXQ19+9PMgkoSJPG926nzYC7srVaR/YJVeEEKFvpvue4E1Ibzqtzk/9wfRO7SVkMQQLncBgSz8hTiwKOP/vpjBD9Uga9EZYT7NQkhRAgl9bOgEh5UlUdHED+K3jNMWDUQOOXzOPIZeo/qHKpeQyejnsRRcZoq0mvICA+u1TDEvw/SXKrh02n+jA3GIwOsLyJ9EetLuLYk1U+H1EtS3f/8B4cBNVk7BgAA"
+  },
+  {
+   "slug": "rubber-v1",
+   "name": "Rubber V1 - one tower, diesel+sulfur, 18 rubber/min, buffered",
+   "module": "rubber",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Synthetic Rubber [verified]",
+   "item_count": 16,
+   "kinds": {
+    "buildings": 10,
+    "transports": 6,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 2,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 2,
+    "PipeT1": 2,
+    "StorageFluid": 1,
+    "StorageLoose": 1,
+    "StorageUnit": 1,
+    "VacuumDistillationTower": 1
+   },
+   "string": "B1004:H4sIAAAAAAAC/42Ty24TMRSGPZNkkl6STHNpp02AodwKlNKgXhcsqt4UqaVRm3bBJpqLEwyTceTxULLkHdgAj8GSDUsEVUEVQuy76hOwACFszyRKIyqRzcTn/P937HPs+GdZis3OLM3Mv5flh7u+aUKiH5T0ezp2oU7xISTTuo2gB527nu/UfbYsLelECO83kTutm369Dgm0I0CNRtUdghrINZx1lyLaLtsfz5RYZgs3kEeR5ZXdlk+3sQ2Bku0Gd3zaicbTm9CFxHAqBGHCABkgJQYqBFNM2y04MHZgWL7fXONGxzEowm6V71EajO9CC7WgJw+VVn2P4mawrl1gqC3ZNlxenIWmuTw7/H+WedO05+ashcUH5oKUHKgSw/XqmDRjQAUAxKOv3iqp8T2KidGA5WYLE7rPmuBUILGgS0FaC3PrL3hug+BmmPrwZlgthElB7cuDkWJ/tpfM7Jn8ubqd7qnZ/Lma3Xgkp5W981Nh5zVMB9ogP96TCmbTzY2OrjgOPnyE3RXPQw0X2oEAyImx4bDUFsYe1HLhin+gzSZo+xYdT4V/anviLkkTGcGDdpX41rNNgv2WB6RkrBBlHY1FT44UFYzw86lZtmcpL42ySoVOpQ3HR7ZW7ELXxD2VJgRBEzM5PlVSzJ/mLe4hAUaS5MSloZC07yKqXe6CgncQgDQ+3MiVVLf1q9jB5OXvXz/Teq4bXLH4JETqz5fX75TopzOFXd2redGNbYNCggxnFbvPYRsTIE0OMutTaLHy7SSQAJCBXJBBQWGlAnaAOQowzJAUIiCPJEAk0ac6FqprSoVd32qJi7lUYsgpUJjsE38NxD3IbBFEiv2qU666ntpgL6Cz7QAdmtQc0HN9ppPA1KOayoG5HJCiJ6LojdvbyEWPUatWxhXWtb0nBntvF7SIzZB1nnm/Ce9N7V9efmIhvSOk34MyPMKaxCM/ArOIFAOc2OQt/V+43tNyCzukwAYWHpnhkc7vL7/lSu4+BQAA"
+  },
+  {
+   "slug": "rubber-v2",
+   "name": "Rubber V2 - second tower (36 rubber/min total)",
+   "module": "rubber",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Synthetic Rubber [verified]",
+   "item_count": 16,
+   "kinds": {
+    "buildings": 10,
+    "transports": 6,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "FlatConveyorT1": 2,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_FlatConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 2,
+    "PipeT1": 2,
+    "StorageFluid": 1,
+    "StorageLoose": 1,
+    "StorageUnit": 1,
+    "VacuumDistillationTower": 1
+   },
+   "string": "B996:H4sIAAAAAAAC/41Ty08TQRif3W63vPqgpVAo6vqGg7VgKeVIeLUJyAYKMVyafQx1dLvTzO6KPfpPmKh/hkcv3jXx4sEQQogYI/4DHjTGmdltUxpI7GW7v+/3mO/7ZiMfRCGcz5Vyc+9EMbfl6Tokyu6sck9xoIFtU3HxAUWmHhQVwov3G8imoKtZ0yGQkKTEJkF1ZGvWiu0it1UxD8/kcHId15HjIsOp2E3P3cAmBHKqA256bhuNxNegDYlmqQRhQg2SQOjrVwmmEa0m7B/b1QzPaywzoWVpLsJ2lZ1IGIhsQQM1oSMOzix5josb/nvtEkGtZJpwYT4PdX0hP/R/kjldNwsFozg/qxeFaH+VaLazj0kjDJYBABHp5Rs5Nr7tYqLVYaXRxMTdoUOwVEgMaLsgnglqK89ZbZXgRlB6/3ookQ2K3LWnDoYne6vdzlSeTJ/LbU8vkUqfy+zgoZFMxTm/FdqvplvQBOnxrpK/m05tdHTRsvDBQ2wvOg6q29D0CUDsGxsKotYxdmBmJHhjD2jSDZqe4Y7Hgj+1bc/a94gwkeR+0KwSz3i6RrDXdIAQDWcLdKJh6fNHOQGGWX+JFD2zkBZGaVK2nbRqecjMTHZMlxF0oCVMcId1vpMvp3KM6uNsxF1OgDoJYt+VwcBpx0Zu5mrHyL/4vpHClhu6FuuMfglbmLz48/tXXBnpgIsG2wQv/f306q0sHZ3J9OpeT/NpbGguJEizlrD9DLYwAcKNASp9Ag0a34oCAQARiNlZkC3SKN/btzn2baggyklAHC6BUKmHdcJZN2WVXt/qDCMzqkAtH4Hsbg/5q0/uskypIKT2sA5PGetWbJV+Ae1j+9aBKFEGSrlHdOSLulhTZVAoA0H6xkNvT28gG+2hZq2CVTq17cca/d4uGRHdYZ6OXpC+c+2dzEVa1jGn7nHqDz+GIXRIDPnpizmicuSYH/KucpFdd7dMQptkkhNfwpAcQ9q/f/rKQaovBQAA"
+  },
+  {
+   "slug": "rubber-v3",
+   "name": "Rubber V3 - naphtha/wastewater refinement stubs",
+   "module": "rubber",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Synthetic Rubber [verified]",
+   "item_count": 4,
+   "kinds": {
+    "buildings": 2,
+    "transports": 2,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "MiniZip_IoPortShape_Pipe": 2,
+    "PipeT1": 2
+   },
+   "string": "B360:H4sIAAAAAAAC/2M/zcTIaqBnoWe6m4lJP6g0KSm1SCHMWEFXIS+xIKMkI1G/PLG4JLU8sQQoXpSalpmXmpuaV6JQXFKaVMzMwMLMwhdSlJhXXJBfVOKcn5Nf1Pjn93d+VhG4oGNyMlA9WOrf+Zmb2dgE/Isy0zPzEnNc80oySyo9U968ZGNgZOcMKMovyS+pLEjlYAvILEgNMWRg5OQCGpOVmlySX1TJy8DIwMDEwKTMzaAcw8DMArEHYuQ7sAkcQA28YEUMTCIaDDYaDIxsH8AyXBK+mXmZUZkF8Z75AUA3BWckFqTGg2xhYOTmBDs1Lb8ol1WZn4EBqOkTRBNQjtVCgwEBAPitW5QsAQAA"
+  },
+  {
+   "slug": "salt-v1",
+   "name": "COI Pack - Salt V1 (evaporation ponds: brine + salt)",
+   "module": "salt",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Salt Production [verified]",
+   "item_count": 29,
+   "kinds": {
+    "buildings": 14,
+    "transports": 15,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "EvaporationPond": 3,
+    "LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 5,
+    "PipeT1": 14,
+    "StorageFluid": 3,
+    "StorageLoose": 1
+   },
+   "string": "B1056:H4sIAAAAAAAC/32STWsTURSG700nSdukSZwkTWJbvdYuLGKwUEFcWWtbAv0IpkoRsZ3OXOO107nDzKQ1S/+DG/VnuHTjUlRURKSUUkIRURERNy4U8cydfLQz1jCQ5D3Pec/HnOiLEA6fLZ4vnnsSCo1PLpRIWVHXyBlSUXSHXBsjp+iGYnJLcRg3iMkNzb5AVi1mUHKa2MCMdqEhSUotWKzKDEWfMhzm1EvaViMSlmd5ldkOU+2SYdacOa5RFEm3xYWa01KjyRlqUEvRyxbjFhjICHf3lC3ucKdu0p7kVKeJMvSAe6NXqMpMauNY2u10TlljRnXa4uuX3N5wvGfRUgz7FrfWw8j9SNI2dIQiKCqscS+O4XiYeKGdf4QuuqGotNuI9BUqDtSu0tI69OBchQn1MrVUajgokW/Gpu66MbeBZujpw3hyoBkUvfjiKDXoj+53hvQj2QN1W6tJydkDNdt6Vzpfsg+u/DKzlVWdaihT2BfyFt+OZfsndJ1vznNjwrZZ1aCaB6BQd3+8WWparzEtl2n+c7+oBq9Hq6lOPtX8sVyhyqbiUAsXZOFItUWrpq7NWLxm2gh2mkyKnTZgpyjhLgil3DlTMvSOMijrVszlcUGwRLB7/2WP9rVqe69dZC55mfcfHZ450JprlnOb5gbj7RHgljyXGxlwwdKzzxE4iqH8HDPYdWYul3gZdl65rZh0uQwH6KK5mECfe6hQRoTysqMkZKG86ihFT3kjlGOj/yoguptzV8oUfZIbG7TOLTf3ZrfIfdtxM4lQ3nluQsmD0nU80T6vSa5z697vXz+TJNMWJ1T32kToz+sHjyPSe+FwIuIOtziG8HAvsHeoCvuq92GEQvDAwMkYeHtmXt6WlwcJLSoaQwk/tR2gACn6qZ0ABci4n9rtUEhgrlcC+6hGgAKvop/aC1SEV5gc8VEfgjOOoHk/9XFfRWAwCgEyL/uoT8HuZZQgPupLsHsZFf3U1+BWSZD6FtwqQUt+6nuAWiHI9FM/BHUye8iFDqcxjB1CEhzqCjx5JK7R+/wFGtgqOXMGAAA="
+  },
+  {
+   "slug": "salt-v2",
+   "name": "COI Pack - Salt V2 (second pond line)",
+   "module": "salt",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Salt Production [verified]",
+   "item_count": 29,
+   "kinds": {
+    "buildings": 14,
+    "transports": 15,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "EvaporationPond": 3,
+    "LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 5,
+    "PipeT1": 14,
+    "StorageFluid": 3,
+    "StorageLoose": 1
+   },
+   "string": "B1056:H4sIAAAAAAAC/32SS2sTURTH76R59JEmMY8msa2OFcEuDFUiuJLW2tZA04YkShCxM85c47XTucOdSWt2KiIiIiJStIpfwqUb9y78Cl2IaBFXoqKleOZOHu2MNYQ8/ud3/ucxJ/TeJwQmcmdyp9/6fMemFwtiSVaWxRNiRdYs8dIp8biJFaqromF/aETH4z1o1O+PLTJSJ7qszegWsZoF9eNmMBCfp3ViWkQxC7rRsIpUxSiY6IiLDauthqJzWMdM1kqMUAYGcST09pUYtajVNHBfdGZVNiiTLUL1ElQW+kNlrBADm8JAwm6tKC8TvT7L6Mo5Bk0J4b4qk3XzOmUrATSJEPL7P0FHKIhC3FroFwaEcEB0Qp//EZq0QyH/1mZwMFuxoHYdF1agB+siTKiVMFOwbqFIphWbuWXH7AZaoXcb4ehwK8h7ccVRbMQd3e0M6QdSe+q2VxOLp/bU7Og9iUzB3Lvy88SUr2lYRcnsrpCz+E4sNTSlaXRtgepTpknqOlYdAPl6h8KtUrNag6jpZOuf/YVVeDxqQ7EysdaPpQqW12QLMyEb545YrbKGsjzHaMMwEew0OsF3+hV2iiL2glDMnjMWh95REqXsiumMkOWsxNlv/2UPDrZrO4+dZ9aczPWX+2cOt+eap9TE6ZFwZwS4JcflShVcBP/3L0E4itFMkejkMjGWCrQEO6/ckA28VIIDtNF0nqM/HJQrKld+dZVImSu/u0rOUba5cmj8XwV4d0V7pUTWpqm+ipuU2blXL/Dcna6bIXHl9hZ340oNlJ7Dkc55TVONsjvbf35GxWRHnFLsa+OhnQ8v3gT9d7nDkaA9XPUkEsb6gb2JFdhXc1BAyAdvGDiaB2/HzMm75+RBQpsK5VHETd33UIDk3NQDDwVI3k097FKIY7ZX5KyLeuShwCvnph57KsIjjKou6ol3RhUtuKmnuyoCIyAfIAtlF/XM230ZRSQXte7tvoxybuq5d6uSl9rwblVCNTf1ykNJEjLc1GtOHU3tc6FjCQHG9iE/HKoE7xri1+i8/gK9c30rZAYAAA=="
+  },
+  {
+   "slug": "salt-v3",
+   "name": "COI Pack - Salt V3 (electrolyzer: chlorine)",
+   "module": "salt",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Electrolysis [verified] (+ Salt Production from V1)",
+   "item_count": 47,
+   "kinds": {
+    "buildings": 15,
+    "transports": 32,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "LooseMaterialConveyor": 7,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 12,
+    "PipeT1": 25,
+    "StorageFluid": 1,
+    "StorageLoose": 1
+   },
+   "string": "B1132:H4sIAAAAAAAC/3WUS2gTQRjHZ9M82rptY21qaj3s0WKsigjiKSW2EmhtoKuIl3bdjMna7c4yO6lJbkLPnnrw0YNIERGRoCKiIkVEREVFREREiohIESkiKiji7KPJZmYNhaT/7/c9/t/ObOxJSIjsGNwzuPtOKLQ1M56Vcoo6LW2TJhSdSId2SVugDlWCkV6pQrxXUos6wpoBB1rA9lg4Po61gmYo+rBBNFLJ5leXo5G+CYKwUoDZGRNhcpBG9BzEKjQIiCa92HDZjo1gNOOFls6KsX4vKGPFsJg4aN3MRv2VaXpboqlvDmt0UFKJtyeaetb1lnXJrDWKCppFNNXKGmaJ7NMs5agO80Ds84XGS8Qf6+gd0nV04gAyhixLKxgw7wIg1NmWw4ggUjFhl+g1HdFLWj7e4/1nf8E8pfIllayPez8mM95She5upzbMy7ikTu/HqGRaQNjQ5ng+hvBMdEFIAwBi4dPnohEQtbcGWm3z8XZqCIigg47Rs9Z8FCELxhPiWh/7mQrdtCAtI9IyQvj8ShQInb3JMc3QjmjmZBbl6I4miooJJ3OaCSkbqSYd9IKL2tmnBFdarEuRaspRLvohV7rkg9KOctkPudIVHyQ7ylU/5Eo1H1R0lGt+yJVuNKSaV/ymI20cCDLprGhMIRBrip5BxiysIOwmuxu61ag3J5Sp1JLsrB/BDKIP7uSf3z+7+nrq4pBqn0gn9Pf5mevR8G2nxKaovVB5JxD62yl7nN4qhCsdAgAh+mdKoCzR2m4xN++um0cT6tQUKE8x1L0GBRwsVE7ytZZ4inZMMdR9nkqBcpqhHvBUGpRlhnrIUzI//SOeoh6LDPWY2wT1SM9lM/WUp1Kgynp8xlNpUGU9vuApGVRZjy95qgiq7PSv6lSXR9kXaF5g538dwKUoxzp4E8ClKcd6eBvAyZRjXbwL4IqUY328b3Des5p3fLDzLQdwqYD5PgRw6YD5PgZwcsB8nzgfdr0Fru9njlukTI3jVhxuc+I/7wh6YmmuQG9lEpgik/vFzfXfXRHMstTXOtXpURSx383N2GodawwsghrHfWs09RZlHgYmYajv/GgEzLLUD18t1yZFOAO/fI/GpeyX5JxggrXPPwncx1JhCAAA"
+  },
+  {
+   "slug": "starter-assemblies-v1",
+   "name": "Starter Assemblies V1 - 4x manual assembly bank (CP preset + mech/electronics manual), buffered",
+   "module": "starter-assemblies",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Construction (Construction Parts) [verified] - the fresh-start plan's phase-2 gate; same gate as cparts-v1",
+   "item_count": 64,
+   "kinds": {
+    "buildings": 30,
+    "transports": 34,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AssemblyManual": 4,
+    "FlatConveyorT1": 34,
+    "LiftIoPortShape_FlatConveyor__1": 8,
+    "LiftIoPortShape_FlatConveyor__2": 8,
+    "MiniZip_IoPortShape_FlatConveyor": 3,
+    "StorageUnit": 7
+   },
+   "string": "B1460:H4sIAAAAAAAC/42Uf2gbVRzAv+9yl1v645K26damnT1FwsQ6bVDwDwkt7TZSVhdsF4cMwiV57c5d7oV3F13+UxERERER0SEiIiIiIioim8gQEVFREREREbFFREREREXH8L13aXJ9D11LoO37ft73x+d7OfMjDRk3HLz54E3nNa26Gjo0xNReCALcrHkuDuzKnH2dfeMZu+n4bceznSjSsWuOf9o+sFi2WxQHOLSvtZu4fup67OF6SInv1oPulWtm7Vp7fR1T3EjAPNIzx6i74fqOd8gP3bBTanyymQRkpMqUhCTstHDSXnF99w63VS2RMqHh6imnhauHPSdcJP5duEMoIDO1Rh0/WCe0aUwNAoCpf7aZ3DO5GhLqbOBSs8UuHmcFvDKmdeyHF84OpSa60UNnePQwJc1+cGCqGxR5pTgMTstRKffQ+I7KZeoSyobLDI/vqNk7T1gTpeAo2XCDkJkq+a12uOQGTs3DDUhPxkLH2mEshjJ7FzyP3H0r8dmK3A0fNyIAacbIYLfUcd8NR7Pdf/gv3GBuG+16ODbU/aNaYitC2VGRDDfWaLt++ggl7VbA1Br7uNDEuNUbdpF4hN578Z8/03uzvcOFOp9dhC59+tTrSf1zscd9VnxTa3OAJgbYnTvZY0FoZxgBaOzDdsaqIP0LcSfJq04lxBq/ZGvky+I7gUGuNjPMdEEaZfiQo5O9GW4npIGyouGEaDjqMGrmq6gZVr1XMgGMQ/rXsZK6KPnNZUrmstsl2Vh1ikO86jm1bmldKf2tWloHxun6d5vJqdGdW18hDQzTY9K+xen+9BHsY+p420/NKEt7hdX9bnZWxLcLzZi34brbwgGyBxZb20HWmcml6Pr3rCZMw35xGc3wnjNRZEuNHIgiP6iReVXxj8qcaRNOmBL1U58CgWmaCVpCon5WqJwJOZn6RaEKJhRk6leFWjZhWaZ+61FjCLGmQE8DjLCPBScsif09lpHNyXELtAGJ+kOhchbkZOovhSpYUJCpvxVq2YJlmboYm4GNidgMe2CYfXSY1yX2krKtIQ0sTaLu2ZLrMsQyJOo+lTI0K6Uh/X4RuXLmqLse/tfbu1qd408Uy8qu6g+IG1dd5kZB3EiIGw9GNcRJSpw8FOUQJ6bynD6sdpsCa0SiHtmS/TAkO8JeD49u/f/rYSx6E2THlcqPKTmv1iAvO39c6Y8hedn5EyplaHnu/Mm+j3zk9GzfRz5y9nSMiZw9E2NUZ8+q1VKQl509p8zHkFnu7PndOZtVnb2g5LxFg6Ls7EWlP4YUZWcvqZShFbmzl/s+ipGzV/o+ipGzV2NM5Oy1GKM6e0OtloKi7OxNZT6GLHFnb+3O2ZLq7JySc02DiuzsbaU/hlRkZ++olKFVuLMLfR+VyNm7fR+VyNl7MSZy9n6MUZ19oFZLQUV29qEyH0NOcmcf787ZSe5s++dfuLCc7fMKAAA="
+  },
+  {
+   "slug": "steel-v1",
+   "name": "STEEL V1 — compact base",
+   "module": "steel",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Steel Smelting (Oxygen Furnace); AirSeparator via Biofuel or Steel Smelting [verified]",
+   "item_count": 55,
+   "kinds": {
+    "buildings": 25,
+    "transports": 30,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AirSeparator": 1,
+    "CasterCooledT2": 1,
+    "FlatConveyorT2": 2,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 4,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 4,
+    "LooseMaterialConveyor": 7,
+    "LooseMaterialConveyorT2": 8,
+    "MiniZip_IoPortShape_FlatConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_Pipe": 2,
+    "MoltenMetalChannel": 4,
+    "OxygenFurnaceT2": 1,
+    "PipeT1": 3,
+    "PipeT2": 6,
+    "SmeltingFurnaceT2": 2,
+    "SmokeStack": 1,
+    "StorageFluid": 1,
+    "StorageLoose": 3,
+    "StorageUnit": 1
+   },
+   "string": "B1728:H4sIAAAAAAAC/42V72sjRRjHZzfbpm3SZpukaXpJ05i0vZzVXht79vzBQUnbu0B7Laan4JuyTebStZudsLvR9t0pIiIiIofo+Rf4Vg8RFVtERPRQOUREROQQERERERU9Dp+Z2STbTlDLQprn+XyfX/PMxv+xLHXNTJ+ePvW2LI+UNpaWVtIPzqZvXLqcLpNaXSs76S3Nxj40ryjqmqVXdVMzlkxHd/aKldf2A13hFVLVbUcv20Wz3nBWSQUr3ZGWca3hNK3+0FlsYksz1i2dWBAgjKSe3nWLOMTZq+PewVING45uVpcblqmV8UZe6vM/gMt6HdtSYKBoEbNJgCvYu2Fppn2RWLUuxYcQUpSrUI7SrfhZXKlPCkjBLiXIXG94XP2htd29KjY9aaSBUMnB2PDG70qrTPqmRxoaKGi2g60CIQauMKUaZUpqB2HLAfJxJn8L5MiVDwYXdKuE65qlOcQCcbi/bdCJCaoZmtSnvMOTgibSV6qRHVxytPIOzCM63P66iOsGdnAFCtBqQ4Ntx0qdmWIe0zluGlbbJj6FeLhtOa87FgHbiEe4tLutNWznmCdvQbO2iLmok129gqHmaBJq9iuXX+lOjJSgMa2Ki7U6sZwLsCfGOrbK2HRQMu76lnapb9kiNdd1cCU4mnCd7FCP+FEqedTrjQzysaFDeZsLpqaHDuVs2X23xYv24cVd1G1tC84OZUY8Lr6+LV82tmAY5LHzxFywbb1q4goHkNwzHnRTrRBi44mo+41+4AoseaVRdiZD7j+bdJnXLCwdD7OAsDJWo7xz1iKNuo1gpCeH2UhfhJGiJJ0PStE21TSUjjIoSxNO5ILNcAWiGdJxKhyjwi7l+rVur0TKSFRyolnjstHQKxO39zf1D2mw1DxAiGd+6V8zT7UylwytyoV0CUB4hQtf9XcQ3hFw818wdWfizlZ6doN4lDl2a/xoeqB11gViEOvxm3//EToZbRkXyvTomevWpy+/3q28ux+A2zIzzMa/SvvRNaNAzEfxHrE28kia7QPxI7gMFez1IwkhGclTo2hqmKXj8XmoAxYqP9QxFARqqhOjKCGq32Pqu7rX4b3F8jbxwCgKiPj7vG4PNxVCU1GB+6DNMQw4H8r6BO5Dgcv65IhPPsp9JHARH5LhUa7tB/w94JvLregXnSJZh3GXtrU63uw4kM3NWXpwWfoOlpVPXPGp/yvOM7HExJ81M1NbhAe83gzIbJK7Hd5OPhcnE0VZcYJfiJOJypGoMJkvxclEkQyP8pW3PshA6/vaW182xmzfHOqDc98e6iPWoY8bfO28CxZCCVXgvmtzbn0J9nGU+17kVCSL8X4QOFVBSUXgfmxxqgTFScinRtExeET0JyFkRkFzIvcz4+4OrxLDweYqdmAztjXTxIa3GoRSYne/cKmXU1FK7O7XNudOFYKlYgL3G7+2lINglJyJopy4Rb8zbp5f71lP2Hwc5ZMC/qeQfjyGxjMC91c7PWL5ZXhXBMYE7mabc9sG6IzI3fLE43kBOiPmvXTQ5FQ4UThXH0A5eCYF9AmGnh5YNjTn0Iu1WUkuh/I5QfYkl3m4+3PonMg9xbh5TyWTMTSZQvGUgD7tQWUkwSZm0ijDUEl5hjnvObGqm/rDen3zP99B9ELCDwEMXXmWa6klwS3PMcu98U7R6ApQNMDR59tiWHVqeYGLqSWfZJbLzHJfulM471ypBGbU/vsHGc62qagLAAA="
+  },
+  {
+   "slug": "steel-v2",
+   "name": "STEEL V2 — second line (overlay)",
+   "module": "steel",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": "Steel Smelting (Oxygen Furnace); V1 must be pasted first",
+   "item_count": 46,
+   "kinds": {
+    "buildings": 19,
+    "transports": 27,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "CasterCooledT2": 1,
+    "FlatConveyorT2": 1,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 4,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 4,
+    "LooseMaterialConveyor": 7,
+    "LooseMaterialConveyorT2": 8,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 1,
+    "MoltenMetalChannel": 4,
+    "OxygenFurnaceT2": 1,
+    "PipeT1": 3,
+    "PipeT2": 4,
+    "SmeltingFurnaceT2": 2,
+    "SmokeStack": 1,
+    "StorageFluid": 1,
+    "StorageLoose": 2
+   },
+   "string": "B1588:H4sIAAAAAAAC/42Ub2sjVRTGz0wnSdukTZqkf1O72aarrV2zbdwF6auWbLsG0m0wsS6+qbOZ22TaydxhZlITX+l3ENF1WUREREREZREVKSIiuqjIIiIisoiIX8AXinjmTiaZ9Ba0DDQ55/c895xzTyb0lSgEVrKPZC99JIrz5crmZjG9m0vfe/b5tEWqVFfSmqqT9CI9IqYmt5cGICtJsR1Tram6rG3qtmq3C8oLx+FAvEhrqmWrVaugG017mypECia6wZ2m7UVD0StEJ6aslUyVmmgQB2FwqGRSm9ptgwyNlRtEs1W9ttU0dblKKjlhOPQYqaoGsYTwaMGkukdgKjJUMWXd2qdmIyCVAECSXsRypKAUYr7CsBAWIgHpKZa64UuNRHda7RrRfccIo9GyTYjm9w+kFSa96ZNGR/OyZRMzT6lGFKaMJZnSiaOwm0B5C+UD0i1XjuKx4XKDHpKyLVcPsbP4ZO/rZWJoxCYKWsmNxFgvUTRYKOkLPeqGxmO9kNvPRLwXuaraJsXYpE+42arLTcue8p2bl83rVL+s0paqEKw5aWDNIenmy8Hp6bJNTblGCg2DmvbjeONaiZhVotswM9XJbbac3JZJG53U8Y1IKtVJsus5kYfZ2ZNZvzPK7xvvO9dbldjceN+Z3fjAmamC1b+Cl1VLvo63AOlpX8pdxG7u7MSGptGnr1J9w7LUmk4UFwBxcD7SOapIqUUyyc435x9RcF2VZtVeiHY+7DlruWMS4VycGeLlm83q4RWTNg0LcKQX1tlIb+FIYcaZD8w6bcbmsHRIw1nnwMz9Ec8uT2VNOOcIzzjCgHT3TtAvEdKCI3nAq3FLa6pKZnHE0z8h43q6BlHHQArB0mh32HmqUfO5v//6M/pgshvcqDqzZ6l/vnnpvaD0ynEY13V5kvW/7Riqspan+hFpU7OSA+H8MIoPSBVLaI+AACCCuLwGy+vsONfftXqVWT00fqoVGnnq1BqkePVrTJ0NlvAVwM718PAahHn8dbduH7dchOU6x73R4xiGXAUyFY57k+MyFTFREU9yb3FcogIiPtLbx+HQIOYuLBbVfbtASzjucl02yN6pA9nbW3UuDktBD+mdjnjl/4pzTLzLxO96JzuxhGv4vmfIYrud7fB3cpufTB0y/AQ/4CdTFxN1bjIf8pOpg4iP9LG/PjzBqe8Tf32ZAxY77uvD5T7t6+PglD4+c9fOv2BFSPF9fN7jOvWlroF4jeO+4DkFRIXjvuxxCDmouAuhXY670+ViogiCAAPiPoT2T0O/7qEC9oEoQqEgzAQ59FuGrsa3qWYTfZvYuBx1WdeJ5is8VoE5ftW/c6V+ToE5vsG7Pa4zWDSbO+C4791fLnITWDIWHlhJQgSfdUjjo3GCHzjjhQNYOOK4H7vGXqHhImSLHPdTl4u5BQwglG3BfItDf2ZobnRLk+2+t1zCHbh0/hnI4bMIFxc58S9M/LD7ilr1XTwOZYKfyz0X97WJ0ITBcb92OW9B5o9g3oApAwTpN5a8uLSt6uqTqrH3n68G53eC72csTPrd1TqRlBv5g0UuTZ3m5nTloGEH9f7+BaiOrlY8CgAA"
+  },
+  {
+   "slug": "steel-v3",
+   "name": "STEEL V3 — scrubbers + slag buffer",
+   "module": "steel",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": "Smokestack Scrubbing",
+   "item_count": 12,
+   "kinds": {
+    "buildings": 5,
+    "transports": 7,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "ExhaustScrubber": 2,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 1,
+    "PipeT1": 5,
+    "StorageLoose": 1
+   },
+   "string": "B836:H4sIAAAAAAAC/3VSy27TQBS94zhJH24T0qSkNBQvskFIVSlC6iKLViWtIiXUIoEFm8ixp+mA47FmxtDsYMEfsKGw4B9YsumeBf/AGiGEECCoEONHQlKDNZKTe849594zzr5TUHpjfWv95ltFqbY79XpTv3dD//Dkuc4t5vd6mHH9ms4ds6/3/MNDzFKgqWr+gJE+cU2n7goihg375Fk+XWjSPuGCWLzher5oURtDZmlcPPDFqJrN7WMXM9MxGKFMChQAzcwajAoqhh6ezdWPj0yfi3Y8AprL3sEW8TBH88UY2yOOwIy4/SYZYKTNdpjp8kPKBumaBgCq+kqOBBnIhtpoDs0jLV2rSCirvn6ZWVhpC8rMPm4MPMrEXbmHY2BmYVfAYjnG6scBtsfoIIZOT7TcagyGhudwyFfOo5PKsv1Cacp3FEC+UJryHNdTS+UGnw72FuFmz8E2FFcmoCjeMVZa3nEc+vg2dXc4J30X2xEBlJllLbZqUsrxxWL8L3hhW16C7VuirMU/um159WilEKphu8N86+E+o77HIcgzFUSdhUuL4313qUPZ07Nf33OrxXFxxwrWD6Hf71+8yagfT+fltVRK4QgtM7hJ09ml7iM8pAzQ5TnZ+gBbcqThAgJQ5KkC1CKzSD0S+hQJyZYRb1sFQ03wPoe8tYwhv6LOdUnPIwUUBKnyGmzJk090fIk6AuVAF4EiSVtagvd1gheOEPL0BO/bmLckfaW7WtNhW54qlKsJ9o+E6mYFNjcAqT9D5MrVFnHJfeJ1G9SQCbePTA93/xOnlpaJyBXUs7BXL/+rN0gmoEqTv88fasBUkSAEAAA="
+  },
+  {
+   "slug": "steel-v3-refined",
+   "name": "STEEL V3 REFINED — scrap-priority mirrored line",
+   "module": "steel",
+   "layer": "refinement",
+   "version": "v3-refined",
+   "research_gate": "Steel Smelting (Oxygen Furnace)",
+   "item_count": 68,
+   "kinds": {
+    "buildings": 34,
+    "transports": 34,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "AirSeparator": 1,
+    "CasterCooledT2": 2,
+    "FlatConveyorT2": 3,
+    "LiftIoPortShape_LooseMaterialConveyor__1": 6,
+    "LiftIoPortShape_LooseMaterialConveyor__2": 6,
+    "LooseMaterialConveyor": 9,
+    "LooseMaterialConveyorT2": 7,
+    "MiniZip_IoPortShape_FlatConveyor": 1,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 5,
+    "MiniZip_IoPortShape_Pipe": 2,
+    "MoltenMetalChannel": 4,
+    "OxygenFurnaceT2": 2,
+    "PipeT1": 4,
+    "PipeT2": 7,
+    "SmeltingFurnaceT2": 1,
+    "SmokeStack": 1,
+    "StorageFluid": 1,
+    "StorageLoose": 5,
+    "StorageUnit": 1
+   },
+   "string": "B1988:H4sIAAAAAAAC/42Wf2gbZRjHn7tcki5JkzS9dl0X9dzarlMXu+6H8wey0iZrIV1Dk2mQse6WvEvPXe4Nl4u2/00ZIiIiMkSniIwx5hgiKiIqsomI6FARGSIiMkRERERE/1CG74/kcukbpu1Bm+f5fJ9f73vvm+CnsuSfSO1J7XpXlrfnC+l0Vrtvh7aYzsztT89oV4+f1OolW69tq9kGtg1nVasato1tVNZMw0I+mFGU+IJtVAxLN9OWQ4i58rWLYX8iiytG3TFK9Tmr1nDmcRkpgX7XuNBwWtZgbB+ykK2buWaKBEg963I2drCzWkPr+vJVZDqGVck0bEsvocKkFAouopJRQ3Up3D9nY6tFFCbztFgpsq5g61b9KLar/gkVABTl+KWwXwkoQRq8N7awslpBliegFI3lHYTMdiQp4s8kmfRRr5Si1BVhrhMeVyw6rdcdZE9jbKIyCxpXWVBqJzFdR8Rf5JEf88opT1088uPEBU1XX2TKsPOoptu6g23CJXrbBgNbRJVNEZVPeYIHJJr+UL6Kj6G8o5eOkXmp69sfZ1DNRA4qk9r06kBf25GtMdOgxzTLTevjbROf3VCibdlvODYmtg0eYXplWW/UnWFP3mndPoKtGQOvGGVEai6MkJqDyukXAhs35EljegXNVWvYdg6QfWTmkF1ClgPJoaYvvUJ9GRtXm66LpyI3bGw62Xqv8cONybVeb2Qiv2mgI29rA8a1gY6crt1389BcvXNjzxh1/QhZVti0wePi29v1bR6cMk388H5sTdXrRsVCZQ6A3DMSaabKYlxHo2rzE/2DyuQlKDdKzlis+c8S3ewLNpK2JFhAspvsRunYPhs3anUgI+33s5GeISOFJJ0P3EjbjGukdNgEm2nC0fFIK9w01k1pCxX6uPDsdYVb+1rCrFFFdQdbiKsjXH3uuupb3LR5U69wYZIK/cqVywGvRNokUcmtrdFkzIZRHr2tt6W/XyevGQ9QoAGUIGyLums8jU1sP/LP33/FUqprnCrRJWeua58//0ZAefJSmLwlt69nY5+nAQ3dnMbWQ2gV24VJkCZCRPwgKpESVntBApBBjoUh5mfpeHwe6ikWavtA11AkUEsNYdKroH6aqz1cPAxxkXuGF+zhtDBoIneScZOBHDkfWR8tvBiGoog/64aNSxLIMvhiMsRUGFMF9DmhUvILAYE75XKtkBCQQZXHVFlWXrwUDvYQ947xrHHUmcM5sjj5Zb2GlrqOb2lpO11mkoUkVF5qinf+X/EkE/c094i3yJfFscsQF5s5LXIBOR6V13JnhKbjUSWuKmOqIitnW03TcuK8l3OtXpith9nOd3BRmdoudHCkSKHEV8WdIYMmtvKayAVkLSK08rrIRRQtoazl3hS2jpYIaGpgTA3IylveVjTe8tveVjTe8jsdXIS1/F4Hx8fwfgeXUKjtYgenKuJoPmAl7krMY9NB1jxyyOZY1i0LmaTqfl61slOFe8mThL1JIcCHPACjySAklw7B3pBAf+TSvWxwIGeTsChG/VjkQrAoxvuEv8tswiy7bzYFs0nIiiEvt1HSE+nMl0tBLgRZMepnLuoeDTIUFYH7wpOdr+9BgIODcGhQQL/0ZJeA1Ooj0KFhKA4L6FdCoRQNQTFEbpDz/AZ5JdjlBtkdbl4HByzDGb3DvQ3YVyx+Gzhqlzf9Cku4J5oxdafjgG/N9PAw1MgjHnhfc6VnqxzugWXyqN3ob1w62lzUFRVOSCpp68L1L0Ze/G6pS/Hfeo4VXm0qCrvJIwvod+2Tqpl/L8CsGPJ7xt3JLwgvPjsBhQkBv8pxzy7IjEBmHHLjAvqDi7bmlY3AQfKMQ1Gkf3TpXpKd1lAcAfKdUFJ+Yp67ts4blvGAUVv6z4Oejo/czSSK8jPXsnOfW35pW+Lc8mvbonHLb8xy91C3jHROFC1y9HeG3qN1Q71bjEgCdPWp5o92QrIg1PInT8i+wkxA++dfolhCKJANAAA="
+  },
+  {
+   "slug": "vehicle-diesel-v1",
+   "name": "Vehicle Diesel V1 - one advanced chain, 36 diesel/min, buffered (reforming-excluded sizing)",
+   "module": "vehicle-diesel",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": "Advanced Diesel [reported - confirm in-game; already passed in this run - the base's diesel is produced by CrudeOilRefiningT2 per the 2026-11-02 src-diesel capture]",
+   "item_count": 45,
+   "kinds": {
+    "buildings": 20,
+    "transports": 25,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BoilerGas": 1,
+    "DistillationTowerT1": 1,
+    "DistillationTowerT2": 1,
+    "Flare": 1,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 4,
+    "PipeT1": 23,
+    "SmokeStack": 1,
+    "SourWaterStripper": 1,
+    "StorageFluid": 8,
+    "StorageLoose": 1
+   },
+   "string": "B1768:H4sIAAAAAAAC/32V/2sbZRzHn3v63LW9pWkuzbJbm2Wxdl1X26zdslhKKbZNs1W6NSx1ggrbLfc0PXe5J9xdZutv/hOC+mcIIioyRER0qIiIiIoMESljlDGmoIif5y5frpfV8IHkPs/r/fn2PPek90ssiDPZueyFDzF++RrdNiomzRQM6lAzc202M51hFs1o+m3NqlA9U9nWDGsqcz6f0T3kbI0/3mxsbVEblidsusVs8FWn6U7FbOjgc4zX4flMD5oWSWzDNqqGpZmrlmu4u2v63l1JHCm7zNaqdNPWLKfObLdos1qJ2hVquUhKhVdfAKnZXL7zdqT3aBNYq/HVkm0wG0LH+lr+1Z0D/p5+dc1ZZ1XDcY2Ks2bVG27BcLSbJtUF+XhgaaPhBteOJJdMk712hVlLjmNULar7AMKR/pLNXObu1ulApJm0aDYMPZpoPvEvqgOlNyruYKz54/qKDQPaMEwhFvdiU33TblRuXbRZo+4gQen3euYDFUcSCCFC9n9W4vGDxV9mOiVDQ6GyPW9i8CK1qK2ZrebjSIgcHSpw0DQ112DWJmS1N2eFZO9VWjHq1BGOxVtlXaVbhgVbB8uKiHgBIrkP+4UkPvZYH4xSkIUjEHNAiEG5Yswv8iEUSYZIgmdTn5DtnJAUjndnOQcRMn6WB0/IgiMD0eH26NaN6rbrjY4nzkx4sv1DZCPRlsw/175ozs/18DBRkxrzqEeHUKmBVugXNZfavmZkxpvDo8AcTihl1rA9puzaRr0ObFJIx0NemAPoMdf3kjffkU4eP3C4g0cfZdQDBzzw0kCZwWKRjHixT7XO5jpjDo2OtodSbphbjWbpsRmv3ceHtPv0YEu0VKsxy9Caquc81V//dzjm/KHs3xv0hgK+yFj/MjNMal/UHBjGqWNll2o1/8jy03KJard3+R4r4qU5T/w4MNFxsWhqNgXh6QHvVwC/wXP1kPf2JI4DPCGXa+wWvIda5ZaQ7DtzrPNYoHWTulT3kk8qnYX1uud6JuC65LumAq6y75qOdVwbO7tVamXjHc8Vw7UZ+M4GhKs721rDcWcCpaxo9k1mFQy2Y+iUt7HA25iNtq++FWYy+41//v5z8Fyi7Vyq8D33lv79+q13JfL+ngQtn5dK8D5vziIhJwP7Kq3A7u8OCAhhsNMqOqFCbD+Yr/vA14FgyKeIoiJFxQK3EPtRFyurSFZxlFuI/biLHVbRsIrT3ELsnS52UkWTKs5zC7GftNkB5MF4IY0WRkPUpx2q2fvyBCpNhKjPOnn9WGQ8jcbTeHwcLMR+3hVxcgrlpkLUF20qibEgCFgsLqLiIi4ukuIYEcbIQfxuoACMkSAQMkZIGgyTdCj0V13s6BgZTYPh0TD7TbAxGJEfNwuGSTbEfttmU4LAI/dKaSSlsTSJc2A5nOcWEn3X6dMXics5tJzDRbB5sBD+fQDn5SBxYR4tzOMbYFmwEP5DGz/p70ufnEJyCsspIqckOQtG5CyWw7ofPd2Fo95dd5lfsIZmrjDrNt1ldmDnIjkUDXf0k68NUMM5NBOmfunqW5pH0jyWCjjKLYT/2nVYE8+jRClE3QscGsQ5EUFebljhFsJ/6zqJp3PoRJj6vU2d8ilZySMlj5VhMKIkwbDSg0tgebCQ+o+2OuZvWE+pgF4BW0QC2fMW8+pl+At/yahfX2MluJHK21qdXufXD7/44aqBVsh9H/U8Oc/zoOMpTXie/Y4H3ifueeh5nj3zpASH7K0izvD4rc9/Ri8kK+EKAAA="
+  },
+  {
+   "slug": "water-v1",
+   "name": "COI Pack — Water V1 (desalination cell)",
+   "module": "water",
+   "layer": "base",
+   "version": "v1",
+   "research_gate": {
+    "node": "Basic Desalination",
+    "status": "single-source. Confirm in-game."
+   },
+   "item_count": 16,
+   "kinds": {
+    "buildings": 9,
+    "transports": 7,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BasicDieselDistiller": 1,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "MiniZip_IoPortShape_Pipe": 2,
+    "OceanWaterPumpT1": 1,
+    "PipeT1": 5,
+    "SmokeStack": 1,
+    "StorageFluid": 2,
+    "StorageLoose": 1
+   },
+   "string": "B1052:H4sIAAAAAAAC/31Tz08TQRSe3S7bsm5hKW2hgLjir9ZDAwcT4w1awCYgjUVJvJBhdywj053N7K7Qm/4PXvTsXyBHL9w9eDXGGEKMMcaoMUYPGuPMblvboraHdt/7vu+997238WeyNDBbvFy89FSWC6W1ilmF1o55dO+BuQF9xMybc2beRh4k2IE+po5pIUIKMWAoirHGcJ2HyaLjY79ZsV8cqgOpFVrHno8tr+K4gb9KbQTU0U5wLfDb0fjwMnIQg6TKMGVcIAWkxGCVUZ/6TRcNGmsWgk7YRTVouOtzkha/jizsIk86MdKbxE5d0gfXGXS825Q1BkACABBXXh6qyVzNpwzWUaXhUubf4K2SKmIWcnwwNN7KLe6J3BKjjVbq4JE+PNlKhqp9eWBM9We7lTl9JNNTtz2jkcr01OzEY6PjFa/XuzL24BZBNkjnulKRg51cJjtPCN29Rp15z8N1B9kRAMiJrN4qtUQCbI+lW0/iB9ncZzuw/HGj9WezhuCusFPKpUJFZK+zwNpZZjRwPSDpA7rKPVWUV3zJQAVxsa2J9AL0sFXGyEOkLPojhCto0mQ2XE2563BCJJeZEjIx5TWXUVSFi0xptQbd4W3xw5M05eTIn8cVt+Yj2JjuCl2NQqe6Qot72zDwfHPsT6gE2RZ1ypjuYRvxohNGeA+H/B7AkFguMMSOjBT3HaRBhrt1uu3WCqUeGpvR28aUKCRSTjgwlQYKVzn6j0p27EyyTdyI7BTMWXGPkvLmUOUDny2sYgffwu5mhVb5DdS2oYs2w7KrgoIhKVHnLmpSJrjmDJA5923IPTf+N26VvxQCuqCH0HcRVESKw7IMYueHOmdaooSy+wdPvg9fSHeC85a42jD169P+Y1V5HyrkVSG8Pgekgsaxd5DFHWomJcCr8Fl1oOlcOxKLeB8iHie0UVkNTGgC9fOHQD1/uK8qH0PUxcw/Ri4kBVMCMp/cnO7jfo64XajpFJg2+vr4cqyPvAaKWh/q6zHUFR0s9M/0rYMyJFl8Y/kEKCZkbi1ofX4Dk0byz0YFAAA="
+  },
+  {
+   "slug": "water-v2",
+   "name": "COI Pack — Water V2 (salt from brine)",
+   "module": "water",
+   "layer": "extension",
+   "version": "v2",
+   "research_gate": {
+    "node": "Basic Desalination",
+    "status": "single-source. Confirm in-game."
+   },
+   "item_count": 11,
+   "kinds": {
+    "buildings": 4,
+    "transports": 7,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "EvaporationPond": 2,
+    "LooseMaterialConveyor": 3,
+    "MiniZip_IoPortShape_LooseMaterialConveyor": 1,
+    "PipeT1": 4,
+    "StorageLooseT2": 1
+   },
+   "string": "B784:H4sIAAAAAAAC/3WRzW7TQBSFZxzHaX7ahKTpT8LCqiJBQbWgaiR2KIQQWWqIRQJIbCrXnoYhzow1nhSyKwghhFiygTVPQJdsumfBKwRegCUIqoqxHQcShBeWdc93zz33OvFJgvEr2jWt+lGSLtTbumqYVl/9evRGvW9yxNR72+pFz3S4esDoQN1nmKDNGEjLcq7NcA8T02kQjvlIt3+MlXh+l/awx7Hl6cQd8ha1EVAK02J7yKNqIttEBDHTMRimTBjkAVxIGoxyykcuSmYbh6ZLmckxJQYlNkwl7iALu8iD6UJHBGqZfUx6t0SqG34omEl2mUm8A8oG8dJloABZ/ikSiY9EYA1TMA0zcc2X4vLpWFksd7gY0ENBn5jFfTMDMQsRDpbOz6t3xZ7ORD55l8kWJ4A+8NVojVwuqjeezNRj59Z0b/Y8N7Fn7jvIBvn1v6TwSFOtsFJzHPr4NiU1z8M9guwQEDstL01G7VLqoe42LOYDFtldNrT6TUaHrgfE0up1sTSUz8bivbCy2cIEP8Dunk4NkbDz0HTRXmDR8n85Np06JYdoRJnfW2kCCcRWl6Z3qFOHsqcnH75n15anxZrlnyWQzr4dv1fkoy/+rHXFEL+sexXAUkqwj5AlAo8WhSOAQNKyklaUYquhWdj3LOwTDYKSAIQ+opXBLPX8DxVYAZ+qzHu9+MdLIJXA6/SXT31+e6zILwOqXPzPBUpR2o0tsFGd630V9goqFwwAsZ0tsFMFl+bB11MwsqvUgDht9PwGS0+LY4gDAAA="
+  },
+  {
+   "slug": "water-v3",
+   "name": "COI Pack — Water V3 (distiller row x3)",
+   "module": "water",
+   "layer": "refinement",
+   "version": "v3",
+   "research_gate": {
+    "node": "Basic Desalination",
+    "status": "single-source. Confirm in-game."
+   },
+   "item_count": 12,
+   "kinds": {
+    "buildings": 5,
+    "transports": 7,
+    "trees": 0,
+    "other": 0
+   },
+   "protos": {
+    "BasicDieselDistiller": 2,
+    "LooseMaterialConveyor": 2,
+    "MiniZip_IoPortShape_Pipe": 1,
+    "PipeT1": 5,
+    "SmokeStack": 2
+   },
+   "string": "B756:H4sIAAAAAAAC/12Rz27TQBDGZ52NQ9zQOH/ahh5QTlWIoiqoUOXQQyGpIFKiRKQCiUvlOku71PFa6w0kN/oCCKEKAUIIoT4BPXLhzoFnKC/AkQOoYmw3Sak1l/3mNzPfjBPfNRKvrtZWb3/VtFK90yx2Lfug+PPFUfGRpZgsPlwrlvrcV9xx8CXF8+Jo7UYMUpSaHcn3uGs5W67iatzsvzzV49mW2Ato22+63lC1RZ+BnpuKnaGaqIn0PeYyaTldyYXEBlkgV5JdKZRQY48l83ctn9sNznzmNCYGiJF4wGzuMZ/MLYYGG8y3HHShuHDDCpJKbkvL9Z8IOYinKgAQo6/QGdUpDrhq9AbigPUUbkkMOp+ZPVteTzFrkL4g3Y8k84K0Ndq3hr7KLM2kuiV3hdvgYsT7jKTihWAopa9xKOiQCPciBpnDVCnyczTzE5hImxnM3QpyhL451VHPFtrc5Y+5t9MUXSFVb9/y2E4XNwdEr2+ABrHcfLioh+m6cIQ8/Pbldzqfn4p3bJu5Uers18mxTt+GrRf0oM32TSCLBrJPma2EHF8jBDQNdNMEswAGRg0qGOs45/DvH2x89uPdiU7fhz2WFlpC+Kwd/AFuOXXhPmNjIbGlqREgaG65AMtlKJQvlX+IygMwGhhbKcBKGUohGC4Qef0YeUUwF4HUqALF2ITa5iX205Q18S5AIIZIrQq17CXw8ww8n26ug7kBeM//weMZeL4PHqISgpPvH4Q9Rpg6AwAA"
+  }
+ ]
+}

@@ -1,0 +1,18 @@
+{
+ "current": {
+  "id": "ResearchTradeDock",
+  "progressPerc": 50000,
+  "stepsDone": 30,
+  "remainingSteps": 30,
+  "scienceCost": 60
+ },
+ "queue": [
+  "ResearchVehicleAndMining"
+ ],
+ "researchedCount": 2,
+ "hasActiveLab": true,
+ "researched": [
+  "ResearchCpPacking",
+  "ResearchPowerAndMaintenance"
+ ]
+}

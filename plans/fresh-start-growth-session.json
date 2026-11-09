@@ -1,0 +1,726 @@
+{
+  "final": {
+    "blockers": [
+      {
+        "evidence": "Product_ConcreteSlab.quantity = 226",
+        "predicate": "product.quantity(product=Product_ConcreteSlab) >= 100",
+        "verdict": "TRUE"
+      },
+      {
+        "evidence": "[TRUE] [TRUE] Product_Diesel produced[lastMonth] = 110; [TRUE] Product_Diesel consumed[lastMonth] = 28; [TRUE] Product_Diesel window=lastMonth: produced 110 - consumed 28 = net 82",
+        "predicate": "all(any(product.produced(product=Product_Diesel, window=lastMonth) > 0; product.consumed(product=Product_Diesel, window=lastMonth) > 0); product.net_flow(product=Product_Diesel, window=lastMonth) >= 0)",
+        "verdict": "TRUE"
+      },
+      {
+        "evidence": "Product_Rubber.quantity = 17",
+        "predicate": "product.quantity(product=Product_Rubber) > 0",
+        "verdict": "TRUE"
+      },
+      {
+        "evidence": "Product_Diesel.quantity = 220",
+        "predicate": "product.quantity(product=Product_Diesel) >= 300",
+        "verdict": "FALSE"
+      }
+    ],
+    "phase": "phase-4-concrete-diesel-rubber",
+    "status": "blocked"
+  },
+  "orders": [
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-research-construction",
+      "payload": {
+        "args": {
+          "nodeId": "ResearchCpPacking"
+        },
+        "type": "ResearchStartCmd"
+      },
+      "phase": "phase-1-scrap-starter",
+      "reason": null,
+      "status": "prepared",
+      "step": 0
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-research-queue-first15",
+      "payload": null,
+      "phase": "phase-1-scrap-starter",
+      "reason": "manual-step order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 0
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-build-starter-cluster",
+      "payload": null,
+      "phase": "phase-1-scrap-starter",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 0
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-tree-clearing-and-dumping",
+      "payload": null,
+      "phase": "phase-1-scrap-starter",
+      "reason": "manual-step order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 0
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-resume-time",
+      "payload": {
+        "args": {
+          "newSpeedMultiplier": 1
+        },
+        "type": "GameSpeedChangeCmd"
+      },
+      "phase": "phase-1-scrap-starter",
+      "reason": null,
+      "status": "prepared",
+      "step": 0
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-1-18",
+      "orderId": "p1-research-power-maintenance-early-flag",
+      "payload": null,
+      "phase": "phase-1-scrap-starter",
+      "reason": "observe-only order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 0
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-3-15",
+      "orderId": "p2-research-power-and-maintenance",
+      "payload": {
+        "args": {
+          "nodeId": "ResearchPowerAndMaintenance"
+        },
+        "type": "ResearchStartCmd"
+      },
+      "phase": "phase-2-assembly-power-maintenance",
+      "reason": null,
+      "status": "prepared",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-3-15",
+      "orderId": "p2-build-assemblies",
+      "payload": null,
+      "phase": "phase-2-assembly-power-maintenance",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-3-15",
+      "orderId": "p2-enable-construction-parts-recipe",
+      "payload": null,
+      "phase": "phase-2-assembly-power-maintenance",
+      "reason": "manual-step order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-3-15",
+      "orderId": "p2-build-maintenance-depot",
+      "payload": null,
+      "phase": "phase-2-assembly-power-maintenance",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-3-15",
+      "orderId": "p2-build-first-farm",
+      "payload": null,
+      "phase": "phase-2-assembly-power-maintenance",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-3-15",
+      "orderId": "p2-pin-construction-parts",
+      "payload": {
+        "args": {
+          "productToToggle": "Product_ConstructionParts"
+        },
+        "type": "PinToggleCmd"
+      },
+      "phase": "phase-2-assembly-power-maintenance",
+      "reason": null,
+      "status": "prepared",
+      "step": 2
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-5-15",
+      "orderId": "p3-research-trading-dock",
+      "payload": null,
+      "phase": "phase-3-mining-vehicles",
+      "reason": "research node ResearchTradeDock already researched — nothing to start",
+      "status": "skipped",
+      "step": 4
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-5-15",
+      "orderId": "p3-research-vehicles-mining",
+      "payload": {
+        "args": {
+          "nodeId": "ResearchVehicleAndMining"
+        },
+        "type": "ResearchStartCmd"
+      },
+      "phase": "phase-3-mining-vehicles",
+      "reason": null,
+      "status": "prepared",
+      "step": 4
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-5-15",
+      "orderId": "p3-build-coal-mine",
+      "payload": null,
+      "phase": "phase-3-mining-vehicles",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 4
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-5-15",
+      "orderId": "p3-retire-coal-maker",
+      "payload": null,
+      "phase": "phase-3-mining-vehicles",
+      "reason": "manual-step order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 4
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-5-15",
+      "orderId": "p3-build-iron-mine-and-ore-smelter",
+      "payload": null,
+      "phase": "phase-3-mining-vehicles",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 4
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-5-15",
+      "orderId": "p3-grow-truck-fleet",
+      "payload": null,
+      "phase": "phase-3-mining-vehicles",
+      "reason": "entity selector requires human resolution (§6.2)",
+      "status": "skipped",
+      "step": 4
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-5-15",
+      "orderId": "p3-research-beacon",
+      "payload": {
+        "args": {
+          "nodeId": "ResearchBeacon"
+        },
+        "type": "ResearchStartCmd"
+      },
+      "phase": "phase-3-mining-vehicles",
+      "reason": null,
+      "status": "prepared",
+      "step": 4
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-5-15",
+      "orderId": "p3-research-tools",
+      "payload": {
+        "args": {
+          "nodeId": "ResearchTools"
+        },
+        "type": "ResearchStartCmd"
+      },
+      "phase": "phase-3-mining-vehicles",
+      "reason": null,
+      "status": "prepared",
+      "step": 4
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-8-15",
+      "orderId": "p4-research-concrete-production",
+      "payload": {
+        "args": {
+          "nodeId": "ResearchConcreteAdvanced"
+        },
+        "type": "ResearchStartCmd"
+      },
+      "phase": "phase-4-concrete-diesel-rubber",
+      "reason": null,
+      "status": "prepared",
+      "step": 7
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-8-15",
+      "orderId": "p4-build-limestone-kiln-concrete",
+      "payload": null,
+      "phase": "phase-4-concrete-diesel-rubber",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 7
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-8-15",
+      "orderId": "p4-research-basic-diesel",
+      "payload": {
+        "args": {
+          "nodeId": "ResearchBasicDiesel"
+        },
+        "type": "ResearchStartCmd"
+      },
+      "phase": "phase-4-concrete-diesel-rubber",
+      "reason": null,
+      "status": "prepared",
+      "step": 7
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-8-15",
+      "orderId": "p4-build-basic-diesel-chain",
+      "payload": null,
+      "phase": "phase-4-concrete-diesel-rubber",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 7
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-8-15",
+      "orderId": "p4-diesel-storage-alert",
+      "payload": null,
+      "phase": "phase-4-concrete-diesel-rubber",
+      "reason": "entity selector requires human resolution (§6.2)",
+      "status": "skipped",
+      "step": 7
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-8-15",
+      "orderId": "p4-research-synthetic-rubber",
+      "payload": {
+        "args": {
+          "nodeId": "ResearchRubberProduction"
+        },
+        "type": "ResearchStartCmd"
+      },
+      "phase": "phase-4-concrete-diesel-rubber",
+      "reason": null,
+      "status": "prepared",
+      "step": 7
+    },
+    {
+      "confirmation": null,
+      "gameDate": "1-8-15",
+      "orderId": "p4-build-rubber-maker",
+      "payload": null,
+      "phase": "phase-4-concrete-diesel-rubber",
+      "reason": "place-blueprint order — non-command kind (§6.3): a human/agent task presented in-game, never prepared as a command",
+      "status": "skipped",
+      "step": 7
+    }
+  ],
+  "phaseHistory": [
+    {
+      "completedDate": "1-1-18",
+      "completedStep": 0,
+      "enteredDate": "1-1-18",
+      "enteredStep": 0,
+      "phase": "phase-0-scout-bootstrap"
+    },
+    {
+      "completedDate": "1-3-15",
+      "completedStep": 2,
+      "enteredDate": "1-1-18",
+      "enteredStep": 0,
+      "phase": "phase-1-scrap-starter"
+    },
+    {
+      "completedDate": "1-5-15",
+      "completedStep": 4,
+      "enteredDate": "1-3-15",
+      "enteredStep": 2,
+      "phase": "phase-2-assembly-power-maintenance"
+    },
+    {
+      "completedDate": "1-8-15",
+      "completedStep": 7,
+      "enteredDate": "1-5-15",
+      "enteredStep": 4,
+      "phase": "phase-3-mining-vehicles"
+    },
+    {
+      "completedDate": null,
+      "completedStep": null,
+      "enteredDate": "1-8-15",
+      "enteredStep": 7,
+      "phase": "phase-4-concrete-diesel-rubber"
+    },
+    {
+      "completedDate": null,
+      "completedStep": null,
+      "enteredDate": null,
+      "enteredStep": null,
+      "phase": "phase-5-copper-construction2-food"
+    },
+    {
+      "completedDate": null,
+      "completedStep": null,
+      "enteredDate": null,
+      "enteredStep": null,
+      "phase": "phase-6-automation-expansion"
+    },
+    {
+      "completedDate": null,
+      "completedStep": null,
+      "enteredDate": null,
+      "enteredStep": null,
+      "phase": "phase-7-rail-introduction"
+    }
+  ],
+  "plan": {
+    "file": "plans/fresh-start-v1.json",
+    "id": "fresh-start",
+    "version": "1.3.0"
+  },
+  "runner": "coi play — prepare-only, no apply path",
+  "schema": "coi-play-session/1",
+  "source": {
+    "dir": "plans/fixtures/growth",
+    "kind": "state-seq"
+  },
+  "startedAtUnix": 1793993305,
+  "steps": [
+    {
+      "events": [
+        {
+          "phase": "phase-0-scout-bootstrap",
+          "status": "COMPLETE",
+          "type": "phase_entered"
+        },
+        {
+          "evidence": "[TRUE] population = 100 (bridge-status.json); [TRUE] freeHousingCapacity = 60 (bridge-status.json)",
+          "phase": "phase-0-scout-bootstrap",
+          "type": "phase_completed"
+        },
+        {
+          "phase": "phase-1-scrap-starter",
+          "status": "ACTIVE",
+          "type": "phase_entered"
+        },
+        {
+          "orders": [
+            "p1-research-construction",
+            "p1-research-queue-first15",
+            "p1-build-starter-cluster",
+            "p1-tree-clearing-and-dumping",
+            "p1-resume-time",
+            "p1-research-power-maintenance-early-flag"
+          ],
+          "phase": "phase-1-scrap-starter",
+          "type": "orders_recorded"
+        }
+      ],
+      "gameDate": "1-1-18",
+      "loopPhase": "phase-1-scrap-starter",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "ACTIVE",
+        "phase-2-assembly-power-maintenance": "NOT REACHED",
+        "phase-3-mining-vehicles": "NOT REACHED",
+        "phase-4-concrete-diesel-rubber": "NOT REACHED",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-01",
+      "step": 0
+    },
+    {
+      "events": [],
+      "gameDate": "1-2-15",
+      "loopPhase": "phase-1-scrap-starter",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "ACTIVE",
+        "phase-2-assembly-power-maintenance": "NOT REACHED",
+        "phase-3-mining-vehicles": "NOT REACHED",
+        "phase-4-concrete-diesel-rubber": "NOT REACHED",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-02",
+      "step": 1
+    },
+    {
+      "events": [
+        {
+          "evidence": "[TRUE] Product_Iron.quantity = 123; [TRUE] hasActiveLab = True; [TRUE] [TRUE] research.current = ResearchPowerAndMaintenance; [TRUE] len(queue) = 1 [\"ResearchTradeDock\"]",
+          "phase": "phase-1-scrap-starter",
+          "type": "phase_completed"
+        },
+        {
+          "phase": "phase-2-assembly-power-maintenance",
+          "status": "ACTIVE",
+          "type": "phase_entered"
+        },
+        {
+          "orders": [
+            "p2-research-power-and-maintenance",
+            "p2-build-assemblies",
+            "p2-enable-construction-parts-recipe",
+            "p2-build-maintenance-depot",
+            "p2-build-first-farm",
+            "p2-pin-construction-parts"
+          ],
+          "phase": "phase-2-assembly-power-maintenance",
+          "type": "orders_recorded"
+        }
+      ],
+      "gameDate": "1-3-15",
+      "loopPhase": "phase-2-assembly-power-maintenance",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "COMPLETE",
+        "phase-2-assembly-power-maintenance": "ACTIVE",
+        "phase-3-mining-vehicles": "NOT REACHED",
+        "phase-4-concrete-diesel-rubber": "NOT REACHED",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-03",
+      "step": 2
+    },
+    {
+      "events": [],
+      "gameDate": "1-4-15",
+      "loopPhase": "phase-2-assembly-power-maintenance",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "COMPLETE",
+        "phase-2-assembly-power-maintenance": "ACTIVE",
+        "phase-3-mining-vehicles": "NOT REACHED",
+        "phase-4-concrete-diesel-rubber": "NOT REACHED",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-04",
+      "step": 3
+    },
+    {
+      "events": [
+        {
+          "evidence": "[TRUE] ResearchPowerAndMaintenance in researched list = True; [TRUE] byProto[MaintenanceDepotT1] = 1 (absent proto counts 0); [TRUE] inner predicate TRUE at every snapshot in the trailing 1-month window (anchor 1-4-15, 2 snapshot(s), span 1.00 months) [for: {\"months\":1}]; [TRUE] Product_MechanicalParts.quantity = 8",
+          "phase": "phase-2-assembly-power-maintenance",
+          "type": "phase_completed"
+        },
+        {
+          "phase": "phase-3-mining-vehicles",
+          "status": "ACTIVE",
+          "type": "phase_entered"
+        },
+        {
+          "orders": [
+            "p3-research-trading-dock",
+            "p3-research-vehicles-mining",
+            "p3-build-coal-mine",
+            "p3-retire-coal-maker",
+            "p3-build-iron-mine-and-ore-smelter",
+            "p3-grow-truck-fleet",
+            "p3-research-beacon",
+            "p3-research-tools"
+          ],
+          "phase": "phase-3-mining-vehicles",
+          "type": "orders_recorded"
+        }
+      ],
+      "gameDate": "1-5-15",
+      "loopPhase": "phase-3-mining-vehicles",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "COMPLETE",
+        "phase-2-assembly-power-maintenance": "COMPLETE",
+        "phase-3-mining-vehicles": "ACTIVE",
+        "phase-4-concrete-diesel-rubber": "NOT REACHED",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-05",
+      "step": 4
+    },
+    {
+      "events": [],
+      "gameDate": "1-6-15",
+      "loopPhase": "phase-3-mining-vehicles",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "COMPLETE",
+        "phase-2-assembly-power-maintenance": "COMPLETE",
+        "phase-3-mining-vehicles": "ACTIVE",
+        "phase-4-concrete-diesel-rubber": "NOT REACHED",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-06",
+      "step": 5
+    },
+    {
+      "events": [],
+      "gameDate": "1-7-15",
+      "loopPhase": "phase-3-mining-vehicles",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "COMPLETE",
+        "phase-2-assembly-power-maintenance": "COMPLETE",
+        "phase-3-mining-vehicles": "ACTIVE",
+        "phase-4-concrete-diesel-rubber": "NOT REACHED",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-07",
+      "step": 6
+    },
+    {
+      "events": [
+        {
+          "evidence": "[TRUE] ResearchVehicleAndMining in researched list = True; [TRUE] Product_Coal.quantity = 344; [TRUE] [TRUE] [TRUE] Product_IronOre produced[lastMonth] = 120; [TRUE] Product_IronOre consumed[lastMonth] = 100; [TRUE] Product_IronOre window=lastMonth: produced 120 - consumed 100 = net 20; [TRUE] [TRUE] [TRUE] Product_Iron produced[lastMonth] = 105; [TRUE] Product_Iron consumed[lastMonth] = 55; [TRUE] Product_Iron window=lastMonth: produced 105 - consumed 55 = net 50",
+          "phase": "phase-3-mining-vehicles",
+          "type": "phase_completed"
+        },
+        {
+          "phase": "phase-4-concrete-diesel-rubber",
+          "status": "ACTIVE",
+          "type": "phase_entered"
+        },
+        {
+          "orders": [
+            "p4-research-concrete-production",
+            "p4-build-limestone-kiln-concrete",
+            "p4-research-basic-diesel",
+            "p4-build-basic-diesel-chain",
+            "p4-diesel-storage-alert",
+            "p4-research-synthetic-rubber",
+            "p4-build-rubber-maker"
+          ],
+          "phase": "phase-4-concrete-diesel-rubber",
+          "type": "orders_recorded"
+        }
+      ],
+      "gameDate": "1-8-15",
+      "loopPhase": "phase-4-concrete-diesel-rubber",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "COMPLETE",
+        "phase-2-assembly-power-maintenance": "COMPLETE",
+        "phase-3-mining-vehicles": "COMPLETE",
+        "phase-4-concrete-diesel-rubber": "ACTIVE",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-08",
+      "step": 7
+    },
+    {
+      "events": [],
+      "gameDate": "1-9-15",
+      "loopPhase": "phase-4-concrete-diesel-rubber",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "COMPLETE",
+        "phase-2-assembly-power-maintenance": "COMPLETE",
+        "phase-3-mining-vehicles": "COMPLETE",
+        "phase-4-concrete-diesel-rubber": "ACTIVE",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-09",
+      "step": 8
+    },
+    {
+      "events": [],
+      "gameDate": "1-10-15",
+      "loopPhase": "phase-4-concrete-diesel-rubber",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "COMPLETE",
+        "phase-2-assembly-power-maintenance": "COMPLETE",
+        "phase-3-mining-vehicles": "COMPLETE",
+        "phase-4-concrete-diesel-rubber": "ACTIVE",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-10",
+      "step": 9
+    },
+    {
+      "events": [],
+      "gameDate": "1-11-15",
+      "loopPhase": "phase-4-concrete-diesel-rubber",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "COMPLETE",
+        "phase-2-assembly-power-maintenance": "COMPLETE",
+        "phase-3-mining-vehicles": "COMPLETE",
+        "phase-4-concrete-diesel-rubber": "ACTIVE",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-11",
+      "step": 10
+    },
+    {
+      "events": [],
+      "gameDate": "1-12-15",
+      "loopPhase": "phase-4-concrete-diesel-rubber",
+      "phaseStatuses": {
+        "phase-0-scout-bootstrap": "COMPLETE",
+        "phase-1-scrap-starter": "COMPLETE",
+        "phase-2-assembly-power-maintenance": "COMPLETE",
+        "phase-3-mining-vehicles": "COMPLETE",
+        "phase-4-concrete-diesel-rubber": "ACTIVE",
+        "phase-5-copper-construction2-food": "NOT REACHED",
+        "phase-6-automation-expansion": "NOT REACHED",
+        "phase-7-rail-introduction": "NOT REACHED"
+      },
+      "stateDir": "plans/fixtures/growth/month-12",
+      "step": 11
+    }
+  ]
+}

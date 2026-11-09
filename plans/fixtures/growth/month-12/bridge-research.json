@@ -1,0 +1,23 @@
+{
+ "current": {
+  "id": "ResearchCp2Packing",
+  "progressPerc": 30000,
+  "stepsDone": 24,
+  "remainingSteps": 56,
+  "scienceCost": 80
+ },
+ "queue": [],
+ "researchedCount": 9,
+ "hasActiveLab": true,
+ "researched": [
+  "ResearchCpPacking",
+  "ResearchPowerAndMaintenance",
+  "ResearchTradeDock",
+  "ResearchVehicleAndMining",
+  "ResearchBeacon",
+  "ResearchTools",
+  "ResearchBasicDiesel",
+  "ResearchRubberProduction",
+  "ResearchCopperRefinement"
+ ]
+}
