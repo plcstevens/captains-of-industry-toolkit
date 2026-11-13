@@ -2521,3 +2521,54 @@ previous build** — text-only changes, verified per DLL.
 Folded into the same round: `coi/README.md` pointed at
 `../SPEC.md`; the SPEC lives at `../dev/SPEC.md` since the
 restructure — fixed.
+
+## Addendum XXXI — Dynamic fleet: mining-truck dispatch design (2026-11-13)
+
+Design round only — no code, no live applies. Full design:
+`dev/DYNAMIC-FLEET-DESIGN.md`; assembly trail in
+`bridge/dev/MODDING-NOTES.md` recon round 16.
+
+Philip's idea: micro-manage truck assignments to Mine
+Control Towers dynamically instead of leaving fixed counts.
+Recon verdict: the actuation channel already exists and is
+safer than expected; the sensing does not exist yet.
+
+- **Sensing gate**: one new read-only CoiBridge route,
+  `/coi/v1/fleet` (bridge 0.6.7), is required before any
+  stage ships. Verified surfaces it will read: MineTower
+  pools/area/assigned sinks, `Excavator.State` +
+  `StateChangedOnSimStep`, `Vehicle.AssignedTo`,
+  truck/excavator cargo, `IVehiclesManager` free pool.
+  There is no quota object in the game — the UI's counts
+  ARE the concrete assignments; quotas are derived by
+  grouping. Deposit/designation -> tower attribution is
+  geometric inference, labelled as such.
+- **Action verdict**: the type+count pair
+  (`AssignVehicleTypeToEntityCmd` /
+  `UnassignVehicleFromEntityCmd`) is the automation tool —
+  it draws only from the free pool (`Vehicle.CanBeAssigned`
+  requires unassigned), so it cannot steal; but fulfilment
+  is silently partial, so every apply is judged by
+  `/fleet` read-back (LANDED / PARTIALLY / NOT LANDED),
+  never by the command result. The concrete pair is
+  supervised-only: `AssignVehicleToEntityCmd` steals and
+  cancels jobs. Every move cancels the moved vehicle's
+  current jobs (cargo is kept on unassign — verified).
+  `zoneToAssign` stays null until its decompiled quirk is
+  live-tested. All four commands remain `wired`, not
+  `verified`, until the stage-(b) scratch-save shakedown.
+- **Policy**: a bounded dispatcher — type+count moves of 1,
+  starvation/surplus scoring with hysteresis, minimum
+  dwell, per-tower cooldown, per-day churn ceiling, a
+  free-pool reserve for general logistics, sink-headroom
+  and remaining-work vetoes, a hand-touched-tower rule that
+  stops the dispatcher fighting Philip's own assignments,
+  fail-closed on absent/stale sensing, and a written
+  "because" record per recommendation and move.
+- **Stages**: (a) sensing + recommendations page only;
+  (b) supervised one-click §12 applies with mandatory
+  read-back verdicts; (c) bounded autopilot ONLY on
+  Philip's later explicit authorisation — this addendum
+  does not grant it. No QoS-side executor is proposed: the
+  §12 channel is sufficient on current evidence, and if
+  that ever changes it takes a new design round.
